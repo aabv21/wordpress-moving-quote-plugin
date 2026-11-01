@@ -1,0 +1,16 @@
+{
+    "name": "chivabox/moving-quote",
+    "description": "WordPress plugin that gives instant moving estimates and delivers signed leads to n8n.",
+    "version": "1.0.0",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Chivabox\\MovingQuote\\": "src/"
+        }
+    },
+    "config": {
+        "autoloader-suffix": "ChivaboxMovingQuote",
+        "platform-check": false
+    }
+}

@@ -1,0 +1,8 @@
+parameters:
+    level: 9
+    paths:
+        - plugin/moving-quote/src
+        - plugin/moving-quote/moving-quote.php
+        - tests/php
+    excludePaths:
+        - plugin/moving-quote/vendor/*

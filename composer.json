@@ -1,0 +1,39 @@
+{
+    "name": "chivabox/moving-quote-tools",
+    "description": "Dev tooling for the Chivabox Movers moving-quote plugin.",
+    "type": "project",
+    "license": "MIT",
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/extension-installer": "^1.4",
+        "szepeviktor/phpstan-wordpress": "^2.0",
+        "wp-coding-standards/wpcs": "^3.4",
+        "phpcompatibility/phpcompatibility-wp": "^2.1"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Chivabox\\MovingQuote\\Tests\\": "tests/php/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.3.36"
+        },
+        "allow-plugins": {
+            "phpstan/extension-installer": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "scripts": {
+        "lint": "phpcs",
+        "analyse": "phpstan analyse --memory-limit=1G --no-progress",
+        "test": "phpunit",
+        "autoload:plugin": "@composer dump-autoload --working-dir=plugin/moving-quote",
+        "check": [
+            "@lint",
+            "@analyse",
+            "@test"
+        ]
+    }
+}

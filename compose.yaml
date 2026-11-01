@@ -1,0 +1,11 @@
+name: chivabox-movers
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    profiles: [tools]
+    volumes:
+      - .:/app
+    working_dir: /app

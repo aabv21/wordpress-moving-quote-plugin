@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<ruleset name="Chivabox Moving Quote">
+    <description>Coding standard for the Chivabox Movers moving-quote plugin.</description>
+
+    <file>plugin/moving-quote</file>
+    <exclude-pattern>plugin/moving-quote/vendor/*</exclude-pattern>
+    <exclude-pattern>plugin/moving-quote/assets/*</exclude-pattern>
+
+    <arg value="sp"/>
+    <arg name="extensions" value="php"/>
+
+    <config name="testVersion" value="8.3-"/>
+    <config name="minimum_wp_version" value="7.0"/>
+
+    <rule ref="WordPress-Extra">
+        <!-- PSR-4 class files are named after the class, not the WordPress file-name convention. -->
+        <exclude name="WordPress.Files.FileName"/>
+        <!-- Modern PHP uses short array syntax throughout this codebase. -->
+        <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+    </rule>
+    <rule ref="PHPCompatibilityWP"/>
+
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="moving-quote"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>

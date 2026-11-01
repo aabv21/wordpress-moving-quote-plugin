@@ -34,6 +34,22 @@ jobs:
           if [ "${#files[@]}" -gt 0 ]; then
             docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:v0.11.0 "${files[@]}"
           fi
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          tools: composer:2.11.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+      - run: composer install --no-interaction --no-progress
+      - run: composer lint
+      - run: composer analyse
+      - run: composer test
+      - name: Check committed autoloader is up to date
+        run: |
+          composer autoload:plugin
+          git diff --exit-code -- plugin/moving-quote/vendor
 
   security:
     name: Security
@@ -51,6 +67,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --audit-level=high
+      - name: composer audit
+        run: docker run --rm -v "$PWD:/app" -w /app composer:2.11.0 audit --locked
 
   actions:
     name: Actions
