@@ -107,6 +107,14 @@ wp option update page_on_front "$home_id"
 
 wp plugin activate moving-quote
 
+# Delivery settings: the webhook URL is a fixed in-network address, so it's a plain argument. The
+# secret and the team email come from .env and are piped through STDIN so neither ever appears on
+# the command line (visible in `ps` and shell history); `option patch update` doesn't echo a piped
+# value back to stdout.
+wp option patch update moving_quote_settings webhook_url "http://n8n:5678/webhook/moving-quote/leads"
+wp option patch update moving_quote_settings webhook_secret <<< "$LEAD_WEBHOOK_SECRET"
+wp option patch update moving_quote_settings team_email <<< "$TEAM_EMAIL"
+
 admin_url="${WP_URL%/}/wp-admin/"
 echo "Site: $WP_URL"
 echo "Admin: $admin_url"

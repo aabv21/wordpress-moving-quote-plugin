@@ -33,12 +33,11 @@ const CONTRACT_COLUMNS = [
 ] as const;
 
 /**
- * Settings keys this test compares between the stored option and `Defaults::settings()`. Once a
- * later task's `setup.sh` starts writing `webhook_url`, `webhook_secret`, and `team_email`, those
- * three keys come out of this list rather than out of the comparison function, so the amendment
- * is a one-line change.
+ * Settings keys this test compares between the stored option and `Defaults::settings()`. Excludes
+ * `webhook_url`, `webhook_secret`, and `team_email`: `setup.sh` now writes those three to deliver
+ * leads to the local n8n, so they always differ from the empty-string defaults once it has run.
  */
-const COMPARED_SETTINGS_KEYS = ['base_rates', 'per_room', 'per_km', 'extras', 'range_percent', 'routes', 'webhook_url', 'webhook_secret', 'team_email'] as const;
+const COMPARED_SETTINGS_KEYS = ['base_rates', 'per_room', 'per_km', 'extras', 'range_percent', 'routes'] as const;
 
 /**
  * Asserts `actual` matches `expected` on every key in `COMPARED_SETTINGS_KEYS`, failing with only

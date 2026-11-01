@@ -31,4 +31,14 @@ final class DistanceTableTest extends TestCase {
 		$table = new DistanceTable( [ new Route( 'A town', 'B town', 10 ), new Route( 'B town', 'C town', 20 ) ] );
 		self::assertSame( [ [ 'A town', 'C town' ] ], $table->missing_pairs() );
 	}
+
+	public function test_cities_dedupes_case_insensitively_keeping_the_first_spelling(): void {
+		$table = new DistanceTable(
+			[
+				new Route( 'Cartagena', 'Barranquilla', 120 ),
+				new Route( 'cartagena', 'Santa Marta', 220 ),
+			]
+		);
+		self::assertSame( [ 'Barranquilla', 'Cartagena', 'Santa Marta' ], $table->cities() );
+	}
 }

@@ -19,7 +19,7 @@ What exists today:
 - `docker/php/Dockerfile`, `compose.yaml` — the PHP tools image (PHP 8.3, Composer, PHPUnit, PHPStan, PHPCS), run only through `command npm run php -- …`. There is no local `php` or `composer`.
 - `composer.json`, `composer.lock`, `phpcs.xml.dist`, `phpstan.neon.dist`, `phpunit.xml.dist` — the PHP tooling config at repo root.
 - `tests/php/` — PHPUnit tests for the plugin's pure classes, at `tests/php/**/*Test.php`.
-- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), and `src/Pricing/`, `src/Settings/` (pure classes), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below).
+- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), `src/Pricing/`, `src/Settings/` (`Defaults` and `SettingsSanitizer` are pure; `Options` reads the stored option), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below), and `src/Admin/` (the settings page; see "Settings" below).
 - `compose.yaml` — the full local stack: `db` (MySQL), `wordpress`, `wpcli` (idle, for one-off commands), `cron` (the WP-Cron loop sidecar), `postgres`, `n8n`, and `php` (the tools image). See "The local stack" below.
 - `db/schema.sql`, `db/init/01-app.sh` — the app Postgres database schema (table `processed_events`, for n8n idempotency) and the one-time role/database bootstrap script.
 - `config/config.example.json` — the n8n runtime config template; a developer's own `config/config.json` is gitignored.
@@ -29,7 +29,7 @@ What exists today:
 
 Planned, added in later tasks:
 
-- More `plugin/moving-quote/src/` namespaces: `Leads`, `Delivery`, `Admin`.
+- More `plugin/moving-quote/src/` namespaces: `Leads`, `Delivery`. The leads list page joins `src/Admin/`.
 - `plugin/moving-quote/templates/`, `plugin/moving-quote/assets/` (generated frontend JS).
 - `src/frontend/` — the three-step quote form, written in TypeScript and compiled into `plugin/moving-quote/assets/`.
 - `src/nodes/` — Code-node sources for the n8n workflows.
@@ -60,7 +60,7 @@ Planned, added in later tasks:
 
 - **Services and ports.** `docker compose up -d --wait` brings up `db` (MySQL 8.4, unpublished), `wordpress` (on `127.0.0.1:8080`), `wpcli` (idle, for one-off `wp` commands), `cron` (runs `wp cron event run --due-now` every 60 s, since WP-Cron itself is disabled), `postgres` (unpublished), and `n8n` (on `127.0.0.1:5678`).
 - **One stack at a time.** Every demo in this series binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up — otherwise `up` fails on the port conflict, or a test ends up talking to the wrong n8n.
-- **`setup.sh`** requires `docker compose up -d --wait` to have already run. It waits for MySQL to actually accept TCP connections (its health status can turn healthy before the real server does), then installs WordPress (admin password read from `.env` over stdin, never as an argument), sets the site description, timezone, and pretty permalinks, activates the default theme and the `moving-quote` plugin, and creates the `home`, `get-a-quote`, and `thank-you` pages. It's idempotent: running it again touches nothing that's already correct.
+- **`setup.sh`** requires `docker compose up -d --wait` to have already run. It waits for MySQL to actually accept TCP connections (its health status can turn healthy before the real server does), then installs WordPress (admin password read from `.env` over stdin, never as an argument), sets the site description, timezone, and pretty permalinks, activates the default theme and the `moving-quote` plugin, creates the `home`, `get-a-quote`, and `thank-you` pages, and sets the delivery settings: `webhook_url` to the in-network n8n address, and `webhook_secret`/`team_email` from `.env`'s `LEAD_WEBHOOK_SECRET`/`TEAM_EMAIL`, both piped through STDIN so neither touches the command line. It's idempotent: running it again touches nothing that's already correct.
 - **Stack tests never use `wp db query`.** The `wpcli` image's bundled MariaDB client isn't guaranteed compatible with MySQL 8.4's wire protocol. `tests/stack/lib/stack.ts`'s `sqlWp()` instead runs `wp eval-file -`, which executes PHP through WordPress's own `$wpdb`, the same client the plugin itself uses at runtime.
 
 ## Install lifecycle
@@ -70,6 +70,14 @@ Planned, added in later tasks:
 - **Upgrade** (`Install\Installer::maybe_upgrade()`) runs on every `plugins_loaded`. When the stored `moving_quote_db_version` differs from the plugin's, it reruns `dbDelta` and updates the version, so an existing site picks up a schema change on its next request.
 - **Uninstall** (`plugin/moving-quote/uninstall.php`, run only by WordPress when the plugin is deleted) drops the leads table, deletes both options, deletes the rate-limit transients, and clears the scheduled hook. This is the one path that removes data.
 - **Cron.** Hook `moving_quote_process_outbox`, on the `moving_quote_every_minute` schedule (60 seconds), added through the `cron_schedules` filter.
+
+## Settings
+
+- **Admin page.** `Admin\Menu::register()` adds the "Moving quotes" top-level menu (capability `manage_options`, icon `dashicons-car`) and its Settings submenu, rendered by `Admin\SettingsPage::render()` as three sections: rates, cities and distances (existing routes, three blank rows, a remove checkbox, and a warning listing any missing city pair), and delivery.
+- **Sanitizing a save.** `Admin\SettingsPage::sanitize()` applies a field-appropriate WordPress sanitizer — `esc_url_raw()` for the webhook URL, `trim()` only for the secret and the team email (never `sanitize_text_field()` or `sanitize_email()`, both of which can silently turn an invalid or tricky value into an empty string before the real validation ever sees it) — then hands the result to the pure `Settings\SettingsSanitizer`, which keeps a field's current value and reports an error code on any invalid input. `options.php` already unslashes the posted value, so this never unslashes a second time.
+- **The webhook secret.** Submitting the form with the secret field left blank keeps the currently stored secret; only a non-blank value (at least 32 characters) replaces it. The rendered field is always `type="password"` with an empty value, so the page's HTML never contains the stored secret.
+- **Delivery gating.** `Settings\Options::delivery_enabled()` is true only once the webhook URL, the webhook secret, and the team email are all non-empty; the settings page shows "Delivery is on" or "Delivery is off until the webhook URL, secret, and team email are set." accordingly.
+- **`setup.sh`'s delivery keys.** It sets `webhook_url` to the in-network n8n address, and patches `webhook_secret`/`team_email` from `.env`'s `LEAD_WEBHOOK_SECRET`/`TEAM_EMAIL` through `wp option patch update …`, both piped over STDIN.
 
 ## Conventions
 

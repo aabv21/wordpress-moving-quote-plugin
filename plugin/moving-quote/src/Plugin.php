@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote;
 
+use Chivabox\MovingQuote\Admin\{Menu, SettingsPage};
 use Chivabox\MovingQuote\Install\Installer;
 
 /**
@@ -23,5 +24,8 @@ final class Plugin {
 		register_deactivation_hook( $plugin_file, [ Installer::class, 'deactivate' ] );
 		add_filter( 'cron_schedules', [ Installer::class, 'add_schedule' ] ); // phpcs:ignore WordPress.WP.CronInterval.ChangeDetected -- the interval is a fixed 60 seconds, defined in Installer::add_schedule().
 		add_action( 'plugins_loaded', [ Installer::class, 'maybe_upgrade' ] );
+
+		add_action( 'admin_menu', [ Menu::class, 'register' ] );
+		SettingsPage::register();
 	}
 }

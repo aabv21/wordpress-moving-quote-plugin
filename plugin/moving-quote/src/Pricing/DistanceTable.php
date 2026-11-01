@@ -33,7 +33,21 @@ final class DistanceTable {
 	public function cities(): array {
 		$cities = array_keys( $this->distances );
 		sort( $cities, SORT_STRING | SORT_FLAG_CASE );
-		return array_values( array_unique( $cities, SORT_STRING ) );
+
+		// A stable sort (guaranteed since PHP 8.0) keeps same-cased ties in their original order, so
+		// a case-insensitive dedupe here keeps whichever spelling was inserted first.
+		$seen   = [];
+		$unique = [];
+		foreach ( $cities as $city ) {
+			$key = mb_strtolower( $city );
+			if ( isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+			$unique[]     = $city;
+		}
+
+		return $unique;
 	}
 
 	public function distance_km( string $from, string $to ): ?int {
