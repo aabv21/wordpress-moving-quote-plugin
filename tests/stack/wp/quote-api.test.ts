@@ -1,6 +1,6 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { validLead } from '../lib/leads.ts';
-import { clearDebugLog, pluginLogLines, resetRateLimits, rest, restNonce, sqlWp, table, wp } from '../lib/stack.ts';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { deleteCreatedLeads, validLead } from '../lib/leads.ts';
+import { clearDebugLog, disableDelivery, pluginLogLines, resetRateLimits, rest, restNonce, sqlWp, table, wp } from '../lib/stack.ts';
 
 interface EstimateBody {
   amount: number;
@@ -47,6 +47,18 @@ async function submitBucketHash(): Promise<string> {
 
 describe('quote and lead REST API', () => {
   let nonce: string;
+  let restoreDelivery: () => Promise<void>;
+
+  // Registered first, so its afterAll (below) is the last one to run (afterAll hooks run in
+  // reverse registration order): every other restore in this file must settle before this one
+  // puts the real webhook_url back, including the per_km test's own settings restore, whose
+  // captured "before" snapshot holds the '' this sets.
+  beforeAll(async () => {
+    restoreDelivery = await disableDelivery();
+  });
+  afterAll(async () => {
+    await restoreDelivery();
+  });
 
   beforeAll(async () => {
     nonce = await restNonce();
@@ -54,6 +66,12 @@ describe('quote and lead REST API', () => {
 
   afterEach(async () => {
     await resetRateLimits();
+  });
+
+  afterAll(async () => {
+    // Every lead this suite inserts is a real delivery attempt once delivery is configured, and
+    // cron keeps retrying a pending one for hours; none of them must outlive this file.
+    await deleteCreatedLeads();
   });
 
   describe('estimate', () => {

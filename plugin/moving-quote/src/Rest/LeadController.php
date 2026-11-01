@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Rest;
 
+use Chivabox\MovingQuote\Delivery\Outbox;
 use Chivabox\MovingQuote\Leads\{FieldErrors, LeadDraft, LeadRecord, LeadRepository, LeadValidator};
 use Chivabox\MovingQuote\Pricing\{Calculator, Estimate};
 use Chivabox\MovingQuote\Security\RateLimiter;
@@ -28,7 +29,6 @@ final class LeadController {
 	private const ROUTE           = '/leads';
 	private const SUBMIT_LIMIT    = 5;
 	private const SUBMIT_WINDOW_S = 3600;
-	private const LEASE_SECONDS   = 120;
 
 	public static function register(): void {
 		// No args schema: every field is validated by LeadValidator, so a restrictive schema here
@@ -95,7 +95,7 @@ final class LeadController {
 
 	private static function insert( LeadRepository $repository, LeadDraft $draft, Estimate $estimate, int $now ): WP_REST_Response|WP_Error {
 		try {
-			$record = $repository->insert( $draft, $estimate, $now, $now + self::LEASE_SECONDS );
+			$record = $repository->insert( $draft, $estimate, $now, $now + Outbox::LEASE_SECONDS );
 		} catch ( Throwable $e ) {
 			error_log( 'moving-quote: lead insert failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- no dedicated logging service exists; the message carries no PII.
 			return self::save_failed();
@@ -105,6 +105,8 @@ final class LeadController {
 			// LeadRepository::insert() returns null only once it has confirmed request_uuid now
 			// exists: another request for the same UUID raced ahead of this one and already won, so
 			// look up that row and answer with its data instead of a duplicate row or a lost lead.
+			// That other request's own insert() call is the one that triggers delivery; this one must
+			// not, or the same lead would be attempted twice for one winning insert.
 			$winner = $repository->find_by_uuid( $draft->submission_id );
 			if ( null !== $winner ) {
 				return self::saved( $winner );
@@ -114,7 +116,26 @@ final class LeadController {
 			return self::save_failed();
 		}
 
+		self::attempt_delivery( $record );
+
 		return self::saved( $record, 201 );
+	}
+
+	/**
+	 * The inline delivery attempt for a lead that was just inserted. The response is 201 regardless
+	 * of the outcome, so the customer never sees an error the outbox's own retries will resolve on
+	 * their own; this can still delay that 201 by up to `WebhookClient`'s 5 s timeout.
+	 */
+	private static function attempt_delivery( LeadRecord $record ): void {
+		if ( ! Options::delivery_enabled() ) {
+			return;
+		}
+
+		try {
+			Outbox::deliver( $record );
+			// phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch -- deliberately empty: a last-resort guard against a failure outside deliver()'s own catch (e.g. the apply_sync() write itself), which must never turn a saved lead into a 500 for the customer.
+		} catch ( Throwable ) {
+		}
 	}
 
 	private static function saved( LeadRecord $record, int $status = 200 ): WP_REST_Response {

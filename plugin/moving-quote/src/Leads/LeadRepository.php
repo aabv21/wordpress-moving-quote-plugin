@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Leads;
 
+use Chivabox\MovingQuote\Delivery\SyncUpdate;
 use Chivabox\MovingQuote\Pricing\Estimate;
 
 /**
@@ -99,5 +100,86 @@ final class LeadRepository {
 		}
 		/** @var array<string, string|null> $row ARRAY_A always keys by column name */
 		return LeadRecord::from_row( $row );
+	}
+
+	/**
+	 * Pending rows due for delivery (`next_attempt_at <= $now`), oldest first, up to `$limit`. The
+	 * raw rows are returned as-is, not converted through `LeadRecord::from_row()`: a row an unknown
+	 * future `status` value would make that conversion throw on must still reach the caller, so it
+	 * can record the failure and move on to the next row instead of losing the whole batch.
+	 *
+	 * @return list<array<string, string|null>>
+	 */
+	public function due( int $now, int $limit ): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				'SELECT * FROM %i WHERE sync_status = %s AND next_attempt_at <= %d ORDER BY next_attempt_at ASC, id ASC LIMIT %d',
+				$this->table(),
+				SyncStatus::Pending->value,
+				$now,
+				$limit
+			),
+			ARRAY_A
+		);
+
+		/** @var list<array<string, string|null>>|null $rows ARRAY_A always keys by column name */
+		return $rows ?? [];
+	}
+
+	/**
+	 * Claims a due row for delivery: an UPDATE guarded by `id`, the row's current `next_attempt_at`,
+	 * and `sync_status = 'pending'`. Returns true only when exactly one row changed.
+	 *
+	 * Callers must keep `$expected_next_attempt_at < $lease_until` (true whenever the caller got
+	 * `$expected_next_attempt_at` from `due()`, which only returns rows with `next_attempt_at <=
+	 * now`): a same-value UPDATE reports 0 rows changed even when the WHERE clause matched, so a
+	 * coinciding expected value and lease would read as a failed claim.
+	 */
+	public function claim( int $id, int $expected_next_attempt_at, int $lease_until ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$changed = $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i SET next_attempt_at = %d WHERE id = %d AND next_attempt_at = %d AND sync_status = %s',
+				$this->table(),
+				$lease_until,
+				$id,
+				$expected_next_attempt_at,
+				SyncStatus::Pending->value
+			)
+		);
+
+		return 1 === $changed;
+	}
+
+	/**
+	 * Stores the result of a delivery attempt. The `where` also requires `sync_status = 'pending'`,
+	 * so a worker holding a stale lease can never overwrite a row a faster, overlapping run already
+	 * marked `sent`. A write that matches nothing (the guard failed) is silently skipped: the row
+	 * keeps its existing lease, so cron retries it on its own next pass.
+	 */
+	public function apply_sync( int $id, SyncUpdate $update ): void {
+		global $wpdb;
+
+		$wpdb->update(
+			$this->table(),
+			[
+				'sync_status'     => $update->status->value,
+				'attempts'        => $update->attempts,
+				'next_attempt_at' => $update->next_attempt_at,
+				'last_error'      => $update->last_error,
+				'sent_at'         => null === $update->sent_at ? null : gmdate( 'Y-m-d H:i:s', $update->sent_at ),
+			],
+			[
+				'id'          => $id,
+				'sync_status' => SyncStatus::Pending->value,
+			],
+			[ '%s', '%d', '%d', '%s', '%s' ],
+			[ '%d', '%s' ]
+		);
 	}
 }

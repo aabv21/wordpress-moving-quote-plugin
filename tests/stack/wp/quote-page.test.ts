@@ -1,6 +1,6 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { validLead } from '../lib/leads.ts';
-import { login, required, resetRateLimits, rest, site, wp, wpJson } from '../lib/stack.ts';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { deleteCreatedLeads, validLead } from '../lib/leads.ts';
+import { disableDelivery, login, required, resetRateLimits, rest, site, wp, wpJson } from '../lib/stack.ts';
 
 const QUOTE_PAGE_PATH = '/get-a-quote/';
 const OPTION_NAME = 'moving_quote_settings';
@@ -51,6 +51,18 @@ function selectOptionValues(html: string, selectName: keyof typeof SELECT_PATTER
 
 describe('the quote page', () => {
   let adminCookies: string;
+  let restoreDelivery: () => Promise<void>;
+
+  // Registered first, so its afterAll (below) is the last one to run (afterAll hooks run in
+  // reverse registration order): every other restore in this file must settle before this one
+  // puts the real webhook_url back, including the city-name test's own settings restore, whose
+  // captured "before" snapshot holds the '' this sets.
+  beforeAll(async () => {
+    restoreDelivery = await disableDelivery();
+  });
+  afterAll(async () => {
+    await restoreDelivery();
+  });
 
   beforeAll(async () => {
     adminCookies = await login(required('WP_ADMIN_USER'), required('WP_ADMIN_PASSWORD'));
@@ -58,6 +70,12 @@ describe('the quote page', () => {
 
   afterEach(async () => {
     await resetRateLimits();
+  });
+
+  afterAll(async () => {
+    // Every lead this suite inserts is a real delivery attempt once delivery is configured, and
+    // cron keeps retrying a pending one for hours; none of them must outlive this file.
+    await deleteCreatedLeads();
   });
 
   it('renders the three-step form with its script and config, for an anonymous visitor', async () => {

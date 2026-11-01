@@ -137,6 +137,24 @@ export async function resetRateLimits(): Promise<void> {
   await wp(['transient', 'delete', '--all']);
 }
 
+const OPTION_NAME = 'moving_quote_settings';
+
+/**
+ * Turns delivery off by patching `webhook_url` to `''` (so `Options::delivery_enabled()` is false
+ * and the inline attempt never fires), reading back the previous value first. Returns a restore
+ * function that puts that value back; call it in `afterAll`. Any lead a test inserts while
+ * delivery is off never reaches the real n8n webhook — load-bearing once an intake workflow is
+ * actually published there.
+ */
+export async function disableDelivery(): Promise<() => Promise<void>> {
+  const settings = await wpJson<{ webhook_url: string }>(['option', 'get', OPTION_NAME]);
+  const previousUrl = settings.webhook_url;
+  await wp(['option', 'patch', 'update', OPTION_NAME, 'webhook_url', '']);
+  return async () => {
+    await wp(['option', 'patch', 'update', OPTION_NAME, 'webhook_url', previousUrl]);
+  };
+}
+
 /** Truncates `wp-content/debug.log` inside the `wordpress` container. */
 export async function clearDebugLog(): Promise<void> {
   await runDocker(['compose', 'exec', '-T', 'wordpress', 'sh', '-c', ': > /var/www/html/wp-content/debug.log']);
