@@ -27,4 +27,9 @@
             </property>
         </properties>
     </rule>
+
+    <!-- Install/* manages its own table (create, drop, cleanup) with direct $wpdb calls; no caching wrapper applies to schema or lifecycle queries. -->
+    <rule ref="WordPress.DB.DirectDatabaseQuery">
+        <exclude-pattern>plugin/moving-quote/src/Install/*</exclude-pattern>
+    </rule>
 </ruleset>

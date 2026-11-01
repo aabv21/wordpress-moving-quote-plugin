@@ -6,7 +6,7 @@ A custom WordPress plugin that gives instant moving estimates, keeps every reque
 
 ## Status
 
-The repository skeleton, the strict TypeScript toolchain, the PHP toolchain, and CI are in place. The plugin has its skeleton and its pricing engine. The full local stack (WordPress, MySQL, Postgres, n8n) runs in Docker Compose, and `setup.sh` installs and configures WordPress idempotently. The quote form, the leads admin, and the n8n workflows are not built yet.
+The repository skeleton, the strict TypeScript toolchain, the PHP toolchain, and CI are in place. The plugin has its skeleton, its pricing engine, and its install lifecycle (the leads table, default settings, and the outbox cron schedule). The full local stack (WordPress, MySQL, Postgres, n8n) runs in Docker Compose, and `setup.sh` installs and configures WordPress idempotently. The quote form, the leads admin, and the n8n workflows are not built yet.
 
 ## What works now
 
@@ -17,6 +17,9 @@ The repository skeleton, the strict TypeScript toolchain, the PHP toolchain, and
 - `docker compose up -d --wait` brings up WordPress 7.1.4 on MySQL 8.4 (with a WP-CLI container and a cron sidecar) and n8n 2.45.6 on Postgres 17, all healthy.
 - `./setup.sh` installs WordPress, sets the site description, timezone, and pretty permalinks, activates the default theme and the plugin, and creates the Home, Get a Quote, and Thank You pages. It's idempotent: running it again changes nothing.
 - `npm run test:stack` drives the real stack over HTTP and WP-CLI: WordPress is installed and configured as expected, the plugin is active, the site pages respond, and Postgres keeps the `app` and `n8n` databases isolated from each other's roles.
+- Activating the plugin creates the leads table through `dbDelta`, seeds `moving_quote_settings` with the pricing defaults (without overwriting an existing value), sets `moving_quote_db_version`, and schedules the `moving_quote_process_outbox` hook on a 60-second `moving_quote_every_minute` schedule.
+- Deactivating the plugin only clears the scheduled hook; the leads table and the settings stay. Reactivating restores the hook without touching either. A stored schema version older than the plugin's reruns `dbDelta` on the next page load.
+- Uninstalling through WordPress (`wp plugin uninstall`, or deleting the plugin from the dashboard) drops the leads table, deletes both options, deletes the rate-limit transients, and clears the scheduled hook.
 - CI runs quality (typecheck, lint, test, the PHP checks, an autoloader drift check), security (gitleaks, `npm audit`, `composer audit`), actions (actionlint, zizmor), and stack (bring up WordPress, run `setup.sh`, run the WordPress stack tests) checks on every pull request.
 
 ## Quick start

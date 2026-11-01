@@ -3,6 +3,7 @@ parameters:
     paths:
         - plugin/moving-quote/src
         - plugin/moving-quote/moving-quote.php
+        - plugin/moving-quote/uninstall.php
         - tests/php
     excludePaths:
         - plugin/moving-quote/vendor/*

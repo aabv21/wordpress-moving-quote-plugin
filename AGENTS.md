@@ -19,7 +19,7 @@ What exists today:
 - `docker/php/Dockerfile`, `compose.yaml` — the PHP tools image (PHP 8.3, Composer, PHPUnit, PHPStan, PHPCS), run only through `command npm run php -- …`. There is no local `php` or `composer`.
 - `composer.json`, `composer.lock`, `phpcs.xml.dist`, `phpstan.neon.dist`, `phpunit.xml.dist` — the PHP tooling config at repo root.
 - `tests/php/` — PHPUnit tests for the plugin's pure classes, at `tests/php/**/*Test.php`.
-- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `composer.json`, the committed `vendor/` (the generated Composer autoloader), and `src/Pricing/`, `src/Settings/` (pure classes).
+- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), and `src/Pricing/`, `src/Settings/` (pure classes), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below).
 - `compose.yaml` — the full local stack: `db` (MySQL), `wordpress`, `wpcli` (idle, for one-off commands), `cron` (the WP-Cron loop sidecar), `postgres`, `n8n`, and `php` (the tools image). See "The local stack" below.
 - `db/schema.sql`, `db/init/01-app.sh` — the app Postgres database schema (table `processed_events`, for n8n idempotency) and the one-time role/database bootstrap script.
 - `config/config.example.json` — the n8n runtime config template; a developer's own `config/config.json` is gitignored.
@@ -29,7 +29,7 @@ What exists today:
 
 Planned, added in later tasks:
 
-- More `plugin/moving-quote/src/` namespaces: `Leads`, `Delivery`, `Admin`, `Install`.
+- More `plugin/moving-quote/src/` namespaces: `Leads`, `Delivery`, `Admin`.
 - `plugin/moving-quote/templates/`, `plugin/moving-quote/assets/` (generated frontend JS).
 - `src/frontend/` — the three-step quote form, written in TypeScript and compiled into `plugin/moving-quote/assets/`.
 - `src/nodes/` — Code-node sources for the n8n workflows.
@@ -63,6 +63,14 @@ Planned, added in later tasks:
 - **`setup.sh`** requires `docker compose up -d --wait` to have already run. It waits for MySQL to actually accept TCP connections (its health status can turn healthy before the real server does), then installs WordPress (admin password read from `.env` over stdin, never as an argument), sets the site description, timezone, and pretty permalinks, activates the default theme and the `moving-quote` plugin, and creates the `home`, `get-a-quote`, and `thank-you` pages. It's idempotent: running it again touches nothing that's already correct.
 - **Stack tests never use `wp db query`.** The `wpcli` image's bundled MariaDB client isn't guaranteed compatible with MySQL 8.4's wire protocol. `tests/stack/lib/stack.ts`'s `sqlWp()` instead runs `wp eval-file -`, which executes PHP through WordPress's own `$wpdb`, the same client the plugin itself uses at runtime.
 
+## Install lifecycle
+
+- **Activate** (`Install\Installer::activate()`) creates the leads table through `dbDelta` (`Install\Schema::sql()`), seeds `moving_quote_settings` with the pricing defaults without overwriting an existing value, sets `moving_quote_db_version`, and schedules the outbox cron hook.
+- **Deactivate** only clears the scheduled hook. The leads table and both options stay: deactivating is not the same as uninstalling.
+- **Upgrade** (`Install\Installer::maybe_upgrade()`) runs on every `plugins_loaded`. When the stored `moving_quote_db_version` differs from the plugin's, it reruns `dbDelta` and updates the version, so an existing site picks up a schema change on its next request.
+- **Uninstall** (`plugin/moving-quote/uninstall.php`, run only by WordPress when the plugin is deleted) drops the leads table, deletes both options, deletes the rate-limit transients, and clears the scheduled hook. This is the one path that removes data.
+- **Cron.** Hook `moving_quote_process_outbox`, on the `moving_quote_every_minute` schedule (60 seconds), added through the `cron_schedules` filter.
+
 ## Conventions
 
 - Node 24 (`"engines": { "node": ">=24" }`), ESM (`"type": "module"`). `tsconfig.json` runs `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `allowImportingTsExtensions`, with `noEmit` — there is no build step.
@@ -70,7 +78,7 @@ Planned, added in later tasks:
 - CLIs call external programs with `execFile` or `spawn` and an argument array, never a shell string, and guard their entry point so tests can import their functions without side effects.
 - Comments only where intent isn't obvious. A deliberate simplification gets one `NOTE:` line naming its ceiling and upgrade path.
 - Local shell note: if `npm` is aliased to another package manager on your machine, run `command npm` to reach the real npm.
-- PHP: every file starts with `declare(strict_types=1);`. Class files under `plugin/moving-quote/src/` hold only declarations, with no `ABSPATH` guard, so PHPUnit loads them without WordPress; files that run code when loaded (`moving-quote.php`) start with `defined( 'ABSPATH' ) || exit;`. Pure classes (`Pricing\*`, `Settings\Defaults`, …) never call a WordPress function. PHPStan runs at level 9 with typed array shapes (`@param array{…}`, `@return iterable<string, array{…}>`) on every helper and data provider that touches an array.
+- PHP: every file starts with `declare(strict_types=1);`. Class files under `plugin/moving-quote/src/` hold only declarations, with no `ABSPATH` guard, so PHPUnit loads them without WordPress; files that run code when loaded (`moving-quote.php`) start with `defined( 'ABSPATH' ) || exit;`, and `uninstall.php` starts with `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;`. Pure classes (`Pricing\*`, `Settings\Defaults`, …) never call a WordPress function. PHPStan runs at level 9 with typed array shapes (`@param array{…}`, `@return iterable<string, array{…}>`) on every helper and data provider that touches an array.
 
 ## Guardrails
 

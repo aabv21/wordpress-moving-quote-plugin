@@ -38,6 +38,12 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    ignore:
+      # NOTE: the plugin targets PHP 8.3, matching the root composer.json's config.platform.php;
+      # a minor or major bump here would silently retarget that platform. Patch updates still
+      # come through; a PHP version bump is reviewed and pinned by hand together with that file.
+      - dependency-name: php
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
 
   - package-ecosystem: docker-compose
     directory: /
