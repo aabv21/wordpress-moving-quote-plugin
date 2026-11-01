@@ -19,7 +19,7 @@ What exists today:
 - `docker/php/Dockerfile`, `compose.yaml` — the PHP tools image (PHP 8.3, Composer, PHPUnit, PHPStan, PHPCS), run only through `command npm run php -- …`. There is no local `php` or `composer`.
 - `composer.json`, `composer.lock`, `phpcs.xml.dist`, `phpstan.neon.dist`, `phpunit.xml.dist` — the PHP tooling config at repo root.
 - `tests/php/` — PHPUnit tests for the plugin's pure classes, at `tests/php/**/*Test.php`.
-- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), `src/Pricing/`, `src/Settings/` (`Defaults` and `SettingsSanitizer` are pure; `Options` reads the stored option), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below), and `src/Admin/` (the settings page; see "Settings" below).
+- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), `src/Pricing/`, `src/Settings/` (`Defaults` and `SettingsSanitizer` are pure; `Options` reads the stored option), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below), `src/Admin/` (the settings page; see "Settings" below), `src/Leads/` (the leads domain: `LeadStatus`, `SyncStatus`, the value objects, `LeadValidator`, `LeadRepository`; see "REST API" below), `src/Security/` (`RateLimiter`), and `src/Rest/` (`EstimateController`, `LeadController`, `Messages`).
 - `compose.yaml` — the full local stack: `db` (MySQL), `wordpress`, `wpcli` (idle, for one-off commands), `cron` (the WP-Cron loop sidecar), `postgres`, `n8n`, and `php` (the tools image). See "The local stack" below.
 - `db/schema.sql`, `db/init/01-app.sh` — the app Postgres database schema (table `processed_events`, for n8n idempotency) and the one-time role/database bootstrap script.
 - `config/config.example.json` — the n8n runtime config template; a developer's own `config/config.json` is gitignored.
@@ -29,7 +29,7 @@ What exists today:
 
 Planned, added in later tasks:
 
-- More `plugin/moving-quote/src/` namespaces: `Leads`, `Delivery`. The leads list page joins `src/Admin/`.
+- More `plugin/moving-quote/src/` namespaces: `Delivery`. The leads list page joins `src/Admin/`. Inline delivery to n8n joins `Rest\LeadController`.
 - `plugin/moving-quote/templates/`, `plugin/moving-quote/assets/` (generated frontend JS).
 - `src/frontend/` — the three-step quote form, written in TypeScript and compiled into `plugin/moving-quote/assets/`.
 - `src/nodes/` — Code-node sources for the n8n workflows.
@@ -79,6 +79,16 @@ Planned, added in later tasks:
 - **Delivery gating.** `Settings\Options::delivery_enabled()` is true only once the webhook URL, the webhook secret, and the team email are all non-empty; the settings page shows "Delivery is on" or "Delivery is off until the webhook URL, secret, and team email are set." accordingly.
 - **`setup.sh`'s delivery keys.** It sets `webhook_url` to the in-network n8n address, and patches `webhook_secret`/`team_email` from `.env`'s `LEAD_WEBHOOK_SECRET`/`TEAM_EMAIL` through `wp option patch update …`, both piped over STDIN.
 
+## REST API
+
+- **`POST /wp-json/moving-quote/v1/estimate`** (`Rest\EstimateController`). No nonce. Rate limit: `estimate` bucket, 120 per 600 s. Validates and prices with `Leads\LeadValidator::quote()` and `Pricing\Calculator`, against the current settings. Responses: 200 with the estimate; 422 `moving_quote_invalid` (`data.errors`, field to message); 429 `moving_quote_rate_limited` with a `Retry-After` header.
+- **`POST /wp-json/moving-quote/v1/leads`** (`Rest\LeadController`). Requires `X-WP-Nonce` (action `wp_rest`). In order: nonce check, honeypot (`website`), validation (`Leads\LeadValidator::lead()`), pricing, a duplicate lookup by `submission_id` (= `request_uuid`), the `submit` rate limit, then the insert.
+  - **The `submit` rate limit (5 per 3,600 s) is counted only once a lead is about to be inserted** — after the honeypot, validation, and the duplicate lookup all pass. A customer correcting a typo, or double-tapping Submit, never burns through the limit on an attempt that was never going to save anything; only a genuinely new lead counts.
+  - **Both routes register with no `args` schema.** A restrictive schema would make core answer its own 400 `rest_invalid_param` before the route runs, preempting the 422 contract. Every field is validated by `LeadValidator` instead.
+  - **The nonce has two error codes.** A missing `X-WP-Nonce` header gets the plugin's own 403 `moving_quote_bad_nonce`. A stale or forged nonce never reaches the plugin at all: WordPress core's `rest_cookie_check_errors` rejects it first, with 403 `rest_cookie_invalid_nonce` ("Cookie check failed"). The estimate route sends no nonce and must never receive one from the frontend.
+  - Responses: 201 `{"ok":true,"reference":"MQ-…","estimate":{…}}` for a new lead; 200 with the same shape for a duplicate `submission_id` (nothing is saved or counted against the limit again); 201 `{"ok":true}` for a filled honeypot (nothing saved); 422 `moving_quote_invalid`; 429 `moving_quote_rate_limited`; 500 `moving_quote_save_failed` for any other insert failure (logged without PII).
+- **`Security\RateLimiter`** stores fixed-window counts in transients keyed `moving_quote_rl_{bucket}_{hash}`, hashed from the client IP so the IP itself never appears in the database. `client_ip()` reads `REMOTE_ADDR`, filterable through `moving_quote_client_ip`.
+
 ## Conventions
 
 - Node 24 (`"engines": { "node": ">=24" }`), ESM (`"type": "module"`). `tsconfig.json` runs `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `allowImportingTsExtensions`, with `noEmit` — there is no build step.
@@ -86,7 +96,7 @@ Planned, added in later tasks:
 - CLIs call external programs with `execFile` or `spawn` and an argument array, never a shell string, and guard their entry point so tests can import their functions without side effects.
 - Comments only where intent isn't obvious. A deliberate simplification gets one `NOTE:` line naming its ceiling and upgrade path.
 - Local shell note: if `npm` is aliased to another package manager on your machine, run `command npm` to reach the real npm.
-- PHP: every file starts with `declare(strict_types=1);`. Class files under `plugin/moving-quote/src/` hold only declarations, with no `ABSPATH` guard, so PHPUnit loads them without WordPress; files that run code when loaded (`moving-quote.php`) start with `defined( 'ABSPATH' ) || exit;`, and `uninstall.php` starts with `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;`. Pure classes (`Pricing\*`, `Settings\Defaults`, …) never call a WordPress function. PHPStan runs at level 9 with typed array shapes (`@param array{…}`, `@return iterable<string, array{…}>`) on every helper and data provider that touches an array.
+- PHP: every file starts with `declare(strict_types=1);`. Class files under `plugin/moving-quote/src/` hold only declarations, with no `ABSPATH` guard, so PHPUnit loads them without WordPress; files that run code when loaded (`moving-quote.php`) start with `defined( 'ABSPATH' ) || exit;`, and `uninstall.php` starts with `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;`. Pure classes (`Pricing\*`, `Settings\Defaults`, `Leads\LeadValidator`, the `Leads` value objects, …) never call a WordPress function — `Rest\Messages::field()` is the one exception, since it needs `__()` for translated field messages. PHPStan runs at level 9 with typed array shapes (`@param array{…}`, `@return iterable<string, array{…}>`) on every helper and data provider that touches an array.
 
 ## Guardrails
 

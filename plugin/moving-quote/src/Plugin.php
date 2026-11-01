@@ -5,6 +5,7 @@ namespace Chivabox\MovingQuote;
 
 use Chivabox\MovingQuote\Admin\{Menu, SettingsPage};
 use Chivabox\MovingQuote\Install\Installer;
+use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
 
 /**
  * Plugin entry point: wires bootstrap hooks for the main plugin file.
@@ -27,5 +28,13 @@ final class Plugin {
 
 		add_action( 'admin_menu', [ Menu::class, 'register' ] );
 		SettingsPage::register();
+
+		add_action(
+			'rest_api_init',
+			static function (): void {
+				EstimateController::register();
+				LeadController::register();
+			}
+		);
 	}
 }

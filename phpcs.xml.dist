@@ -28,8 +28,9 @@
         </properties>
     </rule>
 
-    <!-- Install/* manages its own table (create, drop, cleanup) with direct $wpdb calls; no caching wrapper applies to schema or lifecycle queries. -->
+    <!-- Install/* manages its own table (create, drop, cleanup) with direct $wpdb calls; no caching wrapper applies to schema or lifecycle queries. LeadRepository reads and writes that same table directly for the same reason. -->
     <rule ref="WordPress.DB.DirectDatabaseQuery">
         <exclude-pattern>plugin/moving-quote/src/Install/*</exclude-pattern>
+        <exclude-pattern>plugin/moving-quote/src/Leads/LeadRepository.php</exclude-pattern>
     </rule>
 </ruleset>

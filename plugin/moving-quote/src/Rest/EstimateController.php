@@ -1,0 +1,100 @@
+<?php
+declare(strict_types=1);
+
+namespace Chivabox\MovingQuote\Rest;
+
+use Chivabox\MovingQuote\Leads\{FieldErrors, LeadValidator};
+use Chivabox\MovingQuote\Pricing\Calculator;
+use Chivabox\MovingQuote\Security\RateLimiter;
+use Chivabox\MovingQuote\Settings\Options;
+use WP_Error;
+use WP_REST_Request;
+use WP_REST_Response;
+
+/**
+ * The public estimate endpoint: prices a move from the current settings. No nonce, no customer
+ * data, and nothing is ever saved.
+ */
+final class EstimateController {
+	private const NAMESPACE     = 'moving-quote/v1';
+	private const ROUTE         = '/estimate';
+	private const RATE_LIMIT    = 120;
+	private const RATE_WINDOW_S = 600;
+
+	public static function register(): void {
+		// No args schema: every field is validated by LeadValidator, so a restrictive schema here
+		// would make core reject a bad request with its own 400 before the contract's 422 ever runs.
+		register_rest_route(
+			self::NAMESPACE,
+			self::ROUTE,
+			[
+				'methods'             => 'POST',
+				'callback'            => [ self::class, 'handle' ],
+				'permission_callback' => '__return_true',
+			]
+		);
+	}
+
+	public static function handle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$limiter     = new RateLimiter();
+		$retry_after = $limiter->hit( 'estimate', self::RATE_LIMIT, self::RATE_WINDOW_S );
+		if ( 0 !== $retry_after ) {
+			return self::rate_limited( $retry_after );
+		}
+
+		$input = self::json_object( $request );
+
+		$result = LeadValidator::quote( $input, Options::distances() );
+		if ( $result instanceof FieldErrors ) {
+			return self::invalid( $result );
+		}
+
+		$estimate = Calculator::estimate( $result, Options::rates(), Options::distances() );
+
+		return new WP_REST_Response(
+			[
+				'amount'      => $estimate->amount,
+				'low'         => $estimate->low,
+				'high'        => $estimate->high,
+				'distance_km' => $estimate->distance_km,
+				'currency'    => 'COP',
+				'display'     => Messages::display( $estimate ),
+			],
+			200
+		);
+	}
+
+	private static function invalid( FieldErrors $errors ): WP_Error {
+		$messages = array_map( [ Messages::class, 'field' ], $errors->errors );
+		return new WP_Error(
+			'moving_quote_invalid',
+			__( 'Please fix the highlighted fields.', 'moving-quote' ),
+			[
+				'status' => 422,
+				'errors' => $messages,
+			]
+		);
+	}
+
+	private static function rate_limited( int $retry_after ): WP_Error {
+		header( 'Retry-After: ' . $retry_after );
+		return new WP_Error(
+			'moving_quote_rate_limited',
+			__( 'Too many requests. Please try again later.', 'moving-quote' ),
+			[ 'status' => 429 ]
+		);
+	}
+
+	/**
+	 * The parsed JSON request body as a string-keyed array. The stub types get_json_params() as
+	 * always returning array, but a top-level JSON scalar (e.g. a bare string or number) is valid
+	 * JSON and decodes to that scalar at runtime, not an array; this guards against that case
+	 * instead of trusting the stub over the real behavior.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function json_object( WP_REST_Request $request ): array {
+		$params = $request->get_json_params(); // @phpstan-ignore-next-line function.alreadyNarrowedType (see the note above: the stub is optimistic)
+		return is_array( $params ) ? $params : [];
+	}
+}
