@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote;
 
 use Chivabox\MovingQuote\Admin\{Menu, SettingsPage};
+use Chivabox\MovingQuote\Frontend\Shortcode;
 use Chivabox\MovingQuote\Install\Installer;
 use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
 
@@ -28,6 +29,7 @@ final class Plugin {
 
 		add_action( 'admin_menu', [ Menu::class, 'register' ] );
 		SettingsPage::register();
+		Shortcode::register();
 
 		add_action(
 			'rest_api_init',

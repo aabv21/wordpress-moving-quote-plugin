@@ -19,19 +19,22 @@ What exists today:
 - `docker/php/Dockerfile`, `compose.yaml` — the PHP tools image (PHP 8.3, Composer, PHPUnit, PHPStan, PHPCS), run only through `command npm run php -- …`. There is no local `php` or `composer`.
 - `composer.json`, `composer.lock`, `phpcs.xml.dist`, `phpstan.neon.dist`, `phpunit.xml.dist` — the PHP tooling config at repo root.
 - `tests/php/` — PHPUnit tests for the plugin's pure classes, at `tests/php/**/*Test.php`.
-- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), `src/Pricing/`, `src/Settings/` (`Defaults` and `SettingsSanitizer` are pure; `Options` reads the stored option), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below), `src/Admin/` (the settings page; see "Settings" below), `src/Leads/` (the leads domain: `LeadStatus`, `SyncStatus`, the value objects, `LeadValidator`, `LeadRepository`; see "REST API" below), `src/Security/` (`RateLimiter`), and `src/Rest/` (`EstimateController`, `LeadController`, `Messages`).
+- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), `src/Pricing/`, `src/Settings/` (`Defaults` and `SettingsSanitizer` are pure; `Options` reads the stored option), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below), `src/Admin/` (the settings page; see "Settings" below), `src/Leads/` (the leads domain: `LeadStatus`, `SyncStatus`, the value objects, `LeadValidator`, `LeadRepository`; see "REST API" below), `src/Security/` (`RateLimiter`), `src/Rest/` (`EstimateController`, `LeadController`, `Messages`), and `src/Frontend/` (`Shortcode`; see "The quote form" below).
+- `plugin/moving-quote/templates/quote-form.php` — the `[moving_quote]` shortcode's markup, included by `Frontend\Shortcode::render()`.
+- `plugin/moving-quote/assets/quote-form.css` — the quote form's stylesheet. `plugin/moving-quote/assets/quote-form.js` is generated; see "The quote form" below.
 - `compose.yaml` — the full local stack: `db` (MySQL), `wordpress`, `wpcli` (idle, for one-off commands), `cron` (the WP-Cron loop sidecar), `postgres`, `n8n`, and `php` (the tools image). See "The local stack" below.
 - `db/schema.sql`, `db/init/01-app.sh` — the app Postgres database schema (table `processed_events`, for n8n idempotency) and the one-time role/database bootstrap script.
 - `config/config.example.json` — the n8n runtime config template; a developer's own `config/config.json` is gitignored.
 - `setup.sh` — installs and configures WordPress idempotently against the running stack. See "The local stack" below.
 - `scripts/lib/docker.ts` — a small `docker compose` wrapper (`compose(args, input?)`) for TypeScript tooling.
+- `scripts/build-assets.ts` — bundles the frontend into the committed `plugin/moving-quote/assets/quote-form.js`; see "The quote form" below.
+- `src/frontend/` — the three-step quote form's TypeScript source: `quote-form.ts` (orchestration) and `lib/` (`debounce`, `latest`, `uuid`, `api`, `form-state` — small, independently tested modules). Type-checked under its own `src/frontend/tsconfig.json` (DOM lib) in addition to the root, Node-targeted one. See "The quote form" below.
 - `vitest.stack.config.ts`, `tests/stack/` — the stack-test harness (`tests/stack/lib/stack.ts`, `tests/stack/global-setup.ts`) and tests (`tests/stack/wp/`, `tests/stack/n8n/`) that drive the real Compose stack over HTTP and WP-CLI. See "The local stack" below.
+- `tests/frontend/` — Vitest unit tests for `src/frontend/lib/*`, at `tests/frontend/*.test.ts`.
 
 Planned, added in later tasks:
 
 - More `plugin/moving-quote/src/` namespaces: `Delivery`. The leads list page joins `src/Admin/`. Inline delivery to n8n joins `Rest\LeadController`.
-- `plugin/moving-quote/templates/`, `plugin/moving-quote/assets/` (generated frontend JS).
-- `src/frontend/` — the three-step quote form, written in TypeScript and compiled into `plugin/moving-quote/assets/`.
 - `src/nodes/` — Code-node sources for the n8n workflows.
 - `workflows/` — the n8n workflow JSON, mounted read-only into n8n.
 - `docs/architecture.md`, `docs/diagrams/` — how the system works, with diagrams.
@@ -39,9 +42,10 @@ Planned, added in later tasks:
 ## Commands
 
 - `npm ci` — install dependencies from the lockfile.
-- `npm run typecheck` — `tsc --noEmit`.
+- `npm run typecheck` — `tsc --noEmit`, then `tsc --noEmit -p src/frontend/tsconfig.json` (the frontend's own DOM-lib tsconfig).
 - `npm run lint` — `eslint .`.
 - `npm test` — `vitest run`.
+- `npm run build:assets` — bundles `src/frontend/quote-form.ts` with esbuild into the committed `plugin/moving-quote/assets/quote-form.js` (minified IIFE, target `es2020`, no runtime dependencies). `-- --check` builds in memory and exits 1 if the result differs from the committed file, without writing anything; CI runs this. Never edit `quote-form.js` by hand — run this command and commit the result instead.
 - `node scripts/init-env.ts` — writes `.env` from `.env.example`, filling empty `_PASSWORD`, `_SECRET`, and `_KEY` values with random hex (skipping `GOOGLE_*`, which come from the owner's own OAuth client). Refuses to run if `.env` already exists.
 - `npm run php -- composer <script>` — runs a root `composer.json` script inside the PHP tools container (`profiles: [tools]`, no published ports). PHP runs only this way: there is no local `php` or `composer`.
   - `composer lint` — PHPCS (WPCS + PHPCompatibilityWP) over `plugin/moving-quote`.
@@ -89,26 +93,33 @@ Planned, added in later tasks:
   - Responses: 201 `{"ok":true,"reference":"MQ-…","estimate":{…}}` for a new lead; 200 with the same shape for a duplicate `submission_id` (nothing is saved or counted against the limit again); 201 `{"ok":true}` for a filled honeypot (nothing saved); 422 `moving_quote_invalid`; 429 `moving_quote_rate_limited`; 500 `moving_quote_save_failed` for any other insert failure (logged without PII).
 - **`Security\RateLimiter`** stores fixed-window counts in transients keyed `moving_quote_rl_{bucket}_{hash}`, hashed from the client IP so the IP itself never appears in the database. `client_ip()` reads `REMOTE_ADDR`, filterable through `moving_quote_client_ip`.
 
+## The quote form
+
+- **Shortcode.** `[moving_quote]` (`Frontend\Shortcode::TAG`), with one optional attribute, `thank_you` (the slug of the page to redirect to on success; defaults to `thank-you`). `Shortcode::register_assets()` registers the script (footer, `strategy: 'defer'`) and style on `init`; `Shortcode::render()` enqueues both, so they load only on a page that actually uses the shortcode.
+- **Markup** (`templates/quote-form.php`). A `<form data-moving-quote data-config="…">` with three `<fieldset>`s (move details, extras, customer details), a progress `<ol>`, a honeypot (`name="website"`, visually and from Tab order, but still present for a screen reader and for any bot that fills every field by DOM access instead of tabbing), and a `<noscript>` fallback. Move type, rooms (1–5, "5+"), and both city selects are rendered server-side from `Pricing\MoveType` and `DistanceTable::cities()`; each city select starts with a disabled "Choose a city" placeholder. `data-config` is `wp_json_encode()` run through `esc_attr()`, so a city name or any other merchant-editable string can never break out of the attribute.
+- **Frontend** (`src/frontend/quote-form.ts`, plus `src/frontend/lib/{debounce,latest,uuid,api,form-state}.ts`, each independently unit-tested). One `submission_id` (a browser-minted UUID v4) per page load, reused on every retry. The estimate call runs through `debounce(latestOnly(...), 300)`: a burst of edits collapses to one request 300 ms after the last one, and a response for input that's since been superseded is discarded instead of overwriting a newer result. Moving between steps shifts focus to the new step's `<legend>`. Submitting disables the button and shows "Sending…"; a 2xx redirects to the thank-you page (or shows an inline success message when that page doesn't exist); a 422 shows the field errors and jumps back to the first step with one; a 403 (either `moving_quote_bad_nonce` or core's `rest_cookie_invalid_nonce`), a 429, or a network failure shows the matching message and re-enables the button. No path shows success, or leaves the button disabled, on anything but a genuine 2xx.
+- **The generated asset.** `plugin/moving-quote/assets/quote-form.js` is built by `npm run build:assets` (`scripts/build-assets.ts`, esbuild) and committed; CI fails the build if it drifts from the source (`build:assets -- --check`). Never edit it by hand — change `src/frontend/**` and rebuild.
+
 ## Conventions
 
 - Node 24 (`"engines": { "node": ">=24" }`), ESM (`"type": "module"`). `tsconfig.json` runs `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `allowImportingTsExtensions`, with `noEmit` — there is no build step.
-- No `.js` or `.mjs` source files. Scripts are `scripts/*.ts`, run directly with `node scripts/<name>.ts` (Node's native type stripping; no `tsx`). Tests are Vitest files at `tests/**/*.test.ts`. The only JavaScript in the repo will be generated: the compiled frontend asset and Code-node `jsCode`.
+- No `.js` or `.mjs` source files. Scripts are `scripts/*.ts`, run directly with `node scripts/<name>.ts` (Node's native type stripping; no `tsx`). Tests are Vitest files at `tests/**/*.test.ts`. The only JavaScript in the repo is generated: the compiled frontend asset (`plugin/moving-quote/assets/quote-form.js`) and, in a later task, each Code node's `jsCode`.
 - CLIs call external programs with `execFile` or `spawn` and an argument array, never a shell string, and guard their entry point so tests can import their functions without side effects.
 - Comments only where intent isn't obvious. A deliberate simplification gets one `NOTE:` line naming its ceiling and upgrade path.
 - Local shell note: if `npm` is aliased to another package manager on your machine, run `command npm` to reach the real npm.
-- PHP: every file starts with `declare(strict_types=1);`. Class files under `plugin/moving-quote/src/` hold only declarations, with no `ABSPATH` guard, so PHPUnit loads them without WordPress; files that run code when loaded (`moving-quote.php`) start with `defined( 'ABSPATH' ) || exit;`, and `uninstall.php` starts with `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;`. Pure classes (`Pricing\*`, `Settings\Defaults`, `Leads\LeadValidator`, the `Leads` value objects, …) never call a WordPress function — `Rest\Messages::field()` is the one exception, since it needs `__()` for translated field messages. PHPStan runs at level 9 with typed array shapes (`@param array{…}`, `@return iterable<string, array{…}>`) on every helper and data provider that touches an array.
+- PHP: every file starts with `declare(strict_types=1);`. Class files under `plugin/moving-quote/src/` hold only declarations, with no `ABSPATH` guard, so PHPUnit loads them without WordPress; files that run code when loaded (`moving-quote.php`, `templates/quote-form.php`) start with `defined( 'ABSPATH' ) || exit;`, and `uninstall.php` starts with `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;`. Pure classes (`Pricing\*`, `Settings\Defaults`, `Leads\LeadValidator`, the `Leads` value objects, …) never call a WordPress function — `Rest\Messages::field()` is the one exception, since it needs `__()` for translated field messages. `Frontend\Shortcode` and `templates/quote-form.php` are WordPress-coupled by design (rendering and enqueuing can't be pure), so they're covered by the stack suite instead of PHPUnit. PHPStan runs at level 9 with typed array shapes (`@param array{…}`, `@return iterable<string, array{…}>`) on every helper and data provider that touches an array.
 
 ## Guardrails
 
 - Secrets live only in `.env` (gitignored) and n8n credentials — never in code, workflow JSON, or committed config. `scripts/init-env.ts` never prints a secret.
 - Test data: emails use `example.com`; phone numbers use the prefix `5700000000`; customer names are invented. Everything in the repo is in English.
-- Generated files (the compiled frontend asset, the Composer autoloader, each Code node's `jsCode`) are committed, and CI fails when they drift. Never edit them by hand. `plugin/moving-quote/vendor/` is regenerated with `npm run php -- composer autoload:plugin`; its `composer.json` pins an explicit `version` and `autoloader-suffix` so the generated files are identical across commits.
+- Generated files (`plugin/moving-quote/assets/quote-form.js`, the Composer autoloader, each Code node's `jsCode`) are committed, and CI fails when they drift. Never edit them by hand. `quote-form.js` is regenerated with `npm run build:assets`; `plugin/moving-quote/vendor/` is regenerated with `npm run php -- composer autoload:plugin`; its `composer.json` pins an explicit `version` and `autoloader-suffix` so the generated files are identical across commits.
 - Point tooling only at this repo's local n8n instance, never another instance. Validate workflows with an n8n-aware validation tool before importing them.
 - **PR protocol.** Branch `task-NN-<slug>` from `main`. The implementer only commits; the controller pushes, opens the PR (summary, verification, review record), waits for green CI, then squash-merges.
 
 ## Definition of done
 
-- `npm run typecheck && npm run lint && npm test` all pass locally — run this full gate before every commit that touches TypeScript.
+- `npm run typecheck && npm run lint && npm test` all pass locally — run this full gate before every commit that touches TypeScript. Also run `npm run build:assets -- --check` (and commit a fresh `npm run build:assets` if it fails) before every commit that touches `src/frontend/**`.
 - `npm run php -- composer check && npm run php -- composer audit` pass locally — run this full gate before every commit that touches PHP.
 - `npm run test:stack` passes locally against a running stack — run this before every commit that touches `compose.yaml`, `setup.sh`, or `tests/stack/**`.
 - No secrets anywhere in the diff or git history; `.env` and `config/config.json` are never committed.

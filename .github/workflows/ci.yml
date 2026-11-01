@@ -28,6 +28,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm run build:assets -- --check
       - name: ShellCheck
         run: |
           mapfile -t files < <(git ls-files '*.sh')

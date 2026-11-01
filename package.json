@@ -7,9 +7,10 @@
     "node": ">=24"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/frontend/tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
+    "build:assets": "node scripts/build-assets.ts",
     "test:stack": "vitest run --config vitest.stack.config.ts",
     "test:stack:wp": "vitest run --config vitest.stack.config.ts tests/stack/wp",
     "php": "docker compose run --rm php"
@@ -18,6 +19,7 @@
     "@eslint/js": "^10.0.1",
     "@types/luxon": "^3.7.6",
     "@types/node": "^24.19.2",
+    "esbuild": "0.28.2",
     "eslint": "^10.13.0",
     "eslint-plugin-security": "^4.2.0",
     "jiti": "^2.7.0",

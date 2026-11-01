@@ -38,9 +38,13 @@ export default defineConfig([
   },
   {
     // The frontend runs in the browser: no Node builtins, no process, no Buffer, no require.
+    // Every computed index here is a statically-typed key (keyof FormValues, a 0|1|2 step, a
+    // byte 0-255) or a bounded array position, never an unvalidated string from the network; the
+    // rule can't see TypeScript's types and flags every computed index as if it were.
     files: ['src/frontend/**'],
     rules: {
       'no-restricted-globals': ['error', 'process', 'Buffer', 'require'],
+      'security/detect-object-injection': 'off',
     },
   },
 ]);
