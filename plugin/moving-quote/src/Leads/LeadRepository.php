@@ -182,4 +182,180 @@ final class LeadRepository {
 			[ '%d', '%s' ]
 		);
 	}
+
+	/**
+	 * One page of leads, optionally filtered to one status, newest first (`created_at` DESC, `id`
+	 * DESC as the tiebreak for two rows sharing a second). `$page` is 1-based.
+	 *
+	 * @return list<LeadRecord>
+	 */
+	public function page( ?LeadStatus $status, int $page, int $per_page ): array {
+		global $wpdb;
+
+		$offset = max( 0, $page - 1 ) * $per_page;
+
+		if ( null === $status ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT * FROM %i ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d',
+					$this->table(),
+					$per_page,
+					$offset
+				),
+				ARRAY_A
+			);
+		} else {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT * FROM %i WHERE status = %s ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d',
+					$this->table(),
+					$status->value,
+					$per_page,
+					$offset
+				),
+				ARRAY_A
+			);
+		}
+
+		/** @var list<array<string, string|null>>|null $rows ARRAY_A always keys by column name */
+		return array_map( [ LeadRecord::class, 'from_row' ], $rows ?? [] );
+	}
+
+	/**
+	 * The row count for every `LeadStatus`, including a status with zero rows, plus the total under
+	 * `all`. One `GROUP BY` query, so adding a view never costs another round trip.
+	 *
+	 * @return array<string, int>
+	 */
+	public function count_by_status(): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( 'SELECT status, COUNT(*) AS total FROM %i GROUP BY status', $this->table() ),
+			ARRAY_A
+		);
+
+		$counts = [ 'all' => 0 ];
+		foreach ( LeadStatus::cases() as $case ) {
+			$counts[ $case->value ] = 0;
+		}
+
+		/** @var list<array{status: string, total: string}> $typed_rows ARRAY_A always keys by column name */
+		$typed_rows = $rows ?? [];
+		foreach ( $typed_rows as $row ) {
+			$total                    = (int) $row['total'];
+			$counts[ $row['status'] ] = $total;
+			$counts['all']           += $total;
+		}
+
+		return $counts;
+	}
+
+	/** Sets a lead's lifecycle `status`. Returns true when a row with `$id` exists (even if the value didn't change). */
+	public function update_status( int $id, LeadStatus $status ): bool {
+		global $wpdb;
+
+		$changed = $wpdb->update(
+			$this->table(),
+			[ 'status' => $status->value ],
+			[ 'id' => $id ],
+			[ '%s' ],
+			[ '%d' ]
+		);
+
+		if ( false === $changed ) {
+			return false;
+		}
+
+		return null !== $this->find( $id );
+	}
+
+	/**
+	 * Requeues a `failed` lead for delivery: back to `pending`, attempts reset to 0, due
+	 * immediately (`next_attempt_at = $now`). Only a `failed` row matches the guard, so retrying a
+	 * lead that's already `pending` or `sent` is a no-op that changes nothing.
+	 */
+	public function requeue( int $id, int $now ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$changed = $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i SET sync_status = %s, attempts = 0, next_attempt_at = %d, last_error = %s WHERE id = %d AND sync_status = %s',
+				$this->table(),
+				SyncStatus::Pending->value,
+				$now,
+				'',
+				$id,
+				SyncStatus::Failed->value
+			)
+		);
+
+		return 1 === $changed;
+	}
+
+	/**
+	 * Leads with `id > $after_id`, optionally filtered to one status, ascending by id, up to
+	 * `$limit`. The CSV export's paging cursor: unlike `page()`'s `created_at` ordering (which can
+	 * repeat or reorder as new rows arrive mid-export), an ascending, strictly-increasing id can
+	 * only ever move forward, so a batch never re-reads or skips a row even if the table changes
+	 * while the export is streaming.
+	 *
+	 * @return list<LeadRecord>
+	 */
+	public function chunk_after( ?LeadStatus $status, int $after_id, int $limit ): array {
+		global $wpdb;
+
+		if ( null === $status ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT * FROM %i WHERE id > %d ORDER BY id ASC LIMIT %d',
+					$this->table(),
+					$after_id,
+					$limit
+				),
+				ARRAY_A
+			);
+		} else {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT * FROM %i WHERE id > %d AND status = %s ORDER BY id ASC LIMIT %d',
+					$this->table(),
+					$after_id,
+					$status->value,
+					$limit
+				),
+				ARRAY_A
+			);
+		}
+
+		/** @var list<array<string, string|null>>|null $rows ARRAY_A always keys by column name */
+		return array_map( [ LeadRecord::class, 'from_row' ], $rows ?? [] );
+	}
+
+	/**
+	 * How many leads look stuck: every `failed` row, plus every `pending` row whose `created_at`
+	 * (stored UTC) is older than `$stale_before` (a Unix timestamp).
+	 */
+	public function count_stuck( int $stale_before ): int {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$count = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT COUNT(*) FROM %i WHERE sync_status = %s OR ( sync_status = %s AND created_at < %s )',
+				$this->table(),
+				SyncStatus::Failed->value,
+				SyncStatus::Pending->value,
+				gmdate( 'Y-m-d H:i:s', $stale_before )
+			)
+		);
+
+		return (int) $count;
+	}
 }

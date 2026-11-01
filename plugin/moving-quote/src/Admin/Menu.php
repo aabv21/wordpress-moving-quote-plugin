@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Admin;
 
 /**
- * Registers the plugin's admin menu: the top-level "Moving quotes" page (leads list, built in a
- * later task) and its "Settings" submenu.
+ * Registers the plugin's admin menu: the top-level "Moving quotes" page (the leads list) and its
+ * "Settings" submenu.
  */
 final class Menu {
 	public const CAPABILITY    = 'manage_options';
@@ -18,7 +18,7 @@ final class Menu {
 			__( 'Moving quotes', 'moving-quote' ),
 			self::CAPABILITY,
 			self::SLUG,
-			[ self::class, 'render_leads_placeholder' ],
+			[ LeadsPage::class, 'render' ],
 			'dashicons-car'
 		);
 
@@ -28,7 +28,7 @@ final class Menu {
 			__( 'Leads', 'moving-quote' ),
 			self::CAPABILITY,
 			self::SLUG,
-			[ self::class, 'render_leads_placeholder' ]
+			[ LeadsPage::class, 'render' ]
 		);
 
 		add_submenu_page(
@@ -39,13 +39,5 @@ final class Menu {
 			self::SETTINGS_SLUG,
 			[ SettingsPage::class, 'render' ]
 		);
-	}
-
-	/** Placeholder for the leads list page, built in a later task. */
-	public static function render_leads_placeholder(): void {
-		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'moving-quote' ) );
-		}
-		echo '<div class="wrap"><h1>' . esc_html__( 'Moving quotes', 'moving-quote' ) . '</h1></div>';
 	}
 }

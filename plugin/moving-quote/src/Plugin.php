@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote;
 
-use Chivabox\MovingQuote\Admin\{Menu, SettingsPage};
+use Chivabox\MovingQuote\Admin\{LeadsPage, Menu, SettingsPage, StuckDeliveryNotice};
 use Chivabox\MovingQuote\Delivery\Outbox;
 use Chivabox\MovingQuote\Frontend\Shortcode;
 use Chivabox\MovingQuote\Install\Installer;
@@ -32,6 +32,8 @@ final class Plugin {
 
 		add_action( 'admin_menu', [ Menu::class, 'register' ] );
 		SettingsPage::register();
+		LeadsPage::register_hooks();
+		StuckDeliveryNotice::register();
 		Shortcode::register();
 
 		add_action(
