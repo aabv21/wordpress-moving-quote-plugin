@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+plugin/moving-quote/assets/*.js linguist-generated
+plugin/moving-quote/vendor/** linguist-generated

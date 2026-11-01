@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      # NOTE: @types/node follows the Node LTS major (24), not npm's latest; bumping it ahead of
+      # the runtime would type-check against APIs this project's Node doesn't have. Move it by
+      # hand when the project itself moves to a newer Node LTS major.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # NOTE: typescript 7 is the native port with no classic compiler API, and typescript-eslint
+      # 8.x requires a typescript version below 6.1. Move both together by hand once
+      # typescript-eslint supports typescript 7.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
