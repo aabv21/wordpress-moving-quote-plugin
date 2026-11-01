@@ -11,6 +11,10 @@
     "lint": "eslint .",
     "test": "vitest run",
     "build:assets": "node scripts/build-assets.ts",
+    "build:workflows": "node scripts/build-workflows.ts",
+    "check": "node scripts/check-workflows.ts workflows",
+    "setup": "node scripts/setup.ts",
+    "export": "node scripts/export-workflows.ts",
     "test:stack": "vitest run --config vitest.stack.config.ts",
     "test:stack:wp": "vitest run --config vitest.stack.config.ts tests/stack/wp",
     "php": "docker compose run --rm php"

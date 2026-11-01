@@ -29,6 +29,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build:assets -- --check
+      - run: npm run build:workflows -- --check
+      - run: npm run check
       - name: ShellCheck
         run: |
           mapfile -t files < <(git ls-files '*.sh')

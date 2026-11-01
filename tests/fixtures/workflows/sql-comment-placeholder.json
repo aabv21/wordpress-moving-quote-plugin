@@ -1,0 +1,69 @@
+{
+  "id": "fixtureCleanWf01",
+  "name": "Fixture: clean",
+  "nodes": [
+    {
+      "id": "sticky1",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {
+        "content": "## Fixture section"
+      }
+    },
+    {
+      "id": "code1",
+      "name": "Double value",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Why Code: fixture\nreturn [{ json: { n: $input.first().json.n * 2 } }];"
+      }
+    },
+    {
+      "id": "gmail1",
+      "name": "Send email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [400, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "Fixture subject",
+        "message": "Fixture message",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": { "id": "cvbCredGmail0001", "name": "Gmail" }
+      }
+    },
+    {
+      "id": "pg1",
+      "name": "Insert row",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [600, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- $1 some_id (text)\nINSERT INTO rows (some_id) VALUES ($1);"
+      }
+    }
+  ],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "cvbErrorHandler1"
+  }
+}

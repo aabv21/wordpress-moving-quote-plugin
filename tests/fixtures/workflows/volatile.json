@@ -1,0 +1,71 @@
+{
+  "id": "fixtureCleanWf01",
+  "name": "Fixture: clean",
+  "nodes": [
+    {
+      "id": "sticky1",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {
+        "content": "## Fixture section"
+      }
+    },
+    {
+      "id": "code1",
+      "name": "Double value",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Why Code: fixture\nreturn [{ json: { n: $input.first().json.n * 2 } }];"
+      }
+    },
+    {
+      "id": "gmail1",
+      "name": "Send email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [400, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "Fixture subject",
+        "message": "Fixture message",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": { "id": "cvbCredGmail0001", "name": "Gmail" }
+      }
+    }
+  ],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "cvbErrorHandler1"
+  },
+  "pinData": {
+    "Double value": [
+      {
+        "json": {
+          "n": 2
+        }
+      }
+    ]
+  },
+  "meta": {
+    "instanceId": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  },
+  "versionId": "11111111-1111-1111-1111-111111111111",
+  "staticData": {
+    "lastId": 1
+  }
+}
