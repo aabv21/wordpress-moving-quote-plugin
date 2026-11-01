@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:stack": "vitest run --config vitest.stack.config.ts",
+    "test:stack:wp": "vitest run --config vitest.stack.config.ts tests/stack/wp",
     "php": "docker compose run --rm php"
   },
   "devDependencies": {

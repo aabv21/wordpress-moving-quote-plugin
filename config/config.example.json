@@ -1,0 +1,9 @@
+{
+  "google": {
+    "leads_sheet_id": "REPLACE_ME",
+    "leads_tab": "Moving leads"
+  },
+  "alerts": {
+    "error_email": "ops@example.com"
+  }
+}

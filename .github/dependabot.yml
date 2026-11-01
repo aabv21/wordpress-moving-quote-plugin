@@ -38,3 +38,16 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    ignore:
+      # NOTE: n8n publishes beta and stable releases under the same plain semver tag scheme (no
+      # -beta suffix), so Dependabot can't tell them apart from the tag alone. Patch bumps still
+      # come through; minor/major bumps to n8nio/n8n are reviewed and pinned by hand.
+      - dependency-name: n8nio/n8n
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']

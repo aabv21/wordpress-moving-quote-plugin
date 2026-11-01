@@ -20,6 +20,12 @@ What exists today:
 - `composer.json`, `composer.lock`, `phpcs.xml.dist`, `phpstan.neon.dist`, `phpunit.xml.dist` — the PHP tooling config at repo root.
 - `tests/php/` — PHPUnit tests for the plugin's pure classes, at `tests/php/**/*Test.php`.
 - `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `composer.json`, the committed `vendor/` (the generated Composer autoloader), and `src/Pricing/`, `src/Settings/` (pure classes).
+- `compose.yaml` — the full local stack: `db` (MySQL), `wordpress`, `wpcli` (idle, for one-off commands), `cron` (the WP-Cron loop sidecar), `postgres`, `n8n`, and `php` (the tools image). See "The local stack" below.
+- `db/schema.sql`, `db/init/01-app.sh` — the app Postgres database schema (table `processed_events`, for n8n idempotency) and the one-time role/database bootstrap script.
+- `config/config.example.json` — the n8n runtime config template; a developer's own `config/config.json` is gitignored.
+- `setup.sh` — installs and configures WordPress idempotently against the running stack. See "The local stack" below.
+- `scripts/lib/docker.ts` — a small `docker compose` wrapper (`compose(args, input?)`) for TypeScript tooling.
+- `vitest.stack.config.ts`, `tests/stack/` — the stack-test harness (`tests/stack/lib/stack.ts`, `tests/stack/global-setup.ts`) and tests (`tests/stack/wp/`, `tests/stack/n8n/`) that drive the real Compose stack over HTTP and WP-CLI. See "The local stack" below.
 
 Planned, added in later tasks:
 
@@ -28,8 +34,6 @@ Planned, added in later tasks:
 - `src/frontend/` — the three-step quote form, written in TypeScript and compiled into `plugin/moving-quote/assets/`.
 - `src/nodes/` — Code-node sources for the n8n workflows.
 - `workflows/` — the n8n workflow JSON, mounted read-only into n8n.
-- `config/config.example.json` — the n8n runtime config template; a developer's own `config/config.json` is gitignored.
-- The rest of `compose.yaml` — WordPress, MySQL, Postgres, and n8n in Docker Compose.
 - `docs/architecture.md`, `docs/diagrams/` — how the system works, with diagrams.
 
 ## Commands
@@ -45,6 +49,19 @@ Planned, added in later tasks:
   - `composer test` — PHPUnit over `tests/php`, no WordPress bootstrap.
   - `composer check` — lint, then analyse, then test.
   - `composer autoload:plugin` — regenerates `plugin/moving-quote/vendor/`, the plugin's committed Composer autoloader. CI fails if this changes anything (`git diff --exit-code -- plugin/moving-quote/vendor`); run it and commit the result whenever the plugin's PSR-4 mapping changes.
+- `docker compose ls` — list running Compose stacks; run this before starting the stack (see "The local stack" below).
+- `docker compose up -d --wait` — start every service and wait for all of them to report healthy.
+- `./setup.sh` — install and configure WordPress against the running stack. Idempotent; see "The local stack" below.
+- `docker compose down` — stop the stack. Add `-v` to also drop the named volumes (destructive: wipes WordPress, MySQL, Postgres, and n8n's data).
+- `npm run test:stack` — the full stack suite (`tests/stack/**`) against `vitest.stack.config.ts`: needs the whole stack (MySQL, WordPress, WP-CLI, Postgres, n8n) healthy and `./setup.sh` already run.
+- `npm run test:stack:wp` — only `tests/stack/wp/`, the subset that needs just MySQL, WordPress, and WP-CLI. This is what CI's `stack` job runs on every PR.
+
+## The local stack
+
+- **Services and ports.** `docker compose up -d --wait` brings up `db` (MySQL 8.4, unpublished), `wordpress` (on `127.0.0.1:8080`), `wpcli` (idle, for one-off `wp` commands), `cron` (runs `wp cron event run --due-now` every 60 s, since WP-Cron itself is disabled), `postgres` (unpublished), and `n8n` (on `127.0.0.1:5678`).
+- **One stack at a time.** Every demo in this series binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up — otherwise `up` fails on the port conflict, or a test ends up talking to the wrong n8n.
+- **`setup.sh`** requires `docker compose up -d --wait` to have already run. It waits for MySQL to actually accept TCP connections (its health status can turn healthy before the real server does), then installs WordPress (admin password read from `.env` over stdin, never as an argument), sets the site description, timezone, and pretty permalinks, activates the default theme and the `moving-quote` plugin, and creates the `home`, `get-a-quote`, and `thank-you` pages. It's idempotent: running it again touches nothing that's already correct.
+- **Stack tests never use `wp db query`.** The `wpcli` image's bundled MariaDB client isn't guaranteed compatible with MySQL 8.4's wire protocol. `tests/stack/lib/stack.ts`'s `sqlWp()` instead runs `wp eval-file -`, which executes PHP through WordPress's own `$wpdb`, the same client the plugin itself uses at runtime.
 
 ## Conventions
 
@@ -67,6 +84,7 @@ Planned, added in later tasks:
 
 - `npm run typecheck && npm run lint && npm test` all pass locally — run this full gate before every commit that touches TypeScript.
 - `npm run php -- composer check && npm run php -- composer audit` pass locally — run this full gate before every commit that touches PHP.
+- `npm run test:stack` passes locally against a running stack — run this before every commit that touches `compose.yaml`, `setup.sh`, or `tests/stack/**`.
 - No secrets anywhere in the diff or git history; `.env` and `config/config.json` are never committed.
 - `README.md` (Status, What works now, and the quick start if commands changed) and this file are updated to match what the change actually adds.
 - Commits follow Conventional Commits, on a branch named `task-NN-<slug>`.
