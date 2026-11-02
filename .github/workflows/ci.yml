@@ -96,6 +96,9 @@ jobs:
   stack:
     name: Stack
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -108,14 +111,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: node scripts/init-env.ts
       - run: cp config/config.example.json config/config.json
-      - run: docker compose up -d --wait db wordpress wpcli
+      - run: docker compose up -d --wait db wordpress wpcli postgres n8n
       - run: ./setup.sh
-      - run: pnpm run test:stack:wp
+      - run: pnpm run setup
+      - run: pnpm run test:stack
       - name: Logs on failure
         if: failure()
         run: |
           docker compose logs wordpress
           docker compose logs wpcli
+          docker compose logs n8n
+          docker compose logs postgres
       - name: Tear down
         if: always()
         run: docker compose down -v

@@ -1,6 +1,14 @@
-import { expect, it } from 'vitest';
-import { planCredentialImport } from '../../scripts/setup-credentials.ts';
+import { afterEach, expect, it, vi } from 'vitest';
 import { CREDENTIALS } from '../../scripts/lib/manifest.ts';
+
+const composeMock = vi.fn<(args: readonly string[], opts?: { input?: string }) => Promise<{ stdout: string; stderr: string }>>();
+vi.mock('../../scripts/lib/compose.ts', () => ({ compose: composeMock, loadDotEnv: vi.fn() }));
+
+const { buildImportCall, EXPORT_SCRIPT, existingCredentialIds, IMPORT_SCRIPT, planCredentialImport } = await import('../../scripts/setup-credentials.ts');
+
+afterEach(() => {
+  composeMock.mockReset();
+});
 
 const env = Object.fromEntries(CREDENTIALS.flatMap((c) => c.env).map((k) => [k, `${k.toLowerCase()}-test`]));
 const plan = (o: Partial<Parameters<typeof planCredentialImport>[0]>) =>
@@ -23,4 +31,49 @@ it('with only the App DB vars set, imports cvbCredAppDb0001 alone', () => {
 it('never overwrites an existing credential unless asked', () => {
   expect(plan({ existingIds: new Set(['cvbCredGSheets01']) }).skipped).toContainEqual({ id: 'cvbCredGSheets01', reason: 'exists' });
   expect(plan({ existingIds: new Set(['cvbCredGSheets01']), refresh: new Set(['cvbCredGSheets01']) }).credentials.map((c) => c.id)).toContain('cvbCredGSheets01');
+});
+
+it('buildImportCall streams the credential JSON over stdin, never as a file argument', () => {
+  const toImport = [{ id: 'cvbCredAppDb0001', name: 'App DB', type: 'postgres', data: { user: 'app' } }];
+  const call = buildImportCall(toImport);
+  expect(call.args).toEqual(['exec', '-T', 'n8n', 'sh', '-c', IMPORT_SCRIPT]);
+  expect(call.input).toBe(JSON.stringify(toImport));
+  expect(call.args.join(' ')).not.toContain('credentials.json');
+});
+
+it('IMPORT_SCRIPT sets a strict umask, uses its own temp file, and cleans up on both outcomes', () => {
+  expect(IMPORT_SCRIPT).toContain('umask 077');
+  expect(IMPORT_SCRIPT).toContain('mktemp');
+  expect(IMPORT_SCRIPT).toContain('n8n import:credentials --input="$tmp"');
+  expect(IMPORT_SCRIPT).toContain('rm -f "$tmp"');
+  expect(IMPORT_SCRIPT).toContain('exit $status');
+});
+
+it('EXPORT_SCRIPT sets a strict umask, uses its own temp file, sends n8n\'s own output to stderr, and only cats on success', () => {
+  expect(EXPORT_SCRIPT).toContain('umask 077');
+  expect(EXPORT_SCRIPT).toContain('mktemp');
+  expect(EXPORT_SCRIPT).toContain('n8n export:credentials --all --output="$tmp" >&2');
+  expect(EXPORT_SCRIPT).toContain('cat "$tmp"');
+  expect(EXPORT_SCRIPT).toContain('rm -f "$tmp"');
+  expect(EXPORT_SCRIPT).toContain('exit $status');
+});
+
+it('existingCredentialIds runs EXPORT_SCRIPT and parses the ids from stdout, never a file', async () => {
+  composeMock.mockResolvedValue({ stdout: JSON.stringify([{ id: 'cvbCredAppDb0001' }, { id: 'cvbCredLeadJwt01' }]), stderr: 'Acquiring database migration lock...\nSuccessfully exported 2 credentials.' });
+  const ids = await existingCredentialIds();
+  expect(composeMock).toHaveBeenCalledWith(['exec', '-T', 'n8n', 'sh', '-c', EXPORT_SCRIPT]);
+  expect(ids).toEqual(new Set(['cvbCredAppDb0001', 'cvbCredLeadJwt01']));
+});
+
+it('existingCredentialIds returns an empty set when n8n reports no credentials yet, on either stream', async () => {
+  composeMock.mockRejectedValueOnce(Object.assign(new Error('exit 1'), { stdout: '', stderr: 'No credentials found' }));
+  expect(await existingCredentialIds()).toEqual(new Set());
+
+  composeMock.mockRejectedValueOnce(Object.assign(new Error('exit 1'), { stdout: 'No credentials found', stderr: '' }));
+  expect(await existingCredentialIds()).toEqual(new Set());
+});
+
+it('existingCredentialIds rethrows any other failure', async () => {
+  composeMock.mockRejectedValueOnce(Object.assign(new Error('exit 1'), { stdout: '', stderr: 'permission denied' }));
+  await expect(existingCredentialIds()).rejects.toThrow('exit 1');
 });

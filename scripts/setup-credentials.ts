@@ -1,4 +1,3 @@
-import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { compose, loadDotEnv } from './lib/compose.ts';
 import { CREDENTIALS } from './lib/manifest.ts';
@@ -46,60 +45,74 @@ export function planCredentialImport(o: {
   return { credentials, skipped };
 }
 
-const IMPORT_DIR = '.n8n-import';
-const CREDENTIALS_FILE = `${IMPORT_DIR}/credentials.json`;
-const EXISTING_FILE_NAME = 'existing-credentials.json';
-const EXISTING_FILE = `${IMPORT_DIR}/${EXISTING_FILE_NAME}`;
+/**
+ * This used to write a decrypted `.n8n-import/credentials.json` on the host (mode 0600) and point
+ * the CLI at it inside the container. That works on macOS, where Docker Desktop's VM makes a
+ * bind-mounted file appear owned by whatever uid the reading process runs as — but on a Linux
+ * runner the file is written by the runner's own uid (1001) and stays owned by it inside the
+ * container too, where n8n runs as uid 1000 and can't read it. Streaming the JSON over stdin
+ * instead means the plaintext credential data never touches the host filesystem or the bind
+ * mount at all, so no uid can be wrong: `sh -c` inside the container sets a strict umask, makes
+ * its own temp file in the container's own `/tmp` (entirely separate from `.n8n-import/`), copies
+ * stdin into it, runs the import, and removes it either way.
+ */
+export const IMPORT_SCRIPT = 'umask 077; tmp="$(mktemp)"; cat > "$tmp"; n8n import:credentials --input="$tmp"; status=$?; rm -f "$tmp"; exit $status';
 
-function isExecError(err: unknown): err is { stdout: string } {
+/** The exact `compose()` call that imports `toImport`: the credential JSON travels only as `input`, never as an argument or a file. */
+export function buildImportCall(toImport: readonly ImportableCredential[]): { args: string[]; input: string } {
+  return { args: ['exec', '-T', 'n8n', 'sh', '-c', IMPORT_SCRIPT], input: JSON.stringify(toImport) };
+}
+
+/**
+ * The detection export used to write `.n8n-import/existing-credentials.json` and have the host
+ * read and `chmod`/delete it. That also fails on a Linux runner: n8n (uid 1000 in the container)
+ * creates the file, so the runner (uid 1001) doesn't own it and can't `chmod` it (EPERM), even
+ * once the directory itself is writable by both. Streaming the (still encrypted) export back over
+ * stdout instead means the file never leaves the container: `sh -c` makes its own temp file in
+ * the container's own `/tmp`, exports into it, and `cat`s it to stdout only on success, so a
+ * truncated or partial export can't be mistaken for a real one — n8n's own progress messages
+ * ("Acquiring database migration lock...") go to stderr here, keeping stdout pure JSON.
+ */
+export const EXPORT_SCRIPT = 'umask 077; tmp="$(mktemp)"; n8n export:credentials --all --output="$tmp" >&2; status=$?; [ "$status" -eq 0 ] && cat "$tmp"; rm -f "$tmp"; exit $status';
+
+function isExecError(err: unknown): err is { stdout: string; stderr: string } {
   return typeof err === 'object' && err !== null && typeof (err as { stdout?: unknown }).stdout === 'string';
 }
 
 /**
- * IDs already in n8n, read from an (encrypted) CLI export — never the decrypted credential data.
- * Exported to a file rather than read from stdout: the CLI prints its own "Acquiring database
- * migration lock..." line to stdout ahead of the JSON payload, which would otherwise break
- * JSON.parse. Exported so a stack test can check whether a Google credential has been wired in
- * without ever decrypting it, matching the same detection this module's own setup uses.
+ * IDs already in n8n, read from an (encrypted) CLI export over stdout — never the decrypted
+ * credential data, and never a file on the bind mount (see `EXPORT_SCRIPT`'s own comment).
  */
 export async function existingCredentialIds(): Promise<Set<string>> {
+  let stdout: string;
   try {
-    await compose(['exec', '-T', 'n8n', 'n8n', 'export:credentials', '--all', `--output=/import/${EXISTING_FILE_NAME}`]);
+    ({ stdout } = await compose(['exec', '-T', 'n8n', 'sh', '-c', EXPORT_SCRIPT]));
   } catch (err) {
     // A brand-new instance with no credentials yet errors instead of exporting an empty list.
-    if (isExecError(err) && /No credentials found/i.test(err.stdout)) return new Set();
+    // n8n prints that message to stderr now (EXPORT_SCRIPT redirects its own stdout there), but a
+    // non-zero exit from the script itself can still surface it on either stream.
+    if (isExecError(err) && (/No credentials found/i.test(err.stderr) || /No credentials found/i.test(err.stdout))) return new Set();
     throw err;
   }
 
-  chmodSync(EXISTING_FILE, 0o600);
-  try {
-    const raw = JSON.parse(readFileSync(EXISTING_FILE, 'utf8')) as { id: string }[];
-    return new Set(raw.map((c) => c.id));
-  } finally {
-    rmSync(EXISTING_FILE, { force: true });
-  }
+  const raw = JSON.parse(stdout) as { id: string }[];
+  return new Set(raw.map((c) => c.id));
 }
 
 export async function setupCredentials(o: { refresh: ReadonlySet<string> }): Promise<void> {
   loadDotEnv();
-  mkdirSync(IMPORT_DIR, { recursive: true });
 
   const existingIds = await existingCredentialIds();
   const { credentials, skipped } = planCredentialImport({ env: process.env, existingIds, refresh: o.refresh });
 
   if (credentials.length > 0) {
-    writeFileSync(CREDENTIALS_FILE, JSON.stringify(credentials, null, 2), { mode: 0o600 });
-    chmodSync(CREDENTIALS_FILE, 0o600);
-    try {
-      await compose(['exec', '-T', 'n8n', 'n8n', 'import:credentials', '--input=/import/credentials.json']);
-    } finally {
-      rmSync(CREDENTIALS_FILE, { force: true });
-    }
+    const { args, input } = buildImportCall(credentials);
+    await compose(args, { input });
   }
 
   for (const { id, reason } of skipped) {
     const name = CREDENTIALS.find((c) => c.id === id)?.name ?? id;
-    console.log(`skip ${name} (${id}): ${reason}`);
+    console.log(`skip ${name}: ${reason}`);
   }
   for (const { id, name } of credentials) console.log(`imported ${name} (${id})`);
 }
