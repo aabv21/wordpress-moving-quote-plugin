@@ -102,6 +102,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/init-env.ts
+      - run: cp config/config.example.json config/config.json
       - run: docker compose up -d --wait db wordpress wpcli
       - run: ./setup.sh
       - run: npm run test:stack:wp

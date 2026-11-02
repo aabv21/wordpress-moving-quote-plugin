@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { decodeVerified } from '../lib/jwt.ts';
-import { deleteCreatedLeads, validLead } from '../lib/leads.ts';
+import { createPendingRowParker, deleteCreatedLeads, validLead } from '../lib/leads.ts';
 import { startReceiver, type Receiver } from '../lib/receiver.ts';
 import { clearDebugLog, disableDelivery, pluginLogLines, required, resetRateLimits, rest, restNonce, sqlWp, table, wp } from '../lib/stack.ts';
 
@@ -8,7 +8,6 @@ const LEADS_PATH = '/moving-quote/v1/leads';
 const OPTION_NAME = 'moving_quote_settings';
 const PRODUCTION_WEBHOOK_URL = 'http://n8n:5678/webhook/moving-quote/leads';
 const CRON_HOOK = 'moving_quote_process_outbox';
-const FAR_FUTURE = 9_999_999_999;
 
 interface LeadRow {
   id: string;
@@ -38,32 +37,7 @@ async function forceDue(requestUuid: string, nextAttemptAt = 0): Promise<void> {
   await sqlWp(`UPDATE ${await table()} SET next_attempt_at = ${String(nextAttemptAt)} WHERE request_uuid = '${requestUuid}'`);
 }
 
-/** Every row this file has parked, keyed by id, with the `next_attempt_at` it actually held before the first time this file touched it — never overwritten on a later park, so the value a restore writes back is always the row's pre-test one, not FAR_FUTURE from an earlier park. */
-const parkedOriginals = new Map<string, string>();
-
-/**
- * Parks every pending row far in the future, so no lead but the ones a case explicitly forces due
- * is ever picked up by a cron run, remembering each one's original `next_attempt_at` for
- * `restoreParkedRows()`.
- */
-async function parkPendingRows(): Promise<void> {
-  const pending = await sqlWp(`SELECT id, next_attempt_at FROM ${await table()} WHERE sync_status = 'pending'`);
-  for (const row of pending) {
-    const id = row.id;
-    const nextAttemptAt = row.next_attempt_at;
-    if (null == id || null == nextAttemptAt) continue;
-    if (!parkedOriginals.has(id)) parkedOriginals.set(id, nextAttemptAt);
-  }
-  await sqlWp(`UPDATE ${await table()} SET next_attempt_at = ${String(FAR_FUTURE)} WHERE sync_status = 'pending'`);
-}
-
-/** Puts back every row `parkPendingRows()` has parked this file, at the `next_attempt_at` it actually held before this file first touched it. A row deleted since (a test's own lead) is a harmless no-op update. */
-async function restoreParkedRows(): Promise<void> {
-  for (const [id, nextAttemptAt] of parkedOriginals) {
-    await sqlWp(`UPDATE ${await table()} SET next_attempt_at = ${nextAttemptAt} WHERE id = ${id} AND next_attempt_at = ${String(FAR_FUTURE)}`);
-  }
-  parkedOriginals.clear();
-}
+const { parkPendingRows, restoreParkedRows } = createPendingRowParker();
 
 async function runOutboxCron(): Promise<void> {
   await wp(['cron', 'event', 'run', CRON_HOOK]);

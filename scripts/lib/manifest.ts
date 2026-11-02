@@ -28,8 +28,16 @@ export const ERROR_WORKFLOW_ID = 'cvbErrorHandler1';
 // eslint-disable-next-line security/detect-object-injection -- key is always one of this entry's own fixed `env` names
 const readEnv = (env: Readonly<Record<string, string>>, key: string): string => env[key] ?? '';
 
-// Filled by Tasks 11–12 with the three fixed-ID rows (lead-intake, process-lead, error-handler).
-export const WORKFLOWS: readonly WorkflowEntry[] = [];
+// The published workflows, each keyed by its fixed ID.
+export const WORKFLOWS: readonly WorkflowEntry[] = [
+  {
+    id: 'cvbLeadIntake001',
+    name: 'Lead intake',
+    file: 'lead-intake.json',
+    publish: true,
+    webhookPath: 'moving-quote/leads',
+  },
+];
 
 export const CREDENTIALS: readonly CredentialEntry[] = [
   {
@@ -69,5 +77,12 @@ export const CREDENTIALS: readonly CredentialEntry[] = [
   },
 ];
 
-// Filled by Tasks 11–12 as each workflow adds its Code nodes.
-export const CODE_NODES: readonly CodeNodeEntry[] = [];
+// Every Code node across workflows/, each generated from its own src/nodes/*.ts source.
+export const CODE_NODES: readonly CodeNodeEntry[] = [
+  {
+    file: 'lead-intake.json',
+    node: 'Verify request',
+    source: 'src/nodes/verify-request.ts',
+    why: 'one tested function checks the claims, the body hash, and the payload contract instead of a chain of IF nodes',
+  },
+];

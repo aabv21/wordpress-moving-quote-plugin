@@ -53,3 +53,40 @@ export async function deleteCreatedLeads(): Promise<void> {
   await sqlWp(`DELETE FROM ${await table()} WHERE request_uuid IN (${quoted})`);
   createdLeadUuids.clear();
 }
+
+const FAR_FUTURE = 9_999_999_999;
+
+/**
+ * A row left `pending` by an earlier file or case must never become due and reach n8n (or a
+ * receiver) while another case asserts something exact, like "exactly one request" or "cron moved
+ * this one row". `createPendingRowParker()` gives one file its own scoped `parkPendingRows()` /
+ * `restoreParkedRows()` pair, called in its own `beforeAll`/`afterAll` (and again before/after each
+ * case, if cases can leave new rows pending between them).
+ */
+export function createPendingRowParker(): { parkPendingRows: () => Promise<void>; restoreParkedRows: () => Promise<void> } {
+  // Keyed by id, holding the `next_attempt_at` a row actually held before the first time this
+  // parker touched it — never overwritten on a later park, so a restore always writes back the
+  // row's pre-test value, not FAR_FUTURE from an earlier park.
+  const parkedOriginals = new Map<string, string>();
+
+  return {
+    async parkPendingRows(): Promise<void> {
+      const pending = await sqlWp(`SELECT id, next_attempt_at FROM ${await table()} WHERE sync_status = 'pending'`);
+      for (const row of pending) {
+        const id = row.id;
+        const nextAttemptAt = row.next_attempt_at;
+        if (null == id || null == nextAttemptAt) continue;
+        if (!parkedOriginals.has(id)) parkedOriginals.set(id, nextAttemptAt);
+      }
+      await sqlWp(`UPDATE ${await table()} SET next_attempt_at = ${String(FAR_FUTURE)} WHERE sync_status = 'pending'`);
+    },
+
+    /** Puts back every row this parker has parked, at the `next_attempt_at` it held before this parker first touched it. A row deleted since (a test's own lead) is a harmless no-op update. */
+    async restoreParkedRows(): Promise<void> {
+      for (const [id, nextAttemptAt] of parkedOriginals) {
+        await sqlWp(`UPDATE ${await table()} SET next_attempt_at = ${nextAttemptAt} WHERE id = ${id} AND next_attempt_at = ${String(FAR_FUTURE)}`);
+      }
+      parkedOriginals.clear();
+    },
+  };
+}

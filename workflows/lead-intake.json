@@ -1,0 +1,411 @@
+{
+  "id": "cvbLeadIntake001",
+  "name": "Lead intake",
+  "description": null,
+  "nodes": [
+    {
+      "id": "stickyVerify001",
+      "name": "Sticky Note: Verify",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ],
+      "parameters": {
+        "content": "## Verify\nReceives the signed lead, hashes the raw body, and runs the one Code node that checks the JWT claims, the body hash, and the payload contract.",
+        "height": 300,
+        "width": 620,
+        "color": 4
+      }
+    },
+    {
+      "id": "nodeReceiveLead1",
+      "name": "Receive lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -20,
+        100
+      ],
+      "webhookId": "3b0e6f0a-8f5e-4c2b-9d71-5a2c4e8b1f90",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "moving-quote/leads",
+        "authentication": "jwtAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "credentials": {
+        "jwtAuth": {
+          "id": "cvbCredLeadJwt01",
+          "name": "Lead webhook JWT"
+        }
+      }
+    },
+    {
+      "id": "nodeHashRawBody1",
+      "name": "Hash raw body",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        200,
+        100
+      ],
+      "parameters": {
+        "action": "hash",
+        "type": "SHA256",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "dataPropertyName": "body_sha256",
+        "encoding": "hex"
+      }
+    },
+    {
+      "id": "nodeVerifyRequest1",
+      "name": "Verify request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        100
+      ],
+      "notes": "Why Code: one tested function checks the claims, the body hash, and the payload contract instead of a chain of IF nodes",
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Why Code: one tested function checks the claims, the body hash, and the payload contract instead of a chain of IF nodes. Generated from src/nodes/verify-request.ts by npm run build:workflows; edit the source.\n\"use strict\";\nvar __node = (() => {\n  var __defProp = (obj, key, desc) => { obj[key] = desc && \"get\" in desc ? desc.get() : desc.value; return obj; };\n  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;\n  var __getOwnPropNames = Object.getOwnPropertyNames;\n  var __hasOwnProp = Object.prototype.hasOwnProperty;\n  var __export = (target, all) => {\n    for (var name in all)\n      __defProp(target, name, { get: all[name], enumerable: true });\n  };\n  var __copyProps = (to, from, except, desc) => {\n    if (from && typeof from === \"object\" || typeof from === \"function\") {\n      for (let key of __getOwnPropNames(from))\n        if (!__hasOwnProp.call(to, key) && key !== except)\n          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });\n    }\n    return to;\n  };\n  var __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n  // src/nodes/verify-request.ts\n  var verify_request_exports = {};\n  __export(verify_request_exports, {\n    CLOCK_SKEW_SECONDS: () => CLOCK_SKEW_SECONDS,\n    MAX_LIFETIME_SECONDS: () => MAX_LIFETIME_SECONDS,\n    run: () => run\n  });\n\n  // src/nodes/lead.ts\n  var UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;\n  var MOVE_TYPES = /* @__PURE__ */ new Set([\"apartment\", \"house\", \"office\"]);\n  var EXTRAS = /* @__PURE__ */ new Set([\"packing\", \"furniture_assembly\", \"storage\", \"piano_fragile\"]);\n  var MOVE_DATE_RE = /^(\\d{4})-(\\d{2})-(\\d{2})$/;\n  var SUBMITTED_AT_RE = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})([+-])(\\d{2}):(\\d{2})$/;\n  var EMAIL_RE = /^[^\\s@]+@[^\\s@]+$/;\n  function isRecord(value) {\n    return typeof value === \"object\" && value !== null && !Array.isArray(value);\n  }\n  function hasOnlyKeys(value, keys) {\n    return Object.keys(value).every((key) => keys.includes(key));\n  }\n  function isValidCalendarDate(value) {\n    const match = MOVE_DATE_RE.exec(value);\n    if (!match) return false;\n    const [, yearStr, monthStr, dayStr] = match;\n    const year = Number(yearStr);\n    const month = Number(monthStr);\n    const day = Number(dayStr);\n    const date = DateTime.fromObject({ year, month, day });\n    return date.isValid && date.year === year && date.month === month && date.day === day;\n  }\n  function isValidSubmittedAt(value) {\n    const match = SUBMITTED_AT_RE.exec(value);\n    if (!match) return false;\n    const [, yearStr, monthStr, dayStr, hourStr, minuteStr, secondStr, , offsetHourStr, offsetMinuteStr] = match;\n    const offsetHour = Number(offsetHourStr);\n    const offsetMinute = Number(offsetMinuteStr);\n    if (offsetHour > 14 || offsetMinute > 59 || offsetHour === 14 && offsetMinute > 0) return false;\n    const year = Number(yearStr);\n    const month = Number(monthStr);\n    const day = Number(dayStr);\n    const hour = Number(hourStr);\n    const minute = Number(minuteStr);\n    const second = Number(secondStr);\n    const date = DateTime.fromObject({ year, month, day, hour, minute, second }, { zone: \"utc\" });\n    return date.isValid && date.year === year && date.month === month && date.day === day && date.hour === hour && date.minute === minute && date.second === second;\n  }\n  function codePointLength(value) {\n    return Array.from(value).length;\n  }\n  function parseCustomer(value) {\n    if (!isRecord(value) || !hasOnlyKeys(value, [\"name\", \"phone\", \"email\"])) return null;\n    const { name, phone, email } = value;\n    if (typeof name !== \"string\") return null;\n    const nameLength = codePointLength(name);\n    if (nameLength < 2 || nameLength > 100) return null;\n    if (typeof phone !== \"string\" || !/^\\d{10,15}$/.test(phone)) return null;\n    if (typeof email !== \"string\" || email.length > 254 || !email.includes(\"@\")) return null;\n    return { name, phone, email };\n  }\n  function parseMove(value) {\n    if (!isRecord(value) || !hasOnlyKeys(value, [\"type\", \"rooms\", \"origin\", \"destination\", \"distance_km\", \"date\", \"extras\"])) return null;\n    const { type, rooms, origin, destination, distance_km: distanceKm, date, extras } = value;\n    if (typeof type !== \"string\" || !MOVE_TYPES.has(type)) return null;\n    if (typeof rooms !== \"number\" || !Number.isInteger(rooms) || rooms < 1 || rooms > 5) return null;\n    if (typeof origin !== \"string\" || origin.length === 0) return null;\n    if (typeof destination !== \"string\" || destination.length === 0) return null;\n    if (typeof distanceKm !== \"number\" || !Number.isInteger(distanceKm) || distanceKm < 0) return null;\n    if (typeof date !== \"string\" || !isValidCalendarDate(date)) return null;\n    if (!Array.isArray(extras) || !extras.every((extra) => typeof extra === \"string\" && EXTRAS.has(extra))) return null;\n    if (new Set(extras).size !== extras.length) return null;\n    return {\n      type,\n      rooms,\n      origin,\n      destination,\n      distance_km: distanceKm,\n      date,\n      extras\n    };\n  }\n  function isNonNegativeSafeInteger(value) {\n    return typeof value === \"number\" && Number.isSafeInteger(value) && value >= 0;\n  }\n  function parseEstimate(value) {\n    if (!isRecord(value) || !hasOnlyKeys(value, [\"currency\", \"amount\", \"low\", \"high\"])) return null;\n    const { currency, amount, low, high } = value;\n    if (currency !== \"COP\") return null;\n    if (!isNonNegativeSafeInteger(amount)) return null;\n    if (!isNonNegativeSafeInteger(low)) return null;\n    if (!isNonNegativeSafeInteger(high)) return null;\n    if (low > high || amount < low || amount > high) return null;\n    return { currency, amount, low, high };\n  }\n  var LEAD_KEYS = [\"request_uuid\", \"reference\", \"submitted_at\", \"site_name\", \"team_email\", \"customer\", \"move\", \"estimate\"];\n  function parseLead(value) {\n    if (!isRecord(value) || !hasOnlyKeys(value, LEAD_KEYS)) return null;\n    const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, customer, move, estimate } = value;\n    if (typeof requestUuid !== \"string\" || !UUID_V4_RE.test(requestUuid)) return null;\n    const expectedReference = `MQ-${requestUuid.replace(/-/g, \"\").slice(0, 8).toUpperCase()}`;\n    if (typeof reference !== \"string\" || reference !== expectedReference) return null;\n    if (typeof submittedAt !== \"string\" || !isValidSubmittedAt(submittedAt)) return null;\n    if (typeof siteName !== \"string\") return null;\n    if (typeof teamEmail !== \"string\" || !EMAIL_RE.test(teamEmail)) return null;\n    const parsedCustomer = parseCustomer(customer);\n    if (!parsedCustomer) return null;\n    const parsedMove = parseMove(move);\n    if (!parsedMove) return null;\n    const parsedEstimate = parseEstimate(estimate);\n    if (!parsedEstimate) return null;\n    return {\n      request_uuid: requestUuid,\n      reference,\n      submitted_at: submittedAt,\n      site_name: siteName,\n      team_email: teamEmail,\n      customer: parsedCustomer,\n      move: parsedMove,\n      estimate: parsedEstimate\n    };\n  }\n\n  // src/nodes/verify-request.ts\n  var MAX_LIFETIME_SECONDS = 300;\n  var CLOCK_SKEW_SECONDS = 60;\n  function rejected(status, reason) {\n    return { ok: false, status, reason };\n  }\n  function parseClaims(jwtPayload) {\n    if (typeof jwtPayload !== \"object\" || jwtPayload === null) return null;\n    const { iat, exp, jti, body_sha256: bodySha256 } = jwtPayload;\n    if (typeof iat !== \"number\" || !Number.isInteger(iat)) return null;\n    if (typeof exp !== \"number\" || !Number.isInteger(exp)) return null;\n    if (typeof jti !== \"string\") return null;\n    if (typeof bodySha256 !== \"string\") return null;\n    return { iat, exp, jti, body_sha256: bodySha256 };\n  }\n  function run(input, nowSeconds = Math.floor(Date.now() / 1e3)) {\n    const claims = parseClaims(input.jwtPayload);\n    if (!claims) return rejected(401, \"missing_claims\");\n    if (claims.exp - claims.iat > MAX_LIFETIME_SECONDS || claims.exp <= claims.iat) return rejected(401, \"token_lifetime\");\n    if (claims.iat > nowSeconds + CLOCK_SKEW_SECONDS) return rejected(401, \"token_not_yet_valid\");\n    if (claims.exp <= nowSeconds) return rejected(401, \"token_expired\");\n    if (claims.body_sha256 !== input.body_sha256) return rejected(401, \"body_hash_mismatch\");\n    const lead = parseLead(input.body);\n    if (!lead) return rejected(422, \"invalid_payload\");\n    if (claims.jti !== lead.request_uuid) return rejected(401, \"jti_mismatch\");\n    return { ok: true, lead };\n  }\n  return __toCommonJS(verify_request_exports);\n})();\nreturn [{ json: __node.run($input.first().json) }];\n"
+      }
+    },
+    {
+      "id": "nodeRequestValid001",
+      "name": "Request valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "a1e4c0a2-6f1b-4a3e-9c2d-7b8e5f0a1c3d",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "nodeRejectRequest1",
+      "name": "Reject request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        860,
+        220
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'rejected', reason: $json.reason } }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      }
+    },
+    {
+      "id": "stickyRecordOnce01",
+      "name": "Sticky Note: Record once",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        860,
+        -260
+      ],
+      "parameters": {
+        "content": "## Record once\nReads the runtime config (needed by the caller that follows this one), then inserts the lead's `request_uuid` into `processed_events`. `ON CONFLICT DO NOTHING RETURNING event_id` gives back a row only for a genuinely new id; a replay returns no row, which Postgres turns into a synthesized `{ success: true }` item with no `event_id` — that is what \"New request?\" tests for.",
+        "height": 300,
+        "width": 640,
+        "color": 5
+      }
+    },
+    {
+      "id": "nodeReadConfig0001",
+      "name": "Read config",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        860,
+        100
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/files/config/config.json"
+      }
+    },
+    {
+      "id": "nodeParseConfig001",
+      "name": "Parse config",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        1080,
+        100
+      ],
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "data",
+        "destinationKey": "config"
+      }
+    },
+    {
+      "id": "nodeRecordRequest1",
+      "name": "Record request",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1300,
+        100
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO processed_events (source, event_id) VALUES ('wordpress-lead', $1) ON CONFLICT DO NOTHING RETURNING event_id",
+        "options": {
+          "queryReplacement": "={{ $('Verify request').first().json.lead.request_uuid }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "cvbCredAppDb0001",
+          "name": "App DB"
+        }
+      }
+    },
+    {
+      "id": "nodeNewRequest0001",
+      "name": "New request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "b2f5d1b3-7a2c-4b4f-8d3e-9c1f6a2b4d5e",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.event_id }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "stickyRespond00001",
+      "name": "Sticky Note: Respond",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        -260
+      ],
+      "parameters": {
+        "content": "## Respond\nTells WordPress whether this delivery counts as acknowledged: `accepted` for a new lead, `duplicate` for a replay of one already recorded. Both are 200, which is the only outcome `Delivery\\ResponseCheck::acknowledged()` treats as delivered.",
+        "height": 300,
+        "width": 560,
+        "color": 7
+      }
+    },
+    {
+      "id": "nodeRespondAccept1",
+      "name": "Respond accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1740,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'accepted' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "nodeRespondDup0001",
+      "name": "Respond duplicate",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1740,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'duplicate' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Receive lead": {
+      "main": [
+        [
+          {
+            "node": "Hash raw body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hash raw body": {
+      "main": [
+        [
+          {
+            "node": "Verify request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify request": {
+      "main": [
+        [
+          {
+            "node": "Request valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request valid?": {
+      "main": [
+        [
+          {
+            "node": "Read config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read config": {
+      "main": [
+        [
+          {
+            "node": "Parse config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse config": {
+      "main": [
+        [
+          {
+            "node": "Record request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record request": {
+      "main": [
+        [
+          {
+            "node": "New request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New request?": {
+      "main": [
+        [
+          {
+            "node": "Respond accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "cvbErrorHandler1",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
