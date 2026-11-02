@@ -37,6 +37,18 @@ export const WORKFLOWS: readonly WorkflowEntry[] = [
     publish: true,
     webhookPath: 'moving-quote/leads',
   },
+  {
+    id: 'cvbProcessLead01',
+    name: 'Process lead',
+    file: 'process-lead.json',
+    publish: true,
+  },
+  {
+    id: 'cvbErrorHandler1',
+    name: 'Error handler',
+    file: 'error-handler.json',
+    publish: true,
+  },
 ];
 
 export const CREDENTIALS: readonly CredentialEntry[] = [
@@ -85,4 +97,15 @@ export const CODE_NODES: readonly CodeNodeEntry[] = [
     source: 'src/nodes/verify-request.ts',
     why: 'one tested function checks the claims, the body hash, and the payload contract instead of a chain of IF nodes',
   },
+  {
+    file: 'process-lead.json',
+    node: 'Map lead',
+    source: 'src/nodes/map-lead.ts',
+    why: 'one tested function builds the sheet row and both notification emails from the same lead, instead of separate Set and expression nodes for each',
+  },
 ];
+
+/** Every manifest credential that reads its OAuth client from `GOOGLE_OAUTH_CLIENT_ID` — the two Google ones, by construction rather than a separately maintained id list. */
+export function googleCredentialIds(credentials: readonly CredentialEntry[]): string[] {
+  return credentials.filter((c) => c.env.includes('GOOGLE_OAUTH_CLIENT_ID')).map((c) => c.id);
+}

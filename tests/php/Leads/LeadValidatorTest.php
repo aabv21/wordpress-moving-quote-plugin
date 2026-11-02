@@ -79,6 +79,9 @@ final class LeadValidatorTest extends TestCase {
 			[ 'phone', '12345', 'invalid' ],
 			[ 'phone', '57000000000a', 'invalid' ],
 			[ 'email', 'jose@', 'invalid' ],
+			[ 'email', '"a,b"@example.com', 'invalid' ],
+			[ 'email', 'a b@example.com', 'invalid' ],
+			[ 'email', 'x@example.com, y@example.com', 'invalid' ],
 			[ 'consent', false, 'consent_required' ],
 			[ 'consent', 'yes', 'consent_required' ],
 			[ 'submission_id', 'not-a-uuid', 'invalid' ],
@@ -135,5 +138,48 @@ final class LeadValidatorTest extends TestCase {
 		self::assertInstanceOf( \Chivabox\MovingQuote\Pricing\QuoteInput::class, $result );
 		self::assertSame( 4, $result->rooms );
 		self::assertSame( [], $result->extras );
+	}
+
+	/** @return array<string, array{string, string}> */
+	public static function control_characters_in_name(): array {
+		return [
+			'a tab'              => [ "José\tPeña", 'José Peña' ],
+			'a newline'          => [ "Ana\nBo", 'Ana Bo' ],
+			'a line separator'   => [ "Ana\u{2028}Bo", 'Ana Bo' ],
+		];
+	}
+
+	#[DataProvider( 'control_characters_in_name' )]
+	public function test_name_normalizes_control_characters_to_a_single_space( string $value, string $expected ): void {
+		$draft = self::lead( self::valid( [ 'name' => $value ] ) );
+		self::assertInstanceOf( LeadDraft::class, $draft );
+		self::assertSame( $expected, $draft->name );
+	}
+
+	public function test_name_of_only_control_characters_is_too_short(): void {
+		$result = self::lead( self::valid( [ 'name' => "\t\n" ] ) );
+		self::assertInstanceOf( FieldErrors::class, $result );
+		self::assertSame( 'too_short', $result->errors['name'] );
+	}
+
+	public function test_invalid_utf8_name_is_invalid(): void {
+		$result = self::lead( self::valid( [ 'name' => "Jos\xE9 Pe\xF1a" ] ) );
+		self::assertInstanceOf( FieldErrors::class, $result );
+		self::assertSame( 'invalid', $result->errors['name'] );
+	}
+
+	/** @return array<string, array{string}> */
+	public static function simple_emails(): array {
+		return [
+			'a plain address' => [ 'customer@example.com' ],
+			'dotted and plus-tagged local part' => [ 'jose.pena+quotes@example.com' ],
+		];
+	}
+
+	#[DataProvider( 'simple_emails' )]
+	public function test_accepts_a_simple_address( string $email ): void {
+		$draft = self::lead( self::valid( [ 'email' => $email ] ) );
+		self::assertInstanceOf( LeadDraft::class, $draft );
+		self::assertSame( $email, $draft->email );
 	}
 }

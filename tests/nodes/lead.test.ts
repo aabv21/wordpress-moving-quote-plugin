@@ -165,4 +165,42 @@ describe('parseLead', () => {
     expect(parseLead({ ...valid, team_email: '@example.com' })).toBeNull();
     expect(parseLead({ ...valid, team_email: 'team@' })).toBeNull();
   });
+
+  it('rejects a control character in customer.name: LeadValidator::validate_name() normalizes them, so a genuine payload never carries one', () => {
+    expect(parseLead(withCustomer({ name: 'Ana\nPhone: 570000000099' }))).toBeNull();
+  });
+
+  it('rejects a control character in move.origin', () => {
+    expect(parseLead(withMove({ origin: 'Barranquilla\nPhone: 570000000099' }))).toBeNull();
+  });
+
+  it('rejects a control character in move.destination', () => {
+    expect(parseLead(withMove({ destination: 'Cartagena\nPhone: 570000000099' }))).toBeNull();
+  });
+
+  it.each(['\u0085', '\u2028', '\u2029'])('rejects a Unicode line break (%s) in customer.name', (char) => {
+    expect(parseLead(withCustomer({ name: `Ana${char}Bo` }))).toBeNull();
+  });
+
+  it('rejects a quoted local part that would smuggle a second recipient', () => {
+    expect(parseLead(withCustomer({ email: '"a,b"@example.com' }))).toBeNull();
+    expect(parseLead({ ...valid, team_email: '"a,b"@example.com' })).toBeNull();
+  });
+
+  it('rejects whitespace inside the address', () => {
+    expect(parseLead(withCustomer({ email: 'a b@example.com' }))).toBeNull();
+    expect(parseLead({ ...valid, team_email: 'a b@example.com' })).toBeNull();
+  });
+
+  it('rejects a comma-separated list of addresses', () => {
+    expect(parseLead(withCustomer({ email: 'x@example.com, y@example.com' }))).toBeNull();
+    expect(parseLead({ ...valid, team_email: 'x@example.com, y@example.com' })).toBeNull();
+  });
+
+  it('accepts a simple address with a dotted or plus-tagged local part', () => {
+    expect(parseLead(withCustomer({ email: 'customer@example.com' }))).not.toBeNull();
+    expect(parseLead(withCustomer({ email: 'jose.pena+quotes@example.com' }))).not.toBeNull();
+    expect(parseLead({ ...valid, team_email: 'customer@example.com' })).not.toBeNull();
+    expect(parseLead({ ...valid, team_email: 'jose.pena+quotes@example.com' })).not.toBeNull();
+  });
 });

@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process';
+import { existingCredentialIds } from '../../../scripts/setup-credentials.ts';
+import { CREDENTIALS, googleCredentialIds } from '../../../scripts/lib/manifest.ts';
 
 process.loadEnvFile('.env');
 
@@ -169,4 +171,15 @@ export async function pluginLogLines(): Promise<string[]> {
     // The file doesn't exist yet when nothing has ever logged.
     return [];
   }
+}
+
+/**
+ * True once either Google credential has been wired into n8n, checked the same way
+ * `setup-credentials.ts` itself checks (a CLI export of credential IDs, never a decrypted one). A
+ * stack test that reaches `process-lead` must skip once this is true: running it against the
+ * owner's real Google account would append a test lead to the real sheet and email the real team.
+ */
+export async function googleCredentialsConfigured(): Promise<boolean> {
+  const ids = await existingCredentialIds();
+  return googleCredentialIds(CREDENTIALS).some((id) => ids.has(id));
 }

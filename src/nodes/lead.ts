@@ -37,8 +37,34 @@ const EXTRAS = new Set<string>(['packing', 'furniture_assembly', 'storage', 'pia
 const MOVE_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 /** DATE_ATOM with a numeric offset, e.g. `2026-11-04T09:15:00-05:00` (never a bare `Z`: WordPress always converts to a named timezone before formatting). The component ranges and the offset bound are checked separately in `isValidSubmittedAt()`; a regex alone would accept `2026-99-99T99:99:99+99:99`. */
 const SUBMITTED_AT_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([+-])(\d{2}):(\d{2})$/;
-/** One `@`, with a non-empty part on each side — not a full RFC 5322 check, matching `filter_var(…, FILTER_VALIDATE_EMAIL)`'s own practical strictness rather than reimplementing it. */
-const EMAIL_RE = /^[^\s@]+@[^\s@]+$/;
+/** None of these, nor whitespace or a control character, may appear anywhere in a simple address. */
+const FORBIDDEN_EMAIL_CHARS = new Set(['"', ',', ';', ':', '<', '>', '(', ')', '[', ']', '\\']);
+
+// eslint-disable-next-line no-control-regex -- the control-character range is deliberately excluded
+const EMAIL_WHITESPACE_OR_CONTROL_RE = /[\s\x00-\x1f\x7f]/;
+
+/**
+ * A simple address: exactly one `@`, non-empty local and domain parts, at least one dot in the
+ * domain, and none of `" , ; < > ( ) [ ] : \` or whitespace/control characters anywhere — the
+ * same rule `LeadValidator::validate_email()` applies after `FILTER_VALIDATE_EMAIL`. That
+ * underlying PHP validator (and this contract's own looser, prior check) both accept a quoted
+ * local part like `"a,b"@example.com`, which Gmail's own `sendTo` splits on the comma into a
+ * second recipient — so both `customer.email` and `team_email` are checked against this one rule.
+ * Written as plain string operations, not one nested-quantifier regex, so there's no backtracking
+ * blow-up to reason about on an adversarial input.
+ */
+function isSimpleEmail(value: string): boolean {
+  if (EMAIL_WHITESPACE_OR_CONTROL_RE.test(value)) return false;
+  for (const char of value) {
+    if (FORBIDDEN_EMAIL_CHARS.has(char)) return false;
+  }
+
+  const atIndex = value.indexOf('@');
+  if (atIndex <= 0 || atIndex !== value.lastIndexOf('@')) return false;
+
+  const domain = value.slice(atIndex + 1);
+  return domain.length > 0 && domain.includes('.') && !domain.startsWith('.') && !domain.endsWith('.');
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -109,15 +135,29 @@ function codePointLength(value: string): number {
   return Array.from(value).length;
 }
 
+// eslint-disable-next-line no-control-regex -- the control-character range is the whole point of this check
+const CONTROL_CHARACTER_RE = /[\x00-\x1f\x7f\u0085\u2028\u2029]/;
+
+/**
+ * True if `value` contains a C0 control, DEL, NEL (U+0085), LINE SEPARATOR (U+2028), or PARAGRAPH
+ * SEPARATOR (U+2029). `LeadValidator::validate_name()` normalizes this exact set to a single
+ * space, so a genuine WordPress payload never carries one here — this keeps the contract exactly
+ * as strict as the PHP side for the fields that land, unescaped, in a plain-text email, where any
+ * of these could otherwise forge an extra line.
+ */
+function hasControlCharacter(value: string): boolean {
+  return CONTROL_CHARACTER_RE.test(value);
+}
+
 function parseCustomer(value: unknown): Lead['customer'] | null {
   if (!isRecord(value) || !hasOnlyKeys(value, ['name', 'phone', 'email'])) return null;
   const { name, phone, email } = value;
 
-  if (typeof name !== 'string') return null;
+  if (typeof name !== 'string' || hasControlCharacter(name)) return null;
   const nameLength = codePointLength(name);
   if (nameLength < 2 || nameLength > 100) return null;
   if (typeof phone !== 'string' || !/^\d{10,15}$/.test(phone)) return null;
-  if (typeof email !== 'string' || email.length > 254 || !email.includes('@')) return null;
+  if (typeof email !== 'string' || email.length > 254 || !isSimpleEmail(email)) return null;
 
   return { name, phone, email };
 }
@@ -128,8 +168,8 @@ function parseMove(value: unknown): Lead['move'] | null {
 
   if (typeof type !== 'string' || !MOVE_TYPES.has(type)) return null;
   if (typeof rooms !== 'number' || !Number.isInteger(rooms) || rooms < 1 || rooms > 5) return null;
-  if (typeof origin !== 'string' || origin.length === 0) return null;
-  if (typeof destination !== 'string' || destination.length === 0) return null;
+  if (typeof origin !== 'string' || origin.length === 0 || hasControlCharacter(origin)) return null;
+  if (typeof destination !== 'string' || destination.length === 0 || hasControlCharacter(destination)) return null;
   if (typeof distanceKm !== 'number' || !Number.isInteger(distanceKm) || distanceKm < 0) return null;
   if (typeof date !== 'string' || !isValidCalendarDate(date)) return null;
   if (!Array.isArray(extras) || !extras.every((extra): extra is string => typeof extra === 'string' && EXTRAS.has(extra))) return null;
@@ -185,7 +225,7 @@ export function parseLead(value: unknown): Lead | null {
   // site_name is WordPress's raw, unsanitized blog title (get_bloginfo('name')), which is blank
   // once a merchant clears Settings → General → Site Title; any string, including '', is valid.
   if (typeof siteName !== 'string') return null;
-  if (typeof teamEmail !== 'string' || !EMAIL_RE.test(teamEmail)) return null;
+  if (typeof teamEmail !== 'string' || !isSimpleEmail(teamEmail)) return null;
 
   const parsedCustomer = parseCustomer(customer);
   if (!parsedCustomer) return null;

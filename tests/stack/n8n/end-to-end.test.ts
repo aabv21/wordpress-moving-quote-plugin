@@ -3,7 +3,15 @@ import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { waitForWebhookAuthProtected } from '../../../scripts/lib/health.ts';
 import { createPendingRowParker, deleteCreatedLeads, validLead } from '../lib/leads.ts';
-import { required, resetRateLimits, rest, restNonce, sqlApp, sqlWp, table, wp } from '../lib/stack.ts';
+import { googleCredentialsConfigured, required, resetRateLimits, rest, restNonce, sqlApp, sqlWp, table, wp } from '../lib/stack.ts';
+
+// Every case here submits a real lead through the whole chain, which process-lead picks up
+// fire-and-forget. Once the owner wires in a real Google credential, that would append a test
+// lead to the real sheet and email the real team — so this whole file skips instead.
+const skipForLiveGoogle = await googleCredentialsConfigured();
+if (skipForLiveGoogle) {
+  console.log('skipping end-to-end delivery tests: a Google credential is configured in n8n (would reach the real sheet and inbox)');
+}
 
 const execFileAsync = promisify(execFile);
 
@@ -45,7 +53,7 @@ async function deleteProcessedEvents(): Promise<void> {
   deliveredRequestUuids.clear();
 }
 
-describe('end-to-end delivery through the real n8n instance', () => {
+describe.skipIf(skipForLiveGoogle)('end-to-end delivery through the real n8n instance', () => {
   let nonce: string;
 
   beforeAll(async () => {

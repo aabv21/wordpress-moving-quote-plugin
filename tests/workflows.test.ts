@@ -57,6 +57,26 @@ it('no Execute Workflow node anywhere in workflows/ sets retryOnFail', () => {
   }
 });
 
+it('every Google Sheets and Gmail node across workflows/ retries 3 times with a 1000 ms wait', () => {
+  const matches = [...allNodesOfType('n8n-nodes-base.googleSheets'), ...allNodesOfType('n8n-nodes-base.gmail')];
+  expect(matches.length).toBeGreaterThan(0);
+  for (const { file, node: n } of matches) {
+    expect(n.retryOnFail, `${file} › ${n.name}`).toBe(true);
+    expect(n.maxTries, `${file} › ${n.name}`).toBe(3);
+    expect(n.waitBetweenTries, `${file} › ${n.name}`).toBe(1000);
+  }
+});
+
+it('no workflow in workflows/ anchors a cross-node reference with .item', () => {
+  for (const path of listJsonFiles('workflows')) {
+    const wf = readWorkflow(path);
+    for (const n of wf.nodes) {
+      const serialized = JSON.stringify(n.parameters);
+      expect(serialized, `${basename(path)} › ${n.name}`).not.toMatch(/\$\([^)]*\)\.item\b/);
+    }
+  }
+});
+
 describe('lead-intake.json', () => {
   const wf = readWorkflow('workflows/lead-intake.json');
 
@@ -130,5 +150,129 @@ describe('lead-intake.json', () => {
       [{ node: 'Respond accepted', type: 'main', index: 0 }],
       [{ node: 'Respond duplicate', type: 'main', index: 0 }],
     ]);
+  });
+
+  it('wires "Respond accepted" to the fire-and-forget hand-off, with "Prepare lead" anchored on .first()', () => {
+    const connections = wf.connections as Record<string, { main: { node: string; type: string; index: number }[][] }>;
+    expect(connections['Respond accepted']?.main).toEqual([[{ node: 'Prepare lead', type: 'main', index: 0 }]]);
+    expect(connections['Prepare lead']?.main).toEqual([[{ node: 'Process lead', type: 'main', index: 0 }]]);
+
+    const assignments = (node(wf, 'Prepare lead').parameters.assignments as { assignments: { name: string; value: string }[] }).assignments;
+    expect(assignments.find((a) => a.name === 'lead')?.value).toBe("={{ $('Verify request').first().json.lead }}");
+    expect(assignments.find((a) => a.name === 'config')?.value).toBe("={{ $('Parse config').first().json.config }}");
+  });
+
+  it('pins "Process lead" to call cvbProcessLead01 by ID, fire-and-forget', () => {
+    const n = node(wf, 'Process lead');
+    expect(n.typeVersion).toBe(1.4);
+    expect(n.parameters.source).toBe('database');
+    expect(n.parameters.workflowId).toEqual({ __rl: true, mode: 'id', value: 'cvbProcessLead01' });
+    expect(n.parameters.mode).toBe('each');
+    expect((n.parameters.options as { waitForSubWorkflow?: boolean }).waitForSubWorkflow).toBe(false);
+  });
+});
+
+describe('process-lead.json', () => {
+  const wf = readWorkflow('workflows/process-lead.json');
+
+  it('pins "When called" to accept all data with no declared schema', () => {
+    const n = node(wf, 'When called');
+    expect(n.parameters.inputSource).toBe('passthrough');
+  });
+
+  it('pins "Row fields" to JSON mode over $json.row', () => {
+    const n = node(wf, 'Row fields');
+    expect(n.parameters.mode).toBe('raw');
+    expect(n.parameters.jsonOutput).toBe('={{ $json.row }}');
+  });
+
+  it('wires every node in order, with no extra fan-out', () => {
+    const connections = wf.connections as Record<string, { main: { node: string; type: string; index: number }[][] }>;
+    expect(connections).toEqual({
+      'When called': { main: [[{ node: 'Map lead', type: 'main', index: 0 }]] },
+      'Map lead': { main: [[{ node: 'Row fields', type: 'main', index: 0 }]] },
+      'Row fields': { main: [[{ node: 'Append lead row', type: 'main', index: 0 }]] },
+      'Append lead row': {
+        main: [
+          [
+            { node: 'Email team', type: 'main', index: 0 },
+            { node: 'Email customer', type: 'main', index: 0 },
+          ],
+        ],
+      },
+    });
+  });
+
+  it('pins "Append lead row": append, autoMapInputData, RAW cell format, and the config-driven document/sheet locators', () => {
+    const n = node(wf, 'Append lead row');
+    expect(n.parameters.resource).toBe('sheet');
+    expect(n.parameters.operation).toBe('append');
+    expect(n.parameters.documentId).toEqual({
+      __rl: true,
+      mode: 'id',
+      value: "={{ $('When called').first().json.config.google.leads_sheet_id }}",
+    });
+    expect(n.parameters.sheetName).toEqual({
+      __rl: true,
+      mode: 'name',
+      value: "={{ $('When called').first().json.config.google.leads_tab }}",
+    });
+    expect((n.parameters.columns as { mappingMode?: string }).mappingMode).toBe('autoMapInputData');
+    expect((n.parameters.options as { cellFormat?: string }).cellFormat).toBe('RAW');
+    expect(n.retryOnFail).toBe(true);
+    expect(n.maxTries).toBe(3);
+    expect(n.waitBetweenTries).toBe(1000);
+  });
+
+  it('pins "Email team" as plain text, anchored on "Map lead"', () => {
+    const n = node(wf, 'Email team');
+    expect(n.parameters.emailType).toBe('text');
+    expect(n.parameters.sendTo).toBe("={{ $('Map lead').first().json.team.to }}");
+    expect(n.parameters.subject).toBe("={{ $('Map lead').first().json.team.subject }}");
+    expect(n.parameters.message).toBe("={{ $('Map lead').first().json.team.text }}");
+    const options = n.parameters.options as { appendAttribution?: boolean; senderName?: string };
+    expect(options.appendAttribution).toBe(false);
+    expect(options.senderName).toBe("={{ $('Map lead').first().json.sender_name }}");
+  });
+
+  it('pins "Email customer" as HTML with a reply-to set to the team address', () => {
+    const n = node(wf, 'Email customer');
+    expect(n.parameters.emailType).toBe('html');
+    expect(n.parameters.sendTo).toBe("={{ $('Map lead').first().json.customer.to }}");
+    expect(n.parameters.subject).toBe("={{ $('Map lead').first().json.customer.subject }}");
+    expect(n.parameters.message).toBe("={{ $('Map lead').first().json.customer.html }}");
+    const options = n.parameters.options as { appendAttribution?: boolean; replyTo?: string; senderName?: string };
+    expect(options.appendAttribution).toBe(false);
+    expect(options.replyTo).toBe("={{ $('Map lead').first().json.customer.reply_to }}");
+    expect(options.senderName).toBe("={{ $('Map lead').first().json.sender_name }}");
+  });
+});
+
+describe('error-handler.json', () => {
+  const wf = readWorkflow('workflows/error-handler.json');
+
+  it('carries no settings.errorWorkflow, so a failure here never loops back into itself', () => {
+    expect((wf.settings as { errorWorkflow?: string }).errorWorkflow).toBeUndefined();
+  });
+
+  it('pins "Read config" with alwaysOutputData and executeOnce, matching lead-intake\'s own defense in depth', () => {
+    const n = node(wf, 'Read config');
+    expect(n.alwaysOutputData).toBe(true);
+    expect(n.executeOnce).toBe(true);
+  });
+
+  it('pins "Email operator" as a plain-text alert anchored on "On workflow error", with optional chaining and fallbacks', () => {
+    const n = node(wf, 'Email operator');
+    expect(n.parameters.emailType).toBe('text');
+    expect(n.parameters.sendTo).toBe('={{ $json.config.alerts.error_email }}');
+    expect(n.parameters.subject).toBe(
+      "=[Chivabox demo] Workflow failed: {{ (({ workflow }) => workflow?.name ?? 'unknown workflow')($('On workflow error').first().json) }}",
+    );
+    const message = n.parameters.message as string;
+    expect(message).toContain("$('On workflow error').first().json");
+    expect(message).toContain('execution?.lastNodeExecuted ?? ');
+    expect(message).toContain('execution?.error?.message ?? trigger?.error?.message ?? ');
+    expect(message).toContain("execution?.url ?? 'n/a (activation error)'");
+    expect(message).toContain("America/Bogota");
   });
 });

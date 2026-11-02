@@ -6,9 +6,9 @@ namespace Chivabox\MovingQuote\Leads;
 use Chivabox\MovingQuote\Pricing\{DistanceTable, Extra, MoveType, QuoteInput};
 
 /**
- * Validates and normalizes a quote or lead submission against the rules in Global Constraints ›
- * Limits, collecting every error instead of stopping at the first one. Never calls a WordPress
- * function: every message is a stable code, mapped to display text by `Rest\Messages`.
+ * Validates and normalizes a quote or lead submission against the plugin's limits, collecting every
+ * error instead of stopping at the first one. Never calls a WordPress function: every message is a
+ * stable code, mapped to display text by `Rest\Messages`.
  */
 final class LeadValidator {
 	private const ROOMS_MIN                = 1;
@@ -249,6 +249,14 @@ final class LeadValidator {
 		return $value;
 	}
 
+	/**
+	 * C0 controls, DEL, NEL, LINE SEPARATOR, and PARAGRAPH SEPARATOR — the set a `LeadController`
+	 * REST submission can still carry, since `LeadController` passes the raw JSON body straight to
+	 * this validator with no `sanitize_text_field()` pass first (that function exists, but nothing
+	 * calls it for this route).
+	 */
+	private const CONTROL_CHARACTER_PATTERN = '/[\x{0000}-\x{001F}\x{007F}\x{0085}\x{2028}\x{2029}]+/u';
+
 	/** @param array<string, string> $errors */
 	private static function validate_name( mixed $value, array &$errors ): string {
 		if ( null === $value ) {
@@ -259,7 +267,14 @@ final class LeadValidator {
 			$errors['name'] = 'invalid';
 			return '';
 		}
-		$trimmed = trim( $value );
+		$normalized = preg_replace( self::CONTROL_CHARACTER_PATTERN, ' ', $value );
+		if ( null === $normalized ) {
+			// preg_replace() returns null only on a PCRE-level failure, which for this pattern
+			// means $value isn't valid UTF-8 (the /u modifier refuses to run on it).
+			$errors['name'] = 'invalid';
+			return '';
+		}
+		$trimmed = trim( $normalized );
 		$length  = mb_strlen( $trimmed );
 		if ( $length < self::NAME_MIN_LEN ) {
 			$errors['name'] = 'too_short';
@@ -295,6 +310,14 @@ final class LeadValidator {
 		return $digits;
 	}
 
+	/**
+	 * A simple address only: none of `" , ; < > ( ) [ ] : \`, and no whitespace or control
+	 * character, anywhere in the value. `FILTER_VALIDATE_EMAIL` alone accepts a quoted local part
+	 * such as `"a,b"@example.com`, which n8n's Gmail node splits on the comma into a second
+	 * recipient — this rejects exactly what that quoting would otherwise smuggle through.
+	 */
+	private const FORBIDDEN_EMAIL_CHARACTER_PATTERN = '/[\s\x{0000}-\x{001F}\x{007F}"(),;:<>[\]\\\\]/u';
+
 	/** @param array<string, string> $errors */
 	private static function validate_email( mixed $value, array &$errors ): string {
 		if ( null === $value ) {
@@ -302,6 +325,10 @@ final class LeadValidator {
 			return '';
 		}
 		if ( ! is_string( $value ) || mb_strlen( $value ) > self::EMAIL_MAX_LEN || false === filter_var( $value, FILTER_VALIDATE_EMAIL ) ) {
+			$errors['email'] = 'invalid';
+			return '';
+		}
+		if ( 1 === preg_match( self::FORBIDDEN_EMAIL_CHARACTER_PATTERN, $value ) ) {
 			$errors['email'] = 'invalid';
 			return '';
 		}

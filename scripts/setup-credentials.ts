@@ -59,9 +59,10 @@ function isExecError(err: unknown): err is { stdout: string } {
  * IDs already in n8n, read from an (encrypted) CLI export — never the decrypted credential data.
  * Exported to a file rather than read from stdout: the CLI prints its own "Acquiring database
  * migration lock..." line to stdout ahead of the JSON payload, which would otherwise break
- * JSON.parse.
+ * JSON.parse. Exported so a stack test can check whether a Google credential has been wired in
+ * without ever decrypting it, matching the same detection this module's own setup uses.
  */
-async function existingCredentialIds(): Promise<Set<string>> {
+export async function existingCredentialIds(): Promise<Set<string>> {
   try {
     await compose(['exec', '-T', 'n8n', 'n8n', 'export:credentials', '--all', `--output=/import/${EXISTING_FILE_NAME}`]);
   } catch (err) {

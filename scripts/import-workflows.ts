@@ -19,12 +19,41 @@ function errorDetail(err: unknown): string {
   return typeof stdout === 'string' && stdout.trim() !== '' ? `${err.message}\n${stdout.trim()}` : err.message;
 }
 
+/** Every `manifestIds` entry not present in `seenIds`, in manifest order. */
+export function missingWorkflowIds(manifestIds: readonly string[], seenIds: ReadonlySet<string>): string[] {
+  return manifestIds.filter((id) => !seenIds.has(id));
+}
+
+async function seenWorkflowIds(): Promise<Set<string>> {
+  const { stdout } = await compose(['exec', '-T', 'n8n', 'n8n', 'list:workflow', '--onlyId']);
+  return new Set(stdout.split('\n').map((line) => line.trim()).filter((line) => line !== ''));
+}
+
+/**
+ * Imports every file in `workflows/`, then verifies each manifest id actually landed (a read-only
+ * `list:workflow`), retrying the import once on a miss — `import:workflow` can exit 0 having
+ * silently skipped a file still settling onto the bind mount right after it was written. Throws,
+ * naming the still-missing ids, if a retry doesn't recover them.
+ */
+async function importAndVerify(manifestIds: readonly string[]): Promise<void> {
+  await compose(['exec', '-T', 'n8n', 'n8n', 'import:workflow', '--separate', '--input=/workflows']);
+
+  let missing = missingWorkflowIds(manifestIds, await seenWorkflowIds());
+  if (missing.length === 0) return;
+
+  await compose(['exec', '-T', 'n8n', 'n8n', 'import:workflow', '--separate', '--input=/workflows']);
+  missing = missingWorkflowIds(manifestIds, await seenWorkflowIds());
+  if (missing.length > 0) {
+    throw new Error(`import:workflow did not bring in: ${missing.join(', ')} (checked twice)`);
+  }
+}
+
 export async function importWorkflows(): Promise<void> {
   loadDotEnv();
 
   const hasFiles = listJsonFiles(WORKFLOWS_DIR).length > 0;
   if (hasFiles) {
-    await compose(['exec', '-T', 'n8n', 'n8n', 'import:workflow', '--separate', '--input=/workflows']);
+    await importAndVerify(WORKFLOWS.map((entry) => entry.id));
   }
 
   let publishedCount = 0;

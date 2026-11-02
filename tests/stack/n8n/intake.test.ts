@@ -4,9 +4,20 @@ import { existsSync, readFileSync, renameSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { signHs256 } from '../lib/jwt.ts';
-import { psqlAs, required, sqlApp } from '../lib/stack.ts';
+import { findExecutionIdFor } from '../lib/execution-data.ts';
+import { googleCredentialsConfigured, psqlAs, required, sqlApp } from '../lib/stack.ts';
+
+const LEAD_INTAKE_WORKFLOW_ID = 'cvbLeadIntake001';
 
 const execFileAsync = promisify(execFile);
+
+// A case whose post gets `accepted` hands the lead to `process-lead` fire-and-forget. Once Google
+// is wired in, that would append a test row to the real sheet and email the real team on every
+// run of this file — so those specific cases skip instead, the same way end-to-end.test.ts does.
+const skipForLiveGoogle = await googleCredentialsConfigured();
+if (skipForLiveGoogle) {
+  console.log('skipping accepted-lead cases in intake.test.ts: a Google credential is configured in n8n (would reach the real sheet and inbox)');
+}
 
 const FIXTURE = JSON.parse(readFileSync('tests/fixtures/lead-payload.json', 'utf8')) as Record<string, unknown>;
 const TOKEN_LIFETIME_SECONDS = 300;
@@ -76,25 +87,6 @@ async function waitForConfigVisibility(expected: boolean, deadlineMs: number): P
   }
 }
 
-/**
- * Finds the one n8n execution whose stored `execution_data.data` contains `requestUuid` — a
- * read-only `position()` match (not `LIKE`, since base64url's `_` is a wildcard character there;
- * irrelevant here, but kept consistent with every other needle this file searches for). A
- * `request_uuid` is never secret, so it's the one thing this file searches n8n's own tables by;
- * it never searches by a token or any part of one. Throws if zero or more than one execution
- * matches, since every case here submits exactly one fresh, unique lead.
- */
-async function findExecutionId(requestUuid: string): Promise<number> {
-  const rows = await psqlAs(
-    required('N8N_DB_USER'),
-    'n8n',
-    `SELECT "executionId" FROM execution_data WHERE position('${requestUuid}' IN data) > 0`,
-  );
-  const ids = rows.split('\n').filter((line) => line !== '');
-  if (ids.length !== 1) throw new Error(`expected exactly one execution for ${requestUuid}, found ${String(ids.length)}`);
-  return Number(ids[0]);
-}
-
 interface ExecutionState {
   status: string;
   deletedAt: string | null;
@@ -147,7 +139,7 @@ describe('lead intake webhook', () => {
     createdEventIds.clear();
   });
 
-  it('accepts a validly signed lead and records it once', async () => {
+  it.skipIf(skipForLiveGoogle)('accepts a validly signed lead and records it once', async () => {
     const { text, requestUuid } = buildBody();
     createdEventIds.add(requestUuid);
     const token = signBody(text, requestUuid, secret);
@@ -167,7 +159,7 @@ describe('lead intake webhook', () => {
   // rather than at `EXECUTIONS_DATA_MAX_AGE`. This case asserts exactly that, read-only — never
   // deleting an n8n row itself, which is n8n's own job on its own schedule — see AGENTS.md for
   // the full mechanism and what bounds the risk in between.
-  it('a successful run is soft-deleted for the next hard-delete cycle, not kept until EXECUTIONS_DATA_MAX_AGE', async () => {
+  it.skipIf(skipForLiveGoogle)('a successful run is soft-deleted for the next hard-delete cycle, not kept until EXECUTIONS_DATA_MAX_AGE', async () => {
     const { text, requestUuid } = buildBody();
     createdEventIds.add(requestUuid);
     const token = signBody(text, requestUuid, secret);
@@ -176,12 +168,12 @@ describe('lead intake webhook', () => {
     expect(res.status).toBe(200);
     expect(res.json).toEqual({ status: 'accepted' });
 
-    const executionId = await findExecutionId(requestUuid);
+    const executionId = await findExecutionIdFor(LEAD_INTAKE_WORKFLOW_ID, requestUuid);
     const state = await waitForSoftDelete(executionId, 5_000);
     expect(state.deletedAt).not.toBeNull();
   });
 
-  it('answers duplicate for a replay of the same body with a fresh token, and still counts one row', async () => {
+  it.skipIf(skipForLiveGoogle)('answers duplicate for a replay of the same body with a fresh token, and still counts one row', async () => {
     const { text, requestUuid } = buildBody();
     createdEventIds.add(requestUuid);
     const firstToken = signBody(text, requestUuid, secret);
@@ -216,7 +208,7 @@ describe('lead intake webhook', () => {
       expect(res.status).toBeGreaterThanOrEqual(500);
       expect(await processedCount(requestUuid)).toBe(0);
 
-      const executionId = await findExecutionId(requestUuid);
+      const executionId = await findExecutionIdFor(LEAD_INTAKE_WORKFLOW_ID, requestUuid);
       const state = await readExecutionState(executionId);
       expect(state.status).toBe('error');
       expect(state.deletedAt).toBeNull();
@@ -315,7 +307,7 @@ describe('lead intake webhook', () => {
     expect(res.json).toEqual({ status: 'rejected', reason: 'jti_mismatch' });
   });
 
-  it('five concurrent deliveries of one fresh lead give exactly one accepted and four duplicate, with one row recorded', async () => {
+  it.skipIf(skipForLiveGoogle)('five concurrent deliveries of one fresh lead give exactly one accepted and four duplicate, with one row recorded', async () => {
     const { text, requestUuid } = buildBody();
     createdEventIds.add(requestUuid);
 

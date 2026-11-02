@@ -1,0 +1,159 @@
+{
+  "id": "cvbErrorHandler1",
+  "name": "Error handler",
+  "description": null,
+  "nodes": [
+    {
+      "id": "stickyErrorHandler1",
+      "name": "Sticky Note: Error handler",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        -260
+      ],
+      "parameters": {
+        "content": "## Error handler\nRuns whenever a workflow with `errorWorkflow` set to this one fails, including a trigger or activation error, which carries no `execution` key. Reads config itself (not through a sub-workflow), then emails the operator a plain-text alert naming the failed node, the error, the execution URL, and the time in Bogota. This workflow carries no `errorWorkflow` of its own, so a failure here does not loop back into itself.",
+        "height": 300,
+        "width": 700,
+        "color": 4
+      }
+    },
+    {
+      "id": "nodeOnWorkflowErr1",
+      "name": "On workflow error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        100
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "nodeReadConfig0002",
+      "name": "Read config",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        100
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/files/config/config.json"
+      }
+    },
+    {
+      "id": "nodeParseConfig002",
+      "name": "Parse config",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        100
+      ],
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "data",
+        "destinationKey": "config"
+      }
+    },
+    {
+      "id": "stickyEmailOperator1",
+      "name": "Sticky Note: Email operator",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -260
+      ],
+      "parameters": {
+        "content": "## Email operator\nEvery field anchors on `$('On workflow error').first().json`, with optional chaining and fallbacks, because `$json` here is `{ config }` after \"Parse config\", not the trigger's own output — and a trigger or activation error carries no `execution` key at all, only `trigger`.",
+        "height": 300,
+        "width": 560,
+        "color": 7
+      }
+    },
+    {
+      "id": "nodeEmailOperator1",
+      "name": "Email operator",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        640,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.config.alerts.error_email }}",
+        "subject": "=[Chivabox demo] Workflow failed: {{ (({ workflow }) => workflow?.name ?? 'unknown workflow')($('On workflow error').first().json) }}",
+        "emailType": "text",
+        "message": "=Failed node: {{ (({ execution }) => execution?.lastNodeExecuted ?? 'activation')($('On workflow error').first().json) }}\nError: {{ (({ execution, trigger }) => execution?.error?.message ?? trigger?.error?.message ?? 'unknown error')($('On workflow error').first().json) }}\nExecution: {{ (({ execution }) => execution?.url ?? 'n/a (activation error)')($('On workflow error').first().json) }}\nTime: {{ $now.setZone('America/Bogota').toFormat('yyyy-LL-dd HH:mm') }} America/Bogota",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cvbCredGmail0001",
+          "name": "Gmail"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On workflow error": {
+      "main": [
+        [
+          {
+            "node": "Read config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read config": {
+      "main": [
+        [
+          {
+            "node": "Parse config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse config": {
+      "main": [
+        [
+          {
+            "node": "Email operator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
