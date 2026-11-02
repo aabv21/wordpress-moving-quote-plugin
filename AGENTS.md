@@ -23,6 +23,7 @@ What exists today:
 - `plugin/moving-quote/templates/quote-form.php` — the `[moving_quote]` shortcode's markup, included by `Frontend\Shortcode::render()`.
 - `plugin/moving-quote/assets/quote-form.css` — the quote form's stylesheet. `plugin/moving-quote/assets/quote-form.js` is generated; see "The quote form" below.
 - `compose.yaml` — the full local stack: `db` (MySQL), `wordpress`, `wpcli` (idle, for one-off commands), `cron` (the WP-Cron loop sidecar), `postgres`, `n8n`, and `php` (the tools image). See "The local stack" below.
+- `compose.queue.yaml` — an optional override that adds Redis and `n8n-worker` containers for queue mode; see Commands.
 - `db/schema.sql`, `db/init/01-app.sh` — the app Postgres database schema (table `processed_events`, for n8n idempotency) and the one-time role/database bootstrap script.
 - `config/config.example.json` — the n8n runtime config template (`google.leads_sheet_id`, `google.leads_tab`, `alerts.error_email`); a developer's own `config/config.json` is gitignored. CI's `stack` job copies the example file in place, since nothing in that job needs real values.
 - `setup.sh` — installs and configures WordPress idempotently against the running stack. See "The local stack" below.
@@ -62,6 +63,8 @@ Planned, added in later tasks:
 - `docker compose up -d --wait` — start every service and wait for all of them to report healthy.
 - `./setup.sh` — install and configure WordPress against the running stack. Idempotent; see "The local stack" below.
 - `docker compose down` — stop the stack. Add `-v` to also drop the named volumes (destructive: wipes WordPress, MySQL, Postgres, and n8n's data).
+- `docker compose -f compose.yaml -f compose.queue.yaml up -d --wait --scale n8n-worker=2` — switch to queue mode: adds Redis and the given number of `n8n-worker` containers, which run executions instead of the main process. `n8n-worker` extends `compose.yaml`'s own `n8n` service (same encryption key, database settings, and read-only `/files` mounts), with its published port reset so it scales past one replica without a conflict.
+- `docker compose -f compose.yaml -f compose.queue.yaml down && docker compose up -d --wait` — return to the regular, single-process stack. Plain `down`, with no `-v`, keeps the named volumes.
 - `npm run test:stack` — the full stack suite (`tests/stack/**`) against `vitest.stack.config.ts`: needs the whole stack (MySQL, WordPress, WP-CLI, Postgres, n8n) healthy and `./setup.sh` already run.
 - `npm run test:stack:wp` — only `tests/stack/wp/`, the subset that needs just MySQL, WordPress, and WP-CLI. This is what CI's `stack` job runs on every PR.
 - `npm run build:workflows` — bundles each `src/nodes/*.ts` Code node with esbuild into its node's `jsCode`, and sets its `notes` to `Why Code: <why>`. Add `-- --check` to fail (exit 1) if the committed JSON doesn't match the source, without writing — that's what CI runs.

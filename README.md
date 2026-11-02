@@ -71,3 +71,7 @@ Once the stack is up:
 PHP runs only inside Docker: there is no local `php` or `composer`. `npm run php -- <command>` runs `<command>` in the PHP tools container.
 
 Only one of this series' demo stacks can run at a time: every demo binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up.
+
+## Scaling
+
+`compose.queue.yaml` is an optional override that switches n8n to queue mode: Redis plus `n8n-worker` containers that run executions instead of the main process. `docker compose -f compose.yaml -f compose.queue.yaml up -d --wait --scale n8n-worker=2` brings up the local stack with two workers; each inherits the same read-only `/files` mounts, encryption key, and database settings as `n8n` (`extends` against `compose.yaml`'s own `n8n` service). Verified locally: the full intake suite passes against two workers, including the five-concurrent-deliveries case (exactly one `accepted`), and the workers' own logs show them starting and finishing executions. `docker compose -f compose.yaml -f compose.queue.yaml down && docker compose up -d --wait` returns to the regular, single-process stack.

@@ -67,22 +67,43 @@ async function processedCount(requestUuid: string): Promise<number> {
   return Number(await sqlApp(`SELECT count(*) FROM processed_events WHERE event_id = '${requestUuid}'`));
 }
 
-/** Whether `/files/config/config.json` currently exists inside the `n8n` container (its own view of the bind mount, not the host's). */
-async function configVisibleInContainer(): Promise<boolean> {
+/**
+ * IDs of every currently running `n8n-worker` container, discovered through the queue-mode
+ * override file directly (so this works whether or not the stack was brought up with it on the
+ * command line). Empty when queue mode isn't active — the override declares the service, but
+ * `--scale n8n-worker=0` or a regular-mode `up` leaves none running.
+ */
+async function runningWorkerContainerIds(): Promise<string[]> {
+  const { stdout } = await execFileAsync('docker', ['compose', '-f', 'compose.yaml', '-f', 'compose.queue.yaml', 'ps', '-q', 'n8n-worker']);
+  return stdout.split('\n').map((line) => line.trim()).filter((line) => line !== '');
+}
+
+/** Whether `/files/config/config.json` currently exists inside the given container's own view of the bind mount (not the host's). `target` is a service name for `docker compose exec`, or a container id for a scaled replica `docker exec` reaches directly. */
+async function configVisibleInContainer(target: string, byContainerId: boolean): Promise<boolean> {
   try {
-    await execFileAsync('docker', ['compose', 'exec', '-T', 'n8n', 'test', '-e', '/files/config/config.json']);
+    if (byContainerId) await execFileAsync('docker', ['exec', target, 'test', '-e', '/files/config/config.json']);
+    else await execFileAsync('docker', ['compose', 'exec', '-T', target, 'test', '-e', '/files/config/config.json']);
     return true;
   } catch {
     return false;
   }
 }
 
-/** Polls `configVisibleInContainer()` until it matches `expected`, or throws once `deadlineMs` elapses — replacing a fixed sleep with the actual condition this test depends on. */
+/**
+ * Polls every container that runs executions — `n8n`, plus every running `n8n-worker` replica —
+ * until all of them agree on `expected`, or throws once `deadlineMs` elapses. In queue mode,
+ * executions run on the workers, not on `n8n` itself, so the missing-config case would otherwise
+ * race: `n8n` could see the renamed file disappear well before a worker's own view catches up,
+ * and a lead sent in that gap would still find the file on the worker that picks it up.
+ */
 async function waitForConfigVisibility(expected: boolean, deadlineMs: number): Promise<void> {
   const deadline = Date.now() + deadlineMs;
   for (;;) {
-    if ((await configVisibleInContainer()) === expected) return;
-    if (Date.now() >= deadline) throw new Error(`config.json did not become ${expected ? 'visible' : 'invisible'} to the n8n container within ${String(deadlineMs)} ms`);
+    const workerIds = await runningWorkerContainerIds();
+    const checks = [configVisibleInContainer('n8n', false), ...workerIds.map((id) => configVisibleInContainer(id, true))];
+    const results = await Promise.all(checks);
+    if (results.every((visible) => visible === expected)) return;
+    if (Date.now() >= deadline) throw new Error(`config.json did not become ${expected ? 'visible' : 'invisible'} to n8n and every running n8n-worker container within ${String(deadlineMs)} ms`);
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 }
