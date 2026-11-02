@@ -50,16 +50,21 @@ export function writeEnvFile(path: string, text: string): void {
 
 /**
  * Creates `path` at mode 0700 if it doesn't exist yet, and leaves it (and whatever it already
- * holds) alone otherwise — never removed or recreated. Without this, Docker Compose creates the
- * bind-mounted `.n8n-import/` itself on first `up`, owned by `root` on Linux, which then blocks
- * `pnpm run setup`'s own credential import from writing into it.
+ * holds) alone otherwise — never removed or recreated. No credential data crosses this directory:
+ * `setup-credentials.ts` streams credentials into the `n8n` container over stdin and reads the
+ * existing-credentials export back over stdout, entirely inside the container's own `/tmp`. The
+ * directory serves only `pnpm run export` (`export-workflows.ts` writes its output under
+ * `.n8n-import/export`, recreating that one subdirectory itself with `mkdirSync`, which defaults
+ * to 0755); without this function, Docker Compose would instead create the bind-mounted
+ * `.n8n-import/` itself on first `up`, owned by `root` on Linux, before `export-workflows.ts`
+ * ever gets to create its own subdirectory under it.
  *
  * NOTE: mode 0700 only lets the n8n container's own `node` user (uid 1000) write into this
  * directory when the host's own uid running this script is also 1000 — true for the first user
  * account on most single-user Linux installs, but not guaranteed. A host uid that doesn't match
  * still leaves the directory root-owned from the n8n container's point of view (bind mounts carry
- * the host's uid numbers through as-is, with no remapping), reproducing the same import failure
- * this function exists to avoid. Docker Desktop's own Linux VM sidesteps this entirely: every
+ * the host's uid numbers through as-is, with no remapping), reproducing the same problem this
+ * function exists to avoid. Docker Desktop's own Linux VM sidesteps this entirely: every
  * bind-mounted file appears owned by whatever uid the container process runs as, not the macOS
  * or Windows host's own uid, so this ceiling is Linux-host-only.
  */

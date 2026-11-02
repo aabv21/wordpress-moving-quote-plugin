@@ -77,3 +77,10 @@ it('existingCredentialIds rethrows any other failure', async () => {
   composeMock.mockRejectedValueOnce(Object.assign(new Error('exit 1'), { stdout: '', stderr: 'permission denied' }));
   await expect(existingCredentialIds()).rejects.toThrow('exit 1');
 });
+
+it('existingCredentialIds throws a fixed message, not the unparseable export, when stdout is not JSON', async () => {
+  const corruptStdout = 'Acquiring database migration lock...\n{"id":"cvbCredAppDb0001", truncated';
+  composeMock.mockResolvedValue({ stdout: corruptStdout, stderr: '' });
+  await expect(existingCredentialIds()).rejects.toThrow('could not parse the credential listing from n8n export:credentials');
+  await expect(existingCredentialIds()).rejects.not.toThrow(/cvbCredAppDb0001|truncated|migration lock/);
+});

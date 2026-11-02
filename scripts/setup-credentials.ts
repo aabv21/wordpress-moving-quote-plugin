@@ -95,7 +95,12 @@ export async function existingCredentialIds(): Promise<Set<string>> {
     throw err;
   }
 
-  const raw = JSON.parse(stdout) as { id: string }[];
+  let raw: { id: string }[];
+  try {
+    raw = JSON.parse(stdout) as { id: string }[];
+  } catch {
+    throw new Error('could not parse the credential listing from n8n export:credentials');
+  }
   return new Set(raw.map((c) => c.id));
 }
 

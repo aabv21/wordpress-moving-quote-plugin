@@ -96,7 +96,7 @@ export async function importWorkflows(): Promise<void> {
       if (n8nUrl) {
         for (const entry of published) {
           if (!entry.webhookPath) continue;
-          const live = await waitForWebhookAuthProtected(n8nUrl, entry.webhookPath, 30_000);
+          const live = await waitForWebhookAuthProtected(n8nUrl, entry.webhookPath, 60_000);
           if (!live) failures.push(`webhook for ${entry.file} never answered 401 (published trigger may not be live)`);
         }
       }
