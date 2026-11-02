@@ -331,6 +331,25 @@ $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $args[0] ) );
       const after = await countLeadRows();
       expect(after).toBe(before);
     });
+
+    it("MySQL's GET_LOCK returns the string '1' on success, which the rate limiter's lock check must keep accepting", async () => {
+      // RateLimiter::acquire_lock() counts only '1' (MySQL) and '1=1' (Playground's SQLite
+      // translator) as granted; this pins the real MySQL value.
+      const script = `
+<?php
+global $wpdb;
+echo $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', 'moving-quote-test-lock', 2 ) );
+`;
+      const stdout = await wp(['eval-file', '-'], script);
+      expect(stdout.trim()).toBe('1');
+
+      const release = `
+<?php
+global $wpdb;
+$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', 'moving-quote-test-lock' ) );
+`;
+      await wp(['eval-file', '-'], release);
+    });
   });
 
   it('a non-duplicate insert failure returns 500 moving_quote_save_failed and logs a PII-free line', async () => {

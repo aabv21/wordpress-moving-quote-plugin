@@ -6,7 +6,7 @@ A custom WordPress plugin that gives instant moving estimates, keeps every reque
 
 ## Status
 
-The repository skeleton, the strict TypeScript toolchain, the PHP toolchain, and CI are in place. The plugin has its skeleton, its pricing engine, its install lifecycle (the leads table, default settings, and the outbox cron schedule), its admin settings page (rates, cities and distances, delivery), its public REST API (an estimate endpoint and a lead-submission endpoint with validation, rate limiting, and deduplication), the customer-facing three-step quote form with a TypeScript frontend bundled by esbuild, signed delivery of every saved lead to n8n, with an inline attempt right after the insert and a cron-driven outbox that retries a failed one with backoff, and an admin Leads page (filtering, paging, per-row status updates, a formula-injection-safe CSV export, retrying a failed delivery, and a stuck-delivery notice). The full local stack (WordPress, MySQL, Postgres, n8n) runs in Docker Compose, and `setup.sh` installs and configures WordPress and the delivery settings idempotently. The n8n workflow tooling (hygiene checks, the Code-node build, import/export, and credential setup) is in place, and all three workflows are published: `lead-intake` verifies a signed lead's JWT and records it once in Postgres; `process-lead` builds the sheet row and the two notification emails and appends/sends them, called fire-and-forget right after `lead-intake` answers; `error-handler` is the shared alert every workflow's `errorWorkflow` points to. The Google Sheets and Gmail credentials aren't wired in yet: `process-lead` fails at the Google Sheets step on every run today, and `error-handler`'s own alert about it needs the same missing Gmail credential, both proven end to end locally (through to the exact failing node, not just "an error happened") rather than left untested until the owner's live session.
+The repository skeleton, the strict TypeScript toolchain, the PHP toolchain, and CI are in place. The plugin has its skeleton, its pricing engine, its install lifecycle (the leads table, default settings, and the outbox cron schedule), its admin settings page (rates, cities and distances, delivery), its public REST API (an estimate endpoint and a lead-submission endpoint with validation, rate limiting, and deduplication), the customer-facing three-step quote form with a TypeScript frontend bundled by esbuild, signed delivery of every saved lead to n8n, with an inline attempt right after the insert and a cron-driven outbox that retries a failed one with backoff, and an admin Leads page (filtering, paging, per-row status updates, a formula-injection-safe CSV export, retrying a failed delivery, and a stuck-delivery notice). The full local stack (WordPress, MySQL, Postgres, n8n) runs in Docker Compose, and `setup.sh` installs and configures WordPress and the delivery settings idempotently. The n8n workflow tooling (hygiene checks, the Code-node build, import/export, and credential setup) is in place, and all three workflows are published: `lead-intake` verifies a signed lead's JWT and records it once in Postgres; `process-lead` builds the sheet row and the two notification emails and appends/sends them, called fire-and-forget right after `lead-intake` answers; `error-handler` is the shared alert every workflow's `errorWorkflow` points to. The Google Sheets and Gmail credentials aren't wired in yet: `process-lead` fails at the Google Sheets step on every run today, and `error-handler`'s own alert about it needs the same missing Gmail credential, both proven end to end locally (through to the exact failing node, not just "an error happened") rather than left untested until the owner's live session. The plugin also runs in WordPress Playground (`playground/blueprint.json`, `playground/blueprint.local.json`), with no server to install: the live estimate, the three-step form, and the thank-you redirect all work against Playground's SQLite-backed WordPress.
 
 ## What works now
 
@@ -40,6 +40,7 @@ The repository skeleton, the strict TypeScript toolchain, the PHP toolchain, and
 - The `error-handler` workflow (`workflows/error-handler.json`, published as `cvbErrorHandler1`) is the shared alert every other workflow's `settings.errorWorkflow` points to. It reads the runtime config itself (not through a sub-workflow, so a missing config fails it once with no loop) and emails the operator a plain-text alert naming the failed node, the error, the execution URL, and the time in Bogota — every field anchored on the trigger's own output with optional chaining, so it degrades gracefully for a trigger/activation failure that carries no execution data at all. Every expression was proven, inside the running n8n container, against both an execution-error and a trigger-error payload shape with n8n's own `Expression.resolveWithoutWorkflow`.
 - `npm run setup` publishes a workflow whose Google credentials don't exist yet without complaint (credential existence is checked only at execution time); a webhook-started parent and the sub-workflow it calls both always run their currently *published* version, never a newer draft sitting unpublished ahead of it — both confirmed by direct observation against the running instance.
 - Every stack-test case that would reach `process-lead` (`tests/stack/n8n/end-to-end.test.ts`, `tests/stack/n8n/process-lead.test.ts`, and the accepted-lead cases in `tests/stack/n8n/intake.test.ts`) skips itself, with a console message, once either Google credential is configured in n8n — checked from a non-decrypted credential listing, the same way `npm run setup` itself checks — so running the suite after the owner wires Google in never appends a test lead to the real sheet or emails the real team.
+- `playground/blueprint.json` (installs the plugin from GitHub) and `playground/blueprint.local.json` (activates it from a `--mount`ed checkout instead) both create the Home, Get a Quote, and Thank You pages, set the front page, and land on Get a Quote. Verified locally with the local blueprint against `@wp-playground/cli@3.1.61`: the estimate endpoint returns the documented response for an apartment move from Barranquilla to Cartagena, the three-step form shows the same live estimate, a submission redirects to `/thank-you/`, and Moving quotes → Leads lists it with Delivery "Pending" — all with no PHP errors or warnings in the CLI output. Fixed one real SQL-portability gap this surfaced: `RateLimiter::acquire_lock()` only accepted MySQL's exact `'1'` success value from `GET_LOCK()`, but Playground's SQLite translator grants the same (meaningless there) lock as the string `'1=1'`, so every request was being rejected as rate-limited; the check now accepts anything but the two documented failure values, verified against both backends.
 
 ### Deferred live checks
 
@@ -49,6 +50,10 @@ Need the owner's real Google account, done in one session once it's wired in:
 - The team email arrives as plain text with the subject `New lead MQ-…: Barranquilla to Cartagena on …`.
 - The customer email arrives with its reply-to set to the team address and no n8n attribution.
 - With the `Moving leads` tab renamed, a submission produces one "[Chivabox demo] Workflow failed: Process lead" email after 3 tries. With the tab renamed back, retrying that execution from the n8n UI resumes at "Append lead row" and adds the row.
+
+Needs the repository to be public:
+
+- The public Playground link installs the plugin from GitHub (`playground/blueprint.json`'s `installPlugin` step), rather than from the local mount the CLI command uses.
 
 ## Quick start
 
@@ -71,6 +76,18 @@ Once the stack is up:
 PHP runs only inside Docker: there is no local `php` or `composer`. `npm run php -- <command>` runs `<command>` in the PHP tools container.
 
 Only one of this series' demo stacks can run at a time: every demo binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up.
+
+## Try it in Playground
+
+No server needed: [open the plugin in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.json) — works once the repository is public. It installs the plugin straight from this repo, creates the Home, Get a Quote, and Thank You pages, and lands on Get a Quote with a working live estimate. Delivery to n8n stays off, since the webhook settings are empty.
+
+To run the same thing locally against the plugin files on disk, with no checkout of this repo needed on Playground's own servers:
+
+```sh
+npx @wp-playground/cli@3.1.61 server --php=8.3 --port=9400 --mount=./plugin/moving-quote:/wordpress/wp-content/plugins/moving-quote --blueprint=playground/blueprint.local.json
+```
+
+Verified locally: the estimate endpoint, the three-step form, and the thank-you redirect all work; a submission shows up in Moving quotes → Leads with Delivery "Pending". See `AGENTS.md` for how the two blueprint files differ and what else was verified.
 
 ## Scaling
 

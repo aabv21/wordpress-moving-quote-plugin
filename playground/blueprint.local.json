@@ -1,0 +1,75 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "landingPage": "/get-a-quote/",
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "latest"
+  },
+  "login": true,
+  "steps": [
+    {
+      "step": "activatePlugin",
+      "pluginPath": "moving-quote/moving-quote.php"
+    },
+    {
+      "step": "setSiteOptions",
+      "options": {
+        "blogname": "Chivabox Movers",
+        "blogdescription": "Moving across Colombia's Caribbean coast",
+        "timezone_string": "America/Bogota",
+        "permalink_structure": "/%postname%/"
+      }
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Home",
+        "--post_name=home",
+        "--post_content=<!-- wp:heading --><h2>Moving made simple on Colombia's Caribbean coast</h2><!-- /wp:heading --><!-- wp:paragraph --><p>Chivabox Movers moves homes and offices between Barranquilla, Cartagena, Santa Marta, and the rest of the coast. Get an instant estimate in under a minute.</p><!-- /wp:paragraph --><!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/get-a-quote/\">Get a quote</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Get a Quote",
+        "--post_name=get-a-quote",
+        "--post_content=<!-- wp:paragraph --><p>Tell us about your move and see an estimate right away.</p><!-- /wp:paragraph --><!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Thank You",
+        "--post_name=thank-you",
+        "--post_content=<!-- wp:paragraph --><p>Thank you! We received your request. A member of our team will call you to confirm the details and the final price. We'll also email you a summary.</p><!-- /wp:paragraph -->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": ["wp", "option", "update", "show_on_front", "page"]
+    },
+    {
+      "step": "wp-cli",
+      "command": ["wp", "eval", "update_option( 'page_on_front', (int) get_page_by_path( 'home' )->ID );"]
+    },
+    {
+      "step": "wp-cli",
+      "command": ["wp", "rewrite", "flush", "--hard"]
+    }
+  ]
+}

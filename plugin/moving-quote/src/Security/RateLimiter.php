@@ -78,7 +78,10 @@ final class RateLimiter {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a session-scoped advisory lock, not a data query; no caching wrapper applies.
 		$result = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', $key, self::LOCK_TIMEOUT_S ) );
-		return '1' === $result;
+		// MySQL answers '1' when the lock is granted ('0' on timeout, NULL on error). WordPress
+		// Playground's SQLite translator has no lock to take and answers '1=1'. Only those two
+		// count as granted, so any other value still fails closed.
+		return '1' === $result || '1=1' === $result;
 	}
 
 	private function release_lock( string $key ): void {
