@@ -16,6 +16,8 @@
             "Chivabox\\MovingQuote\\Tests\\": "tests/php/"
         }
     },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
     "config": {
         "platform": {
             "php": "8.3.36"
@@ -23,6 +25,18 @@
         "allow-plugins": {
             "phpstan/extension-installer": true,
             "dealerdirect/phpcodesniffer-composer-installer": true
+        },
+        "policy": {
+            "advisories": {
+                "block": true
+            },
+            "abandoned": {
+                "block": false,
+                "audit": "fail"
+            },
+            "cooldown": {
+                "period": "3 days"
+            }
         }
     },
     "scripts": {

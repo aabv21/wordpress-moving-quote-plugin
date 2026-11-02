@@ -9,7 +9,7 @@ const entry = { file: 'clean.json', node: 'Double value', source: 'tests/fixture
 
 it('wraps a source as a Code-node body that runs like n8n runs it', async () => {
   const js = await buildCodeNode(entry);
-  expect(js.split('\n')[0]).toBe('// Why Code: fixture. Generated from tests/fixtures/nodes/double.ts by npm run build:workflows; edit the source.');
+  expect(js.split('\n')[0]).toBe('// Why Code: fixture. Generated from tests/fixtures/nodes/double.ts by pnpm run build:workflows; edit the source.');
   expect(js.trimEnd().endsWith('return [{ json: __node.run($input.first().json) }];')).toBe(true);
   expect(runJsCode(js, { n: 2 })).toEqual([{ json: { n: 4 } }]);
 });

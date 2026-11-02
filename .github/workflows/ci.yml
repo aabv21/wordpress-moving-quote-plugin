@@ -20,17 +20,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build:assets -- --check
-      - run: npm run build:workflows -- --check
-      - run: npm run check
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm test
+      - run: pnpm run build:assets -- --check
+      - run: pnpm run build:workflows -- --check
+      - run: pnpm run check
       - name: ShellCheck
         run: |
           mapfile -t files < <(git ls-files '*.sh')
@@ -45,7 +46,9 @@ jobs:
         with:
           path: vendor
           key: composer-${{ hashFiles('composer.lock') }}
+      - run: composer validate --strict
       - run: composer install --no-interaction --no-progress
+      - run: composer audit --locked --abandoned=fail
       - run: composer lint
       - run: composer analyse
       - run: composer test
@@ -64,14 +67,15 @@ jobs:
           persist-credentials: false
       - name: gitleaks
         run: docker run --rm -v "$PWD:/repo" -w /repo zricethezav/gitleaks:v8.30.1 detect --source . --redact --exit-code 1
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm audit --audit-level=high
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high
       - name: composer audit
-        run: docker run --rm -v "$PWD:/app" -w /app composer:2.11.0 audit --locked
+        run: docker run --rm -v "$PWD:/app" -w /app composer:2.11.0@sha256:278dfc7bd35169965d03f87194816f43bf4e6b6ea61707c2114e52ad12fe24ce audit --locked --abandoned=fail
 
   actions:
     name: Actions
@@ -96,16 +100,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: node scripts/init-env.ts
       - run: cp config/config.example.json config/config.json
       - run: docker compose up -d --wait db wordpress wpcli
       - run: ./setup.sh
-      - run: npm run test:stack:wp
+      - run: pnpm run test:stack:wp
       - name: Logs on failure
         if: failure()
         run: |

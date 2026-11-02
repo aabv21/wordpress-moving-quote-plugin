@@ -52,7 +52,7 @@ export function writeEnvFile(path: string, text: string): void {
  * Creates `path` at mode 0700 if it doesn't exist yet, and leaves it (and whatever it already
  * holds) alone otherwise — never removed or recreated. Without this, Docker Compose creates the
  * bind-mounted `.n8n-import/` itself on first `up`, owned by `root` on Linux, which then blocks
- * `npm run setup`'s own credential import from writing into it.
+ * `pnpm run setup`'s own credential import from writing into it.
  *
  * NOTE: mode 0700 only lets the n8n container's own `node` user (uid 1000) write into this
  * directory when the host's own uid running this script is also 1000 — true for the first user

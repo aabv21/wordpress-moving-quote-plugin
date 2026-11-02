@@ -44,7 +44,7 @@ async function bundleSource(source: string): Promise<string> {
 }
 
 export async function buildCodeNode(entry: CodeNodeEntry): Promise<string> {
-  const header = `// Why Code: ${entry.why}. Generated from ${entry.source} by npm run build:workflows; edit the source.`;
+  const header = `// Why Code: ${entry.why}. Generated from ${entry.source} by pnpm run build:workflows; edit the source.`;
   const footer = 'return [{ json: __node.run($input.first().json) }];';
   const bundle = await bundleSource(entry.source);
   return `${header}\n${bundle.trim()}\n${footer}\n`;

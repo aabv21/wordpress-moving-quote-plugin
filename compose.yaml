@@ -27,7 +27,7 @@ services:
     working_dir: /app
 
   db:
-    image: mysql:8.4.13
+    image: mysql:8.4.13@sha256:a0225d1ea6631c8bc2385dc4c2faba17bbf1834ecf369e1659a9a382bd8d5dd7
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -45,7 +45,7 @@ services:
       retries: 20
 
   wordpress:
-    image: wordpress:7.1.4-php8.3-apache
+    image: wordpress:7.1.4-php8.3-apache@sha256:12ec50e21cb81a5ea964669d434578b7da4a101a45aef83f5f1c2227bcd1b058
     restart: unless-stopped
     ports:
       - 127.0.0.1:8080:80
@@ -63,7 +63,7 @@ services:
       retries: 20
 
   wpcli:
-    image: wordpress:cli-2.12.0-php8.3
+    image: wordpress:cli-2.12.0-php8.3@sha256:6bcc7bb91f5157c4b915e74ee131873e99c1c1ff48f602e4a6f6cd17827305cb
     restart: unless-stopped
     user: "33:33"
     depends_on:
@@ -81,7 +81,7 @@ services:
     entrypoint: ["tail", "-f", "/dev/null"]
 
   cron:
-    image: wordpress:cli-2.12.0-php8.3
+    image: wordpress:cli-2.12.0-php8.3@sha256:6bcc7bb91f5157c4b915e74ee131873e99c1c1ff48f602e4a6f6cd17827305cb
     restart: unless-stopped
     user: "33:33"
     depends_on:
@@ -99,7 +99,7 @@ services:
     entrypoint: ["sh", "-c", "while :; do wp cron event run --due-now --quiet; sleep 60; done"]
 
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -118,7 +118,7 @@ services:
       retries: 10
 
   n8n:
-    image: n8nio/n8n:2.45.6
+    image: n8nio/n8n:2.45.6@sha256:45edf89655fd66dd55ea9336c1791ad14777599fdbf6c5aec6db583ede99a40b
     restart: unless-stopped
     ports:
       - 127.0.0.1:5678:5678

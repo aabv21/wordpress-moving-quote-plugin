@@ -4,7 +4,7 @@ import * as esbuild from 'esbuild';
 
 const ENTRY = 'src/frontend/quote-form.ts';
 const OUTFILE = 'plugin/moving-quote/assets/quote-form.js';
-const BANNER = '/* Generated from src/frontend/quote-form.ts by npm run build:assets. Edit the source. */';
+const BANNER = '/* Generated from src/frontend/quote-form.ts by pnpm run build:assets. Edit the source. */';
 
 /**
  * Bundles `src/frontend/quote-form.ts` into the plugin's generated, committed asset: a minified
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   }
 
   if (check) {
-    console.error(`quote-form.js is stale: ${changed.join(', ')}. Run npm run build:assets and commit the result.`);
+    console.error(`quote-form.js is stale: ${changed.join(', ')}. Run pnpm run build:assets and commit the result.`);
     process.exitCode = 1;
     return;
   }

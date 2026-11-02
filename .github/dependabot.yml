@@ -1,11 +1,15 @@
 version: 2
 updates:
+  # npm ecosystem also reads the pnpm lockfile.
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     cooldown:
       default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 7
     ignore:
       # NOTE: @types/node follows the Node LTS major (24), not npm's latest; bumping it ahead of
       # the runtime would type-check against APIs this project's Node doesn't have. Move it by
@@ -31,6 +35,9 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 7
 
   - package-ecosystem: docker
     directory: /docker/php
