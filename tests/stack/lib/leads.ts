@@ -1,6 +1,6 @@
 import { sqlWp, table } from './stack.ts';
 
-/** Brief case 1's move date: today plus 30 days, formatted `YYYY-MM-DD`. */
+/** `validLead()`'s move date: today plus 30 days, formatted `YYYY-MM-DD`. */
 function moveDateIn30Days(): string {
   const date = new Date();
   date.setDate(date.getDate() + 30);
@@ -16,10 +16,10 @@ function moveDateIn30Days(): string {
 const createdLeadUuids = new Set<string>();
 
 /**
- * A valid lead submission body: brief case 1 (apartment, 2 rooms, Barranquilla → Cartagena, no
- * extras), with a move date 30 days out, a fresh `submission_id`, and an empty honeypot. Every
- * call gets its own `submission_id`, so tests never collide with each other's rows unless they
- * deliberately reuse one via `overrides` — and that overridden id is tracked for cleanup too.
+ * A valid lead submission body: an apartment move, 2 rooms, Barranquilla to Cartagena, no extras,
+ * with a move date 30 days out, a fresh `submission_id`, and an empty honeypot. Every call gets
+ * its own `submission_id`, so tests never collide with each other's rows unless they deliberately
+ * reuse one via `overrides` — and that overridden id is tracked for cleanup too.
  */
 export function validLead(overrides?: Record<string, unknown>): Record<string, unknown> {
   const lead = {

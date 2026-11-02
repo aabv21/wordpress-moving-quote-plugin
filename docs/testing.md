@@ -1,0 +1,108 @@
+# Test suites
+
+This page lists every test suite in the repo: its command, what it covers, and how it stays deterministic and clean. It ends with what continuous integration (CI) actually runs and the guardrails that keep a local run from touching the owner's real Google account.
+
+## Unit and frontend (Vitest)
+
+**Command:** `npm test` (`vitest run`, config `vitest.config.ts`).
+
+Covers every TypeScript module outside `tests/stack/`: `tests/frontend/*.test.ts` (the quote form's `debounce`, `latestOnly`, `uuidV4`, `postJson`, and form-state modules), `tests/nodes/*.test.ts` (the three n8n Code-node sources: `parseLead`, `verify-request`, `map-lead`), `tests/tooling/*.test.ts` and `tests/scripts/*.test.ts` (the workflow tooling CLIs), `tests/env-example.test.ts` and `tests/init-env.test.ts` (the `.env.example` template and `scripts/init-env.ts`'s generator), `tests/workflows.test.ts` (every committed workflow's pinned nodes, wiring, and settings), and `tests/playground.test.ts` (both Playground blueprints). `tests/lib/code-node.ts` isn't a test file itself — it's the shared Code-node sandbox runner the Code-node and tooling tests above import.
+
+**Staying deterministic and clean:** `vitest.config.ts` excludes `tests/stack/**` explicitly, so this run never needs Docker or a live stack. `tests/setup.ts` provides the ambient `DateTime` global the Code-node sandbox exposes at runtime, so a Code-node source under test sees the same global shape it would in n8n. No test in this suite opens a network connection; `tests/init-env.test.ts` and `tests/tooling/build-workflows.test.ts` are the exception to "no filesystem access" — both write to a fresh `mkdtempSync` directory under the OS temp dir, never the repo itself, so a run never leaves anything behind to clean up.
+
+## Tooling and workflow hygiene
+
+Part of the same `npm test` run above (`tests/tooling/`, `tests/scripts/`, `tests/workflows.test.ts`), called out separately here because it's a distinct concern: these tests don't exercise application logic, they exercise the tools that keep the committed workflow JSON reviewable and reproducible.
+
+- `tests/tooling/build-workflows.test.ts`, `tests/tooling/check-workflows.test.ts` — the Code-node build and the hygiene checker, each against `tests/fixtures/workflows/` (`clean.json` plus one defect per other fixture).
+- `tests/tooling/credentials.test.ts`, `tests/tooling/google-credential-ids.test.ts` — the credential-import plan (skip existing, `--refresh`, blank `.env` values) and the pure `googleCredentialIds()` helper, with no `.env` dependency.
+- `tests/tooling/import-workflows.test.ts` — `missingWorkflowIds()`, the pure function behind `npm run setup`'s post-import verification: given the manifest's workflow IDs and the set actually seen in n8n, it reports exactly which are still missing, in manifest order.
+- `tests/tooling/poll.test.ts` — the bounded execution-lookup poll (`tests/stack/lib/poll.ts`), unit-tested directly against an injected lookup function rather than a live stack, even though its caller (`tests/stack/lib/execution-data.ts`) is a stack-only module.
+- `tests/scripts/check-workflows-cli.test.ts` — the CLI's per-fixture output and exit code.
+- `tests/workflows.test.ts` — every committed workflow file's pinned node parameters, IF conditions, Postgres `typeVersion`, retry settings, and `errorWorkflow` wiring, so a hand edit to `workflows/*.json` that drifts from the generated or reviewed form fails here before it fails anywhere live.
+
+**The commands these build and check tools exercise, which CI runs directly (not through a test file):**
+
+- `npm run build:workflows -- --check` — fails if a Code node's committed `jsCode` doesn't match a fresh build of its `src/nodes/*.ts` source. Runs in the `quality` job.
+- `npm run check` — the hygiene checker against `workflows/` itself (pinned data, required settings, no literal secrets, known credential IDs, documented Code nodes, required retries, safe Postgres parameters, a sticky note per workflow). Runs in the `quality` job.
+
+**Staying deterministic and clean:** every hygiene-check case runs against a static fixture file, never the live stack; `tests/fixtures/nodes/double.ts` is a one-line fixture Code-node source shared by the fixtures and tooling tests, so a build test never depends on a real `src/nodes/*.ts` file changing underneath it.
+
+## PHP (PHPCS, PHPStan level 9, PHPUnit)
+
+**Command:** `npm run php -- composer check` (runs `composer lint`, then `composer analyse`, then `composer test`, inside the `php` tools container — there is no local `php` or `composer`). `npm run php -- composer audit` checks dependencies separately.
+
+- **`composer lint`** — PHPCS with `WordPress-Extra` plus `PHPCompatibilityWP` (`testVersion` `8.3-`, `minimum_wp_version` `7.0`), over `plugin/moving-quote`, excluding `vendor/` and `assets/`. Two sniffs are excluded with a one-line reason each (`WordPress.Files.FileName` conflicts with PSR-4 file names; `Universal.Arrays.DisallowShortArraySyntax` is dropped because the codebase uses modern `[]` syntax throughout). `WordPress.DB.DirectDatabaseQuery` is excluded only for `src/Leads/LeadRepository.php` and `src/Install/*`, where direct `$wpdb` queries are the point.
+- **`composer analyse`** — PHPStan level 9 over `plugin/moving-quote/src`, `moving-quote.php`, `uninstall.php`, and `tests/php`, with `--memory-limit=1G`. Level 9 requires every array touched by a typed helper or data provider to carry an explicit shape (`@param array{…}`).
+- **`composer test`** — PHPUnit 11.5, `failOnWarning`, `failOnNotice`, `failOnDeprecation`, and `failOnRisky` all on, over `tests/php/**/*Test.php`, covering every pure class: `Pricing\Calculator` and `Pricing\DistanceTable`, `Settings\SettingsSanitizer`, `Leads\LeadValidator` and `Leads\LeadRecord`, the pure `Delivery` classes (`JwtSigner`, `LeadPayload`, `ResponseCheck`, `Backoff`, `SyncTransition`), and the pure `Admin\CsvEscaper` and `Admin\LeadCsv`.
+
+**Staying deterministic and clean:** PHPUnit here never bootstraps WordPress — every class under test lives in `plugin/moving-quote/src/` with no `ABSPATH` guard, specifically so PHPUnit can load it standalone. Every test case is exact (an input and an expected output), not a range check, including the full backoff schedule and every `SyncTransition` state. CI also runs an autoloader-drift check (`composer autoload:plugin`, then `git diff --exit-code -- plugin/moving-quote/vendor`) to catch a PSR-4 mapping change that wasn't followed by a regenerated, committed autoloader.
+
+## The WordPress stack suite
+
+**Command:** `npm run test:stack:wp` (`vitest run --config vitest.stack.config.ts tests/stack/wp`). Needs `docker compose up -d --wait db wordpress wpcli` and `./setup.sh` already run.
+
+Covers everything WordPress-coupled that PHPUnit can't reach without a real WordPress: `tests/stack/wp/install.test.ts` (activation, deactivation, upgrade, uninstall), `tests/stack/wp/settings.test.ts` (Colombian-formatted amounts, invalid-input rejection), `tests/stack/wp/quote-api.test.ts` (the estimate and lead REST endpoints, rate limiting, nonces, the rate limiter's fail-closed lock behavior), `tests/stack/wp/quote-page.test.ts` (the rendered shortcode and its config, and a submission signed with a nonce scraped from the rendered page — plain `fetch` calls, not a real browser), `tests/stack/wp/admin.test.ts` (the Leads list, status updates, CSV export, retry, the stuck-delivery notice), `tests/stack/wp/delivery.test.ts` (signed delivery, the outbox's retries and claim/lease guards), and `tests/stack/wp/runtime.test.ts` (WordPress itself after `setup.sh`: installed, Bogotá timezone, the default theme and the plugin active, and each expected page created once).
+
+**Staying deterministic and clean:**
+
+- `tests/stack/global-setup.ts` stops the `cron` sidecar for the whole run, so its background `wp cron event run --due-now` loop can't race a test file's own assertions about exactly which leads were retried when — restarting it afterward only if it was running before.
+- `tests/stack/lib/stack.ts`'s `sqlWp()` never uses `wp db query`: the `wpcli` image's bundled MariaDB client isn't guaranteed compatible with MySQL 8.4's wire protocol, so it runs `wp eval-file -` instead, executing PHP through WordPress's own `$wpdb` — the same client the plugin itself uses at runtime.
+- `tests/stack/lib/leads.ts` tracks every `request_uuid` a test mints and calls `deleteCreatedLeads()` in each file's `afterAll`, since a saved lead is a real delivery attempt and cron keeps retrying a pending one for hours if it's left behind.
+- `tests/stack/wp/delivery.test.ts` additionally parks every other pending row (`next_attempt_at` far in the future) before and after each case, and filters its receiver's recorded requests by the body's own `request_uuid` rather than assuming "the last request" is its own — a second layer of defense on top of stopping `cron`, so the file stays correct even under a manual or partial run where that sidecar might still be running.
+- `tests/stack/lib/stack.ts`'s `disableDelivery()` patches `webhook_url` to `''` and returns a restore function, for a file whose leads must never actually reach the configured n8n URL.
+
+## The n8n stack suite
+
+**Command:** `npm run test:stack` runs the full stack suite including this half; there's no separate `npm run test:stack:n8n` script, so run `vitest run --config vitest.stack.config.ts tests/stack/n8n` directly to scope it alone. Needs the whole stack (MySQL, WordPress, WP-CLI, Postgres, n8n) healthy and `./setup.sh` already run.
+
+Covers the WordPress-to-n8n handoff and n8n's own workflows: `tests/stack/n8n/intake.test.ts` (JWT verification failures, the idempotency gate, concurrent-delivery dedupe, the soft-delete-for-purge check on a successful run), `tests/stack/n8n/process-lead.test.ts` (a read-only decode of a real execution proving "Map lead" ran and the chain reached "Append lead row"), `tests/stack/n8n/end-to-end.test.ts` (a lead sent from the real WordPress path through to n8n, including an n8n-down-then-recovered case and a wrong-secret-then-restored case), and `tests/stack/n8n/runtime.test.ts` (n8n's own health, the Postgres role isolation between the `app` and `n8n` databases, and `processed_events` starting empty).
+
+**Staying deterministic and clean:**
+
+- `tests/stack/lib/execution-data.ts` decodes a stored execution's `flatted`-encoded data read-only, through n8n's own bundled `flatted` package inside the container, with its own polling loop (`tests/stack/lib/poll.ts`'s `pollForExecutionId()`) factored out as side-effect-free so it can be unit-tested directly (see "Tooling and workflow hygiene" above) without pulling in the live-stack module.
+- `tests/stack/lib/jwt.ts`'s `signHs256()` and `decodeVerified()` sign and verify an HS256 JWT independently with `node:crypto`, and `decodeVerified()` is asserted with `not.toBeNull()` — never by comparing a secret value directly — so a test proves the signature is valid without ever asserting equality on sensitive material.
+- **The live-Google skip guard.** Every case that would hand a test lead to `process-lead` checks `googleCredentialsConfigured()` first (`tests/stack/lib/stack.ts`): it lists n8n's credential IDs through a non-decrypted CLI export — the same way `npm run setup` itself checks — and skips with a console message once either Google credential already exists. `tests/stack/n8n/end-to-end.test.ts` and `tests/stack/n8n/process-lead.test.ts` skip their entire `describe` block this way; `tests/stack/n8n/intake.test.ts` marks only its accepted-lead cases with `it.skipIf(...)`, since its rejection cases and its missing-config case never reach `process-lead` at all. Without this guard, running the suite after the owner wires in the real Google account would append a test row to the real `Moving leads` sheet and email the real team on every run.
+
+## The queue-mode run
+
+**Command:** `docker compose -f compose.yaml -f compose.queue.yaml up -d --wait --scale n8n-worker=2`, then `vitest run --config vitest.stack.config.ts tests/stack/n8n/intake.test.ts` against that stack. Return with `docker compose -f compose.yaml -f compose.queue.yaml down && docker compose up -d --wait`.
+
+Not a separate test file: it's the same `tests/stack/n8n/intake.test.ts` suite run against a queue-mode stack instead of the regular single-process one, to prove the JWT check, the raw-body hash, and the idempotency gate all work identically when a worker — not the main process — executes the workflow. Verified: the intake suite passed 13/13 with two workers running, including the five-concurrent-deliveries case giving exactly one `accepted`, and the worker containers' own logs showed them running the executions.
+
+**Staying deterministic and clean:** `compose.queue.yaml`'s `n8n-worker` service `extends` `compose.yaml`'s own `n8n` service, so it shares the same encryption key, database settings, and read-only `/files` mounts — nothing queue-specific to keep in sync by hand. The missing-config test case in this suite waits until n8n and every running worker have seen the file change, since in queue mode a worker (not the main process) is what actually executes a waiting run.
+
+## Playground
+
+**Command:** no live server command is part of the gate; `tests/playground.test.ts` (part of `npm test`) parses both blueprint files and asserts their steps stay deep-equal after the first (which differs only in install source). The live check is manual: `npx @wp-playground/cli@3.1.61 server --php=8.3 --port=9400 --mount=./plugin/moving-quote:/wordpress/wp-content/plugins/moving-quote --blueprint=playground/blueprint.local.json`.
+
+Covers the plugin's behavior on WordPress Playground's SQLite-backed WordPress, with no server to install: the estimate endpoint, the three-step form, a submission, and the Leads admin page. Verified locally against `@wp-playground/cli@3.1.61`: the estimate endpoint returned the documented response for an apartment move from Barranquilla to Cartagena; in the browser, the form showed the same live estimate, a submission redirected to `/thank-you/`, and Moving quotes → Leads listed it with Delivery "Pending (0 attempts)"; the CLI's own stdout showed no PHP errors or warnings, and the browser's console showed none beyond WordPress core's own standard jQuery Migrate notice.
+
+**One real gap this surfaced and fixed:** `Security\RateLimiter::acquire_lock()` originally checked only for MySQL's exact `GET_LOCK()` success value `'1'`. Playground's SQLite translator answers the same, meaningless-there lock as `'1=1'` instead, so every `estimate` and `submit` request was being rejected as rate-limited on Playground, breaking the form. The check now also accepts `'1=1'`; verified against both the real MySQL stack (the fail-closed and concurrent-burst cases in `tests/stack/wp/quote-api.test.ts` still pass) and Playground.
+
+**Staying deterministic and clean:** `@wp-playground/cli` is pinned at exactly `3.1.61`, named above, so a version drift in Playground itself can't silently change what this check verifies. Each `server` run starts from a throwaway in-memory virtual filesystem — nothing persists between runs, and nothing written during a manual check needs cleanup. `tests/playground.test.ts` is the one piece of this that runs automatically: it compares `playground/blueprint.json` and `playground/blueprint.local.json` structurally (`steps.slice(1)` deep-equal) so the two blueprints can't drift apart from each other, without needing the CLI itself.
+
+## What CI runs
+
+| CI job | What it runs |
+|---|---|
+| `quality` | `npm ci`, `typecheck`, `lint`, `test` (the full Vitest suite above, minus `tests/stack/`), `build:assets -- --check`, `build:workflows -- --check`, `check`, ShellCheck on every `*.sh`, then `composer install`, `composer lint`, `composer analyse`, `composer test`, and the autoloader drift check. |
+| `security` | gitleaks in git mode over the full history, `npm audit --audit-level=high`, `composer audit --locked`. |
+| `actions` | actionlint and zizmor against the workflow files themselves. |
+| `stack` | `npm ci`, `node scripts/init-env.ts`, `cp config/config.example.json config/config.json`, `docker compose up -d --wait db wordpress wpcli`, `./setup.sh`, then **`npm run test:stack:wp` only** (`ci.yml:108`). |
+| `codeql` | `javascript-typescript` only (`codeql.yml:32`), gated on the repository being public. PHP has no CodeQL support here; the WPCS security sniffs and PHPStan level 9 cover it instead. |
+
+**The gap:** CI's `stack` job runs only the WordPress half of the stack suite (`tests/stack/wp/`), because that's the half that needs only MySQL, WordPress, and WP-CLI — services CI can bring up cleanly in under 3 minutes. The n8n half of the stack suite (`tests/stack/n8n/`), the queue-mode run, and the Playground live check all need Postgres, n8n, and/or a live `npx` process, and none of them run automatically in CI today. They're run locally and their results are recorded in each task's PR description, but a change that broke `lead-intake` or `process-lead` without also breaking a WordPress-side assertion would pass CI green. Closing this gap would mean adding Postgres and n8n to the `stack` job's services and keeping that job under its 3-minute budget, which the project hasn't done.
+
+## The rule: unit tests never import `.env`-loading modules
+
+`tests/stack/lib/stack.ts` calls `process.loadEnvFile('.env')` at import time. CI's `quality` job runs `npm test` with no `.env` file present at all — only the `stack` job runs `node scripts/init-env.ts` first — so any test file outside `tests/stack/` that imported `stack.ts`, directly or transitively, would throw on import and fail the whole `quality` job.
+
+The rule this repo follows: a helper two or more stack-test files need, with no dependency on the live stack itself, belongs in its own side-effect-free module instead (for example `tests/stack/lib/poll.ts`), so a unit test can import it directly without pulling in `stack.ts`. This rule is also stated in `AGENTS.md`'s Conventions section.
+
+## Deferred live checks
+
+Two things stay outside every suite above, because they need the owner's own accounts, not just the local stack:
+
+- **Sheets and Gmail.** Every stack-test case that would reach `process-lead` skips itself once the owner's real Google credentials are configured in n8n (see "The live-Google skip guard" above). The actual appended row, the two sent emails, and a forced failure's alert email are verified once, by hand, in one session with the owner present, not by an automated suite — see the deferred live checks listed in the repository's README.
+- **The public Playground link.** `playground/blueprint.json`'s GitHub-install path (as opposed to the local `--mount` path this page's Playground section covers) only works once the repository is public, so it's checked once after publication, not on every change.

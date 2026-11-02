@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Chivabox Movers Lead Pipeline",
+    "locale": "en",
+    "output": "docs/diagrams/architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [1230, 680]
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Browser",
+      "sublabel": "three-step form",
+      "pos": [40, 110],
+      "size": [120, 64]
+    },
+    {
+      "id": "rest",
+      "type": "backend",
+      "label": "REST API",
+      "sublabel": "estimate · leads",
+      "pos": [246, 110],
+      "size": [120, 64]
+    },
+    {
+      "id": "leads-table",
+      "type": "database",
+      "label": "Leads table",
+      "sublabel": "MySQL · outbox",
+      "brand": "mysql",
+      "pos": [246, 310],
+      "size": [120, 64]
+    },
+    {
+      "id": "cron",
+      "type": "backend",
+      "label": "Cron sidecar",
+      "sublabel": "outbox every 60 s",
+      "pos": [452, 310],
+      "size": [120, 64]
+    },
+    {
+      "id": "lead-intake",
+      "type": "backend",
+      "label": "lead-intake",
+      "sublabel": "JWT verify · gate",
+      "pos": [628, 110],
+      "size": [120, 64]
+    },
+    {
+      "id": "process-lead",
+      "type": "backend",
+      "label": "process-lead",
+      "sublabel": "row · 2 emails",
+      "pos": [824, 110],
+      "size": [120, 64]
+    },
+    {
+      "id": "error-handler",
+      "type": "backend",
+      "label": "error-handler",
+      "sublabel": "plain-text alert",
+      "pos": [824, 310],
+      "size": [120, 64]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "Postgres 17",
+      "sublabel": "processed_events",
+      "brand": "postgresql",
+      "pos": [628, 310],
+      "size": [120, 64]
+    },
+    {
+      "id": "sheets",
+      "type": "external",
+      "label": "Google Sheets",
+      "sublabel": "Moving leads tab",
+      "pos": [1030, 40],
+      "size": [120, 64]
+    },
+    {
+      "id": "gmail",
+      "type": "external",
+      "label": "Gmail",
+      "sublabel": "team · customer",
+      "pos": [1030, 180],
+      "size": [120, 64]
+    },
+    {
+      "id": "settings",
+      "type": "backend",
+      "label": "Admin settings",
+      "sublabel": "rates · delivery",
+      "pos": [40, 310],
+      "size": [120, 64]
+    }
+  ],
+  "connections": [
+    {
+      "id": "estimate",
+      "from": "browser",
+      "to": "rest",
+      "label": "estimate · submit"
+    },
+    {
+      "id": "insert",
+      "from": "rest",
+      "to": "leads-table",
+      "label": "insert · apply_sync",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "configure",
+      "from": "settings",
+      "to": "rest",
+      "label": "Options::all()",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "outbox-claim",
+      "from": "cron",
+      "to": "leads-table",
+      "label": "claim due rows",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "inline-deliver",
+      "from": "rest",
+      "to": "lead-intake",
+      "label": "signed JWT POST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cron-deliver",
+      "from": "cron",
+      "to": "lead-intake",
+      "label": "retry with backoff",
+      "variant": "dashed"
+    },
+    {
+      "id": "record-once",
+      "from": "lead-intake",
+      "to": "postgres",
+      "label": "record once",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "handoff",
+      "from": "lead-intake",
+      "to": "process-lead",
+      "label": "accepted · fire-and-forget",
+      "variant": "emphasis"
+    },
+    {
+      "id": "append",
+      "from": "process-lead",
+      "to": "sheets",
+      "label": "append row (RAW)",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "notify",
+      "from": "process-lead",
+      "to": "gmail",
+      "label": "team + customer"
+    },
+    {
+      "id": "alert-trigger",
+      "from": "process-lead",
+      "to": "error-handler",
+      "label": "on failure",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "dashed"
+    },
+    {
+      "id": "intake-alert-trigger",
+      "from": "lead-intake",
+      "to": "error-handler",
+      "label": "on failure",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "alert-send",
+      "from": "error-handler",
+      "to": "gmail",
+      "label": "operator alert",
+      "fromSide": "right",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "WordPress side",
+      "items": [
+        "REST API validates, prices, and inserts a lead once per submission_id",
+        "An inline delivery attempt runs right after the insert",
+        "The cron sidecar's outbox retries a failed attempt with backoff"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "n8n side",
+      "items": [
+        "lead-intake verifies the HS256 JWT and records the request once in Postgres",
+        "process-lead appends the sheet row, then emails the team and the customer",
+        "error-handler is the shared alert every other workflow's errorWorkflow points to"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Delivery is at-least-once",
+      "items": [
+        "WordPress retries until it sees accepted or duplicate",
+        "n8n dedupes on jti (= request_uuid) in processed_events",
+        "A token's 300 s lifetime and body_sha256 binding bound the risk of a stored replay"
+      ]
+    }
+  ]
+}

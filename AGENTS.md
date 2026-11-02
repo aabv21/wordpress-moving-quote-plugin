@@ -41,10 +41,22 @@ What exists today:
 - `tests/nodes/` — Vitest unit tests for `src/nodes/*`, at `tests/nodes/*.test.ts`.
 - `tests/stack/lib/execution-data.ts` — read-only helpers for decoding a stored n8n execution's `flatted`-encoded data (through n8n's own bundled `flatted` package inside the `n8n` container) into a small, typed summary, used by `tests/stack/n8n/process-lead.test.ts` to prove the fire-and-forget chain actually reached "Append lead row". Its own polling loop lives in `tests/stack/lib/poll.ts`'s `pollForExecutionId()` — side-effect-free (no imports of its own), so `tests/tooling/poll.test.ts` can unit-test the retry/deadline logic directly against an injected lookup function, with no live stack and no `.env`.
 - `playground/blueprint.json`, `playground/blueprint.local.json` — WordPress Playground blueprints; see "Trying the plugin in Playground" below. `tests/playground.test.ts` covers both.
+- `docs/architecture.md`, `docs/testing.md` — how the system works, with diagrams, and every test suite's command and coverage. `docs/diagrams/` — the archify JSON sources (`architecture.json`, `lead-sequence.json`) and, for each one, its interactive HTML page and exported SVG; see "Documentation map" and "Regenerate a diagram" below.
 
-Planned, added in later tasks:
+## Documentation map
 
-- `docs/architecture.md`, `docs/diagrams/` — how the system works, with diagrams.
+| Document | Covers |
+|---|---|
+| [`docs/architecture.md`](docs/architecture.md) | Components, the data model, failure modes (with recovery steps), scaling limits, security (including the exact token-retention mechanism), and the design decisions behind each part. |
+| [`docs/testing.md`](docs/testing.md) | Every test suite: its command, what it covers, and how it stays deterministic and clean, plus what CI actually runs and the two deferred live checks. |
+| [`docs/diagrams/architecture.json`](docs/diagrams/architecture.json) | The system diagram's archify typed source (type `architecture`): browser → WordPress (REST, leads table, cron sidecar) → n8n (`lead-intake`, `process-lead`, `error-handler`) → Postgres, Sheets, Gmail. |
+| [`docs/diagrams/architecture.html`](docs/diagrams/architecture.html) | The system diagram's interactive page, rendered by archify. Open it directly to read the diagram full-size, pan, and inspect each node. |
+| [`docs/diagrams/architecture.svg`](docs/diagrams/architecture.svg) | The system diagram's exported image (`SVG · Auto`, follows the reader's light or dark theme), embedded in `docs/architecture.md` and the README. |
+| [`docs/diagrams/lead-sequence.json`](docs/diagrams/lead-sequence.json) | The lead-delivery sequence diagram's archify typed source (type `sequence`): form → estimate → submit → insert → signed POST → verify → record → respond → `process-lead`, with the retry loop as an alternative path. |
+| [`docs/diagrams/lead-sequence.html`](docs/diagrams/lead-sequence.html) | The sequence diagram's interactive page. |
+| [`docs/diagrams/lead-sequence.svg`](docs/diagrams/lead-sequence.svg) | The sequence diagram's exported image, embedded in `docs/architecture.md`. |
+
+`docs/diagrams/*.delivery.json` receipts (one per diagram, written by `archify deliver`) hold local absolute paths and are gitignored; never force-add one.
 
 ## Commands
 
@@ -72,6 +84,15 @@ Planned, added in later tasks:
 - `npm run check` — hygiene checks on every file in `workflows/`: pinned data, `meta.instanceId`, required settings (including `errorWorkflow: cvbErrorHandler1` on every workflow except `error-handler` itself), a literal email/phone/long-id/secret, an unknown credential id, a hand-written or undocumented Code node, an external-service node without the required retry, a Postgres query built from an expression instead of `$n` parameters, a Postgres query with a `$n` placeholder inside a SQL comment, and a missing sticky note. `node scripts/check-workflows.ts <dir>` runs it against any directory and prints `<file>: <message>` per violation.
 - `npm run setup` — imports credentials (`scripts/setup-credentials.ts`) and publishes workflows (`scripts/import-workflows.ts`) into the local n8n instance, in that order (`node scripts/setup.ts`, not `a && b`, so `-- --refresh <id>` reaches credentials too). Skips a credential whose `.env` values are blank, or one that already exists unless named with `--refresh <id>` (any number of times) — re-importing a credential replaces it, which would otherwise drop an interactive Google sign-in. Skips a workflow not yet in `workflows/`. After `import:workflow` exits 0, it verifies every manifest id actually landed with a read-only `n8n list:workflow --onlyId` and retries the import once on a miss, since a file freshly written right before the import can still be settling onto the bind mount when `import:workflow` reads the directory — failing clearly, naming the still-missing ids, if a retry doesn't recover them.
 - `npm run export` — writes n8n's canonical form of every known workflow back to `workflows/` and regenerates their Code nodes; run this after editing a workflow in the n8n UI, and commit the result.
+- Regenerate a diagram after you edit its source in `docs/diagrams/`. The diagram tool is [archify](https://github.com/tt-a1i/archify), which runs on Node.js with no install step; these sources were last checked against v3.2.0.
+
+  Clone it outside this repo, so `npm run lint` never scans its files: `git clone --depth 1 --branch v3.2.0 https://github.com/tt-a1i/archify ../archify`. Run the commands from the repo root, because each source's `meta.output` path is relative to it. For the architecture diagram, whose source has type `architecture`:
+  1. `node ../archify/archify/bin/archify.mjs validate architecture docs/diagrams/architecture.json --quality showcase --json`, after every edit, until it reports all 9 artifact checks passing with 0 composition errors and 0 warnings.
+  2. `node ../archify/archify/bin/archify.mjs deliver architecture docs/diagrams/architecture.json docs/diagrams/architecture.html --quality showcase --json` writes the page. It also writes `docs/diagrams/architecture.delivery.json`, a receipt holding local absolute paths; git ignores it, so never force-add it.
+  3. Open the page in a browser, choose **Export**, then **SVG · Auto**, and save the download over `docs/diagrams/architecture.svg`, which `README.md` and `docs/architecture.md` embed. The Auto variant follows the reader's light or dark theme.
+  4. Optionally, `node ../archify/archify/bin/archify.mjs visual-check docs/diagrams/architecture.html --json --out-dir ../archify-evidence` checks the page in a real browser at four desktop sizes and writes its screenshots outside the repo.
+
+  For the sequence diagram, run the same steps with type `sequence` and the `lead-sequence` files; `docs/architecture.md` embeds its SVG too. (Only `docs/architecture.md` does — `README.md` embeds the system diagram alone.)
 - n8n's `import:workflow`, `export:workflow`, `import:credentials`, `export:credentials`, and `publish:workflow` CLI commands need no owner account, `--userId`, or `--projectId` (checked against `2.45.6`). `publish:workflow` only takes effect after an n8n restart; `npm run setup` restarts n8n itself, but only when it actually published something, then waits for `/healthz` and an extra 15 s before polling each published workflow's webhook for 401 (see "Changing a workflow" below).
 
 ## The local stack
@@ -292,4 +313,4 @@ Two blueprints, both at the schema's top level (`$schema`, `landingPage: '/get-a
 - [ ] Test data uses `example.com` emails and the `5700000000` phone prefix; no real person's data.
 - [ ] Docs reflect the change.
 - [ ] The PR description states what was verified (commands and their output) and lists any deferred live checks.
-- [ ] The diff matches its task's brief — nothing extra, nothing missing.
+- [ ] The diff matches what was asked — nothing extra, nothing missing.

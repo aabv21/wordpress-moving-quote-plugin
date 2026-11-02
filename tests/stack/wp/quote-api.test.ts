@@ -75,7 +75,7 @@ describe('quote and lead REST API', () => {
   });
 
   describe('estimate', () => {
-    it('brief 1: apartment, 2 rooms, Barranquilla to Cartagena, no extras', async () => {
+    it('apartment, 2 rooms, Barranquilla to Cartagena, no extras', async () => {
       const res = await rest(ESTIMATE_PATH, { move_type: 'apartment', rooms: 2, origin: 'Barranquilla', destination: 'Cartagena', extras: [] });
       expect(res.status).toBe(200);
       expect(res.json).toEqual({
@@ -88,7 +88,7 @@ describe('quote and lead REST API', () => {
       });
     });
 
-    it('brief 2: house, 4 rooms, Cartagena to Santa Marta, every extra', async () => {
+    it('house, 4 rooms, Cartagena to Santa Marta, every extra', async () => {
       const res = await rest(ESTIMATE_PATH, {
         move_type: 'house',
         rooms: 4,
@@ -103,7 +103,7 @@ describe('quote and lead REST API', () => {
       expect(body.high).toBe(3168000);
     });
 
-    it('brief 6: a per_km change is reflected immediately', async () => {
+    it('a per_km change is reflected immediately', async () => {
       const before = await wp(['option', 'get', OPTION_NAME, '--format=json']);
       try {
         await wp(['option', 'patch', 'update', OPTION_NAME, 'per_km', '5000', '--format=json']);
@@ -189,7 +189,7 @@ describe('quote and lead REST API', () => {
       expect(body.code).toBe('rest_cookie_invalid_nonce');
     });
 
-    it('brief 5: a filled honeypot returns 201 ok and saves nothing', async () => {
+    it('a filled honeypot returns 201 ok and saves nothing', async () => {
       const before = await countLeadRows();
       const lead = validLead({ website: 'http://spam.example' });
       const res = await rest(LEADS_PATH, lead, { nonce });
