@@ -1,5 +1,9 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { psqlAs, required, sqlApp } from '../lib/stack.ts';
+
+const execFileAsync = promisify(execFile);
 
 describe('n8n and Postgres runtime', () => {
   it('reports healthy', async () => {
@@ -18,4 +22,13 @@ describe('n8n and Postgres runtime', () => {
   it('starts with an empty processed_events table', async () => {
     await expect(sqlApp('SELECT count(*) FROM processed_events')).resolves.toBe('0');
   });
+
+  it('passes every least-privilege database check', async () => {
+    try {
+      await execFileAsync('node', ['scripts/check-db.ts']);
+    } catch (err) {
+      const { stdout, stderr } = err as { stdout?: string; stderr?: string };
+      throw new Error(`scripts/check-db.ts failed:\n${stdout ?? ''}${stderr ?? ''}`, { cause: err });
+    }
+  }, 60_000);
 });

@@ -108,6 +108,8 @@ services:
       N8N_DB_PASSWORD: ${N8N_DB_PASSWORD}
       APP_DB_USER: ${APP_DB_USER}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      APP_RUNTIME_DB_USER: ${APP_RUNTIME_DB_USER}
+      APP_RUNTIME_DB_PASSWORD: ${APP_RUNTIME_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro

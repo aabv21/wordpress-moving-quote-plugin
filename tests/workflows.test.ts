@@ -43,6 +43,13 @@ it('every Code node in workflows/ matches its committed manifest source', async 
   expect((await buildWorkflows({ check: true, workflowsDir: 'workflows', entries: CODE_NODES })).drifted).toEqual([]);
 });
 
+it('every workflow in workflows/ pins settings.saveManualExecutions to false, so a manual run from the editor is never stored either', () => {
+  for (const path of listJsonFiles('workflows')) {
+    const wf = readWorkflow(path);
+    expect((wf.settings as { saveManualExecutions?: boolean }).saveManualExecutions, basename(path)).toBe(false);
+  }
+});
+
 it('every Postgres node across workflows/ is pinned at typeVersion 2.8', () => {
   const matches = allNodesOfType('n8n-nodes-base.postgres');
   expect(matches.length).toBeGreaterThan(0);
@@ -82,10 +89,6 @@ describe('lead-intake.json', () => {
 
   it('pins settings.saveDataSuccessExecution to none, so a successful run is soft-deleted for the next hard-delete cycle rather than kept until EXECUTIONS_DATA_MAX_AGE', () => {
     expect((wf.settings as { saveDataSuccessExecution?: string }).saveDataSuccessExecution).toBe('none');
-  });
-
-  it('pins settings.saveManualExecutions to false, so a manual run from the editor is never stored either', () => {
-    expect((wf.settings as { saveManualExecutions?: boolean }).saveManualExecutions).toBe(false);
   });
 
   it('pins "Receive lead"\'s parameters and its JWT credential', () => {
