@@ -46,6 +46,7 @@ So `app_runtime` holds exactly `SELECT, INSERT` on `processed_events` — no `UP
 
 - **Primary key:** `processed_events (source, event_id)`; `schema_migrations (filename)`.
 - **`NOT NULL`:** every column on both tables is required (`source`, `event_id`, `received_at`; `filename`, `applied_at`) — there's no optional field on either.
+- **CHECK on the enumerated column:** `002_source_check.sql` adds `CHECK (source IN ('wordpress-lead'))`, derived from its one writer — `lead-intake`'s "Record request" node, the only place that inserts a row — with no other script or stack test writing a different value. `tests/db-migrate.test.ts` pins the value list against that same workflow file.
 - **Timestamps:** `processed_events.received_at` is `timestamptz`. There's no MySQL `datetime` on the Postgres side.
 
 ### 3. Indexes
@@ -71,9 +72,9 @@ The one query a production path runs is served by the primary key itself: `ON CO
 
 `db-migrate` passes each variable to `docker compose exec` as a bare `-e NAME`. Docker copies the value from `db-migrate`'s own environment, so it never appears in an argument list or in `ps`, and psql reads it with `\getenv`. A password reaches the server only inside `ALTER ROLE … PASSWORD`, which psql quotes itself. `db-migrate` redacts every `.env` secret from psql's output before printing an error.
 
-Postgres also logs a failed statement's full text by default (`log_min_error_statement = error`), and `ALTER ROLE … PASSWORD` carries the password. So the password step first runs `SET LOCAL log_min_error_statement = panic` and `SET LOCAL log_statement = 'none'` inside its own transaction. `db/init/01-app.sh` does the same for its session before it creates the `n8n` and `app` roles, and reads each password with `\getenv` rather than a `-v` argument, so neither reaches `ps` either. It also stops at once if `N8N_DB_PASSWORD` or `APP_DB_PASSWORD` is empty — checked locally by searching `docker compose logs postgres` for the literal text `PASSWORD '` after a deliberately failed password statement: zero matches (see "The log proof" below).
+Postgres also logs a failed statement's full text by default (`log_min_error_statement = error`), and `ALTER ROLE … PASSWORD` carries the password. So the password step first runs `SET LOCAL log_min_error_statement = panic` and `SET LOCAL log_statement = 'none'` inside its own transaction. `db/init/01-app.sh` does the same for its session before it creates the `n8n` and `app` roles, and reads each password with `\getenv` rather than a `-v` argument, so neither reaches `ps` either. It also stops at once if `N8N_DB_PASSWORD` or `APP_DB_PASSWORD` is empty — checked locally by searching `docker compose logs postgres` for the literal text `PASSWORD '` after a deliberately failed password statement: zero matches (see "The log proof" under "Proving it: `check-db`" below).
 
-`001_runtime_role.sql` is safe to run twice: it creates the role through `\gexec` only `WHERE NOT EXISTS`, and every `GRANT`/`REVOKE` statement is naturally idempotent. The ledger already skips applied files, so a second `pnpm run setup` prints `no pending migrations`.
+`001_runtime_role.sql` is safe to run twice: it creates the role through `\gexec` only `WHERE NOT EXISTS`, and every `GRANT`/`REVOKE` statement is naturally idempotent. `002_source_check.sql` adds its `CHECK` constraint only `WHERE NOT EXISTS` against `pg_constraint`. The ledger already skips applied files, so a second `pnpm run setup` prints `no pending migrations`.
 
 ### 6. Retention
 
@@ -121,10 +122,10 @@ mkdir -p ~/chivabox-backups
 (umask 077; docker compose exec -T postgres sh -c 'pg_dump -Fc -U "$POSTGRES_USER" -d app' > ~/chivabox-backups/app.dump)
 ```
 
-**MySQL — WordPress.** `mysqldump` runs from the `db` container's own client, never `wp db export`: the `wpcli` image's bundled MariaDB client isn't guaranteed to work with MySQL 8.4's wire protocol (the same reason stack tests never use `wp db query`; see AGENTS.md).
+**MySQL — WordPress.** `mysqldump` runs from the `db` container's own client, never `wp db export`: the `wpcli` image's bundled MariaDB client isn't guaranteed to work with MySQL 8.4's wire protocol (the same reason stack tests never use `wp db query`; see AGENTS.md). The password goes in as `MYSQL_PWD`, an environment variable the container's own shell expands, never as a `-p<password>` argument: a password on argv is visible to any other process in the same container through `ps`. `MYSQL_PWD` is deprecated starting MySQL 8.4 but still honored (confirmed against this image's own `mysqldump`/`mysql` below).
 
 ```bash
-(umask 077; docker compose exec -T db sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' > ~/chivabox-backups/wordpress.sql)
+(umask 077; docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump -u root "$MYSQL_DATABASE"' > ~/chivabox-backups/wordpress.sql)
 ```
 
 **Verifying each dump:** restore it into a scratch database, compare row counts against the original, then drop only the scratch database.
@@ -140,15 +141,13 @@ done
 docker compose exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" app_restore_check'
 ```
 
-MySQL:
+MySQL. The `for db in …` loop runs entirely inside the container's own `sh -c`, so `$MYSQL_DATABASE` and `$db` are both expanded there, by the container's shell, from the container's own environment — never on the host, where `$MYSQL_DATABASE` is unset (it's `wordpress`; confirmed against this image):
 
 ```bash
-docker compose exec -T db sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE wordpress_restore_check"'
-docker compose exec -T db sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" wordpress_restore_check' < ~/chivabox-backups/wordpress.sql
-for db in "$MYSQL_DATABASE" wordpress_restore_check; do
-  docker compose exec -T db sh -c "mysql -u root -p\"\$MYSQL_ROOT_PASSWORD\" -N -e \"SELECT 'leads', count(*) FROM $db.wp_moving_quote_leads\""
-done
-docker compose exec -T db sh -c 'mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE wordpress_restore_check"'
+docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root -e "CREATE DATABASE wordpress_restore_check"'
+docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root wordpress_restore_check' < ~/chivabox-backups/wordpress.sql
+docker compose exec -T db sh -c 'for db in "$MYSQL_DATABASE" wordpress_restore_check; do MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root -N -e "SELECT \"leads\", count(*) FROM $db.wp_moving_quote_leads"; done'
+docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root -e "DROP DATABASE wordpress_restore_check"'
 ```
 
 Drop only the two `_restore_check` scratch databases afterward — never the real `app` or WordPress databases.
@@ -184,7 +183,13 @@ The MySQL side isn't part of this least-privilege port — WordPress's own datab
 
 `scripts/setup-credentials.ts` skips an existing credential in n8n unless it's named with `--refresh <id>` (any number of times) — re-importing a credential replaces it, which would otherwise drop an interactive Google sign-in for the Sheets/Gmail credentials. The App DB credential's fixed id is `cvbCredAppDb0001` (`scripts/lib/manifest.ts`'s `CREDENTIALS`).
 
-**The one-time upgrade for an existing local stack.** A volume created before this change has the `App DB` credential already imported, connecting as `app` (the owner role) rather than `app_runtime`. After pulling this change and adding the two new `.env` names (or regenerating `.env` on a fresh volume), run:
+**The one-time upgrade for an existing local stack.** A volume created before this change has the `App DB` credential already imported, connecting as `app` (the owner role) rather than `app_runtime`. After pulling this change, add the two new `.env` names by appending to the file, so the password never reaches the terminal:
+
+```bash
+{ echo; echo 'APP_RUNTIME_DB_USER=app_runtime'; printf 'APP_RUNTIME_DB_PASSWORD='; openssl rand -hex 32; echo; } >> .env
+```
+
+The leading `echo` keeps a `.env` without a final newline from running its last line into the first new one. **Don't regenerate `.env`** with `node scripts/init-env.ts` on an existing volume — it would replace every other generated secret too, including `N8N_ENCRYPTION_KEY`, which locks n8n out of its own credentials and database. And never `docker compose down -v` to "start clean" instead: that drops WordPress's and n8n's own data along with Postgres's. Then run:
 
 ```bash
 pnpm run setup
@@ -194,3 +199,36 @@ pnpm run setup -- --refresh cvbCredAppDb0001
 The first `pnpm run setup` applies `001_runtime_role.sql` and sets `app_runtime`'s password, but skips re-importing `App DB` because it already exists in n8n (still pointed at `app`, the owner role, at this point). The second call's `--refresh cvbCredAppDb0001` is what actually replaces the credential's connection details with `app_runtime`'s. Running `pnpm run setup` again afterward applies nothing and re-imports nothing.
 
 **What `check-db` can't detect.** `check-db` proves `app_runtime`'s grants in Postgres are exactly right, and that the one workflow statement runs under them. It has no way to inspect what connection details an *already-imported* n8n credential actually holds — n8n's credential store is encrypted, and `setup-credentials.ts` only ever reads back an encrypted export's ids, never decrypted `data` (see AGENTS.md's Guardrails). So a stale `App DB` credential still pointed at the owner role, left over from before this change and never refreshed, is invisible to `check-db`: the Postgres-side checks all still pass (the owner role can do everything `app_runtime` can and more), and nothing here can tell the two states apart from the database side alone. The only way to confirm the credential itself was refreshed is the upgrade step above, run once by hand.
+
+## Proving it: `check-db`
+
+`node scripts/check-db.ts` runs psql inside the `postgres` container, mostly as `app_runtime`, and prints `ok` or `FAIL` for each check. It exits 1 if any check fails. Each check has a unit-tested predicate in `tests/check-db.test.ts`; `tests/stack/n8n/runtime.test.ts` also runs this script as its own case against the real stack, printing its output on failure.
+
+| Check | Passes when |
+|---|---|
+| CREATE TABLE is denied | Postgres answers `permission denied for schema public` |
+| DROP TABLE processed_events is denied | `must be owner of table processed_events` |
+| TRUNCATE processed_events is denied | `permission denied for table processed_events` |
+| connecting to the n8n database is denied | `permission denied for database "n8n"` |
+| SET ROLE to the owner is denied | `permission denied to set role` |
+| no role attribute, membership, column grant, or TEMP/CREATE on app beyond the grant list | Checked as the superuser: `app_runtime` holds none of `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION`, or `BYPASSRLS`; `pg_auth_members` lists it as a member of nothing; `has_any_column_privilege` finds no column privilege its table grant doesn't cover; and it has no `TEMP` or `CREATE` on `app` |
+| table and sequence privileges are exactly the grant list | `app_runtime`'s privileges on every table and sequence in `public` equal `RUNTIME_GRANTS` (`processed_events: SELECT, INSERT`): none missing, none extra |
+| every workflow Postgres statement runs (1, rolled back) | the one statement, `lead-intake`'s "Record request", runs as `app_runtime`, inside a transaction it rolls back |
+| `schema_migrations` lists every file in `db/migrations` | every file is recorded |
+
+- **What counts as a denial.** Only the expected one passes. A statement that succeeds fails the check, and so does psql failing for any other reason, such as a missing role or a stopped container.
+- **Nothing persists.** The probe statement runs inside `BEGIN … ROLLBACK`.
+- **The statement check reads the workflows.** It runs the one Postgres node's query straight from `workflows/lead-intake.json`. A unit test fails when a new Postgres node has no probe.
+- **`app_runtime` can still connect to the `postgres` maintenance database.** `db/init/` only narrows `CONNECT`/`TEMP` on `app`; the official Postgres image's default `PUBLIC` grants on `postgres` itself are left alone, so `app_runtime` can connect there and create temporary tables. This repo leaves that database alone: it holds no data, and nothing in it reaches `app` or `n8n`.
+
+To prove the check can fail, grant a forbidden privilege by hand as the superuser, then run it. Each of these makes `check-db` exit 1:
+
+- `ALTER ROLE app_runtime CREATEDB`, `GRANT TEMP ON DATABASE app TO app_runtime`, or `GRANT CREATE ON DATABASE app TO app_runtime` fails the role-attribute check. The table-privilege check misses all three — a leaked `app_runtime` credential could otherwise `CREATE SCHEMA`/`CREATE TABLE` in `app` with every other check still green.
+- `GRANT app TO app_runtime` fails the role-attribute check and "SET ROLE to the owner is denied".
+- `GRANT TRUNCATE ON processed_events TO app_runtime` fails "TRUNCATE processed_events is denied" and the table-privilege check, with `extra processed_events:TRUNCATE`.
+
+Revoke each one afterward. `pnpm run db:migrate` also resets the role's attributes on its own.
+
+### The log proof
+
+Locally, after running `db-migrate` (which always runs `ALTER ROLE ... PASSWORD`) and deliberately running a failing password statement with the same `SET LOCAL log_min_error_statement = panic; SET LOCAL log_statement = 'none';` guard, `docker compose logs postgres` was searched for the literal text `PASSWORD '` and for a marker string planted inside the deliberately-failed statement: zero matches either way.

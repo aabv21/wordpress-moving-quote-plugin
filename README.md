@@ -89,6 +89,8 @@ PHP runs only inside Docker: there is no local `php` or `composer`. `pnpm run ph
 
 Only one of this series' demo stacks can run at a time: every demo binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up.
 
+Already running a local stack from before `db/migrations/` or `app_runtime` existed? Follow `docs/database.md`'s "The one-time upgrade for an existing local stack" instead of starting over — it includes the one-time `pnpm run setup -- --refresh cvbCredAppDb0001` the `App DB` credential needs on an existing volume.
+
 ## Try it in Playground
 
 No server needed: [open the plugin in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.json) — works once the repository is public. It installs the plugin straight from this repo, creates the Home, Get a Quote, and Thank You pages, and lands on Get a Quote with a working live estimate. Delivery to n8n stays off, since the webhook settings are empty.

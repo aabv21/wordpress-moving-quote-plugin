@@ -60,13 +60,14 @@ describe('roleProblems', () => {
     expect(roleProblems(facts, RUNTIME_GRANTS)).toEqual([]);
   });
 
-  it('reports each attribute, membership, uncovered column privilege, and TEMP on app', () => {
-    const facts = ['attribute:CREATEDB', 'column:processed_events:UPDATE', 'member of:app', 'role exists', 'temp on app'];
+  it('reports each attribute, membership, uncovered column privilege, TEMP on app, and CREATE on app', () => {
+    const facts = ['attribute:CREATEDB', 'column:processed_events:UPDATE', 'member of:app', 'role exists', 'temp on app', 'create on app'];
     expect(roleProblems(facts, RUNTIME_GRANTS)).toEqual([
       'holds CREATEDB',
       'has UPDATE on columns of processed_events',
       'is a member of app',
       'has TEMP on app',
+      'has CREATE on app',
     ]);
   });
 

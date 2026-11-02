@@ -33,6 +33,10 @@ function allNodesOfType(type: string): { file: string; node: WorkflowNode }[] {
   return matches;
 }
 
+it('workflows/ is not empty, so the checks below cover something', () => {
+  expect(listJsonFiles('workflows').length).toBeGreaterThan(0);
+});
+
 it('every file in workflows/ passes the hygiene check', () => {
   for (const path of listJsonFiles('workflows')) {
     const wf = JSON.parse(readFileSync(path, 'utf8')) as WorkflowJson;

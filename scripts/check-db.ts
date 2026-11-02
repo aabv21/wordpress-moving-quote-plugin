@@ -32,9 +32,9 @@ export function diffGrants(expected: Readonly<Record<string, readonly string[]>>
 
 /**
  * What `ROLE_FACTS_SQL` reports about the runtime role, as problems: an attribute it holds, a role
- * it's a member of, a column-level privilege its table grants don't account for, or `TEMP` on
- * `app`. An empty list means the role is as narrow as the grant list says. None of these show up
- * in `has_table_privilege`, which only sees whole-table privileges.
+ * it's a member of, a column-level privilege its table grants don't account for, or `TEMP` or
+ * `CREATE` on `app`. An empty list means the role is as narrow as the grant list says. None of
+ * these show up in `has_table_privilege`, which only sees whole-table privileges.
  */
 export function roleProblems(facts: readonly string[], grants: Readonly<Record<string, readonly string[]>>): string[] {
   if (!facts.includes('role exists')) return ['the runtime role does not exist'];
@@ -46,6 +46,7 @@ export function roleProblems(facts: readonly string[], grants: Readonly<Record<s
     // eslint-disable-next-line security/detect-object-injection -- subject is a table name Postgres reported, looked up in the fixed grant list
     else if (kind === 'column' && !(grants[subject] ?? []).includes(privilege)) problems.push(`has ${privilege} on columns of ${subject}`);
     else if (kind === 'temp on app') problems.push('has TEMP on app');
+    else if (kind === 'create on app') problems.push('has CREATE on app');
   }
   return problems;
 }
@@ -164,7 +165,9 @@ CROSS JOIN unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) AS p(privil
 WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
   AND has_any_column_privilege(:'runtime_role', c.oid, p.privilege)
 UNION ALL
-SELECT 'temp on app' WHERE has_database_privilege(:'runtime_role', 'app', 'TEMP');
+SELECT 'temp on app' WHERE has_database_privilege(:'runtime_role', 'app', 'TEMP')
+UNION ALL
+SELECT 'create on app' WHERE has_database_privilege(:'runtime_role', 'app', 'CREATE');
 `;
 
 interface Outcome {
@@ -206,7 +209,7 @@ function checks(statements: readonly WorkflowStatement[], migrationFiles: readon
     denial('connecting to the n8n database is denied', 'n8n', 'SELECT 1;\n', 'permission denied for database "n8n"'),
     denial('SET ROLE to the owner is denied', 'app', '\\getenv owner APP_DB_USER\nSET ROLE :"owner";\n', 'permission denied to set role'),
     {
-      name: 'no role attribute, membership, column grant, or TEMP on app beyond the grant list',
+      name: 'no role attribute, membership, column grant, or TEMP/CREATE on app beyond the grant list',
       run: async () => {
         const result = await runPsql(AS_SUPERUSER, ROLE_FACTS_SQL);
         if (!result.ok) return { ok: false, detail: lastLines(result.stderr) };

@@ -209,3 +209,23 @@ describe('001_runtime_role.sql', () => {
     expect(sql).not.toMatch(/GRANT.*SEQUENCE/);
   });
 });
+
+describe('002_source_check.sql', () => {
+  const sql = readFileSync('db/migrations/002_source_check.sql', 'utf8');
+  const checkValues = (): string[] => {
+    const list = /source IN \(([^)]*)\)/.exec(sql)?.[1] ?? '';
+    return [...list.matchAll(/'([a-z-]+)'/g)].map((m) => m[1] ?? '').sort();
+  };
+
+  it('is a guarded CHECK on processed_events.source, so a second run adds nothing', () => {
+    expect(sql).toContain("ALTER TABLE processed_events ADD CONSTRAINT processed_events_source_check CHECK (source IN ('wordpress-lead'));");
+    expect(sql).toContain("conname = 'processed_events_source_check'");
+  });
+
+  it('covers the one value lead-intake.json writes into processed_events.source', () => {
+    const workflow = readFileSync('workflows/lead-intake.json', 'utf8');
+    const written = [...workflow.matchAll(/INSERT INTO processed_events \(source, event_id\) VALUES \('([a-z-]+)'/g)].map((m) => m[1] ?? '');
+    expect(written.length).toBeGreaterThan(0);
+    for (const value of written) expect(checkValues()).toContain(value);
+  });
+});
