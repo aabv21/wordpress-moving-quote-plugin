@@ -36,6 +36,20 @@ function scrapeHref(html: string, linkText: string): string {
 }
 
 /**
+ * Scrapes the "Delete" link's own `href` for one lead row: the delete action's URL always
+ * carries `action=moving_quote_delete_lead` and `id=$leadId` as query args, which is enough to
+ * pick the right row's link out of a page listing several leads, each with its own.
+ */
+function scrapeDeleteHref(html: string, leadId: string): string {
+  const linkPattern = /<a href=(["'])(.*?)\1[^>]*class="submitdelete"[^>]*>/g;
+  for (const match of html.matchAll(linkPattern)) {
+    const href = match[2]!.replaceAll('&#038;', '&').replaceAll('&amp;', '&');
+    if (href.includes('action=moving_quote_delete_lead') && href.includes(`id=${leadId}`)) return href;
+  }
+  throw new Error(`no delete link found for lead id ${leadId}`);
+}
+
+/**
  * Scrapes the status-update form's nonce for one lead row: the `<form>…</form>` block containing
  * `name="id" value="$leadId"`, then the `_wpnonce` hidden input inside that same block, out of
  * every such form in `html`.
@@ -181,7 +195,10 @@ describe('admin: leads list, status, export, retry', () => {
       const retryRes = await fetch(site(`/wp-admin/admin-post.php?action=moving_quote_retry_delivery&id=${leadId}`), { headers: { Cookie: subscriberCookies }, redirect: 'manual' });
       expect(retryRes.status).toBe(403);
 
-      // None of the three blocked subscriber calls changed anything.
+      const deleteRes = await fetch(site(`/wp-admin/admin-post.php?action=moving_quote_delete_lead&id=${leadId}`), { headers: { Cookie: subscriberCookies }, redirect: 'manual' });
+      expect(deleteRes.status).toBe(403);
+
+      // None of the four blocked subscriber calls changed anything.
       expect((await rowByUuid(plainLeadUuid)).status).toBe('contacted');
     } finally {
       await wp(['user', 'delete', SUBSCRIBER_LOGIN, '--yes']);
@@ -198,6 +215,11 @@ describe('admin: leads list, status, export, retry', () => {
     expect(res.headers.get('content-type')).toMatch(/^text\/csv/);
     const disposition = res.headers.get('content-disposition');
     expect(disposition).toMatch(/filename="moving-leads-\d{4}-\d{2}-\d{2}\.csv"/);
+    // The filename date is "today" in America/Bogota, not UTC: gmdate() ignores the timezone a
+    // DateTimeImmutable was built with and always formats in UTC, so it would silently drift to
+    // tomorrow's date for several hours every evening Bogota time.
+    const bogotaToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    expect(disposition).toContain(`filename="moving-leads-${bogotaToday}.csv"`);
 
     const buffer = Buffer.from(await res.arrayBuffer());
     expect(buffer.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
@@ -212,6 +234,94 @@ describe('admin: leads list, status, export, retry', () => {
     // fputcsv() terminates each row with a plain "\n", not "\r\n".
     const lines = filteredBody.trim().split('\n');
     expect(lines).toHaveLength(2);
+  });
+
+  it('skips a row with an unparseable status instead of fataling the Leads page or the CSV export', async () => {
+    const leadsTable = await table();
+    const poisonUuid = crypto.randomUUID();
+    await sqlWp(
+      `INSERT INTO ${leadsTable} (request_uuid, created_at, status, move_type, rooms, origin_city, destination_city, distance_km, move_date, extras, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, sync_status, attempts, next_attempt_at, last_error, sent_at)
+       VALUES ('${poisonUuid}', UTC_TIMESTAMP(), 'not-a-real-status', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', '', 'Poison Row', '570000000003', 'poison@example.com', UTC_TIMESTAMP(), 1130000, 1017000, 1243000, 'pending', 0, 0, '', NULL)`,
+    );
+
+    try {
+      const page = await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } });
+      expect(page.status).toBe(200);
+      const html = await page.text();
+      expect(html).toContain(referenceFor(plainLeadUuid));
+      expect(html).not.toContain(referenceFor(poisonUuid));
+
+      const exportHref = scrapeHref(html, 'Export CSV');
+      const res = await fetch(new URL(exportHref, site('/')), { headers: { Cookie: adminCookies } });
+      expect(res.status).toBe(200);
+      const body = stripBom(await res.text());
+      expect(body).toContain(referenceFor(plainLeadUuid));
+      expect(body).not.toContain('Poison Row');
+    } finally {
+      await sqlWp(`DELETE FROM ${leadsTable} WHERE request_uuid = '${poisonUuid}'`);
+    }
+  });
+
+  it('exports every good row across more than one chunk, even with a bad row inside the first chunk', async () => {
+    // chunk_after()'s batch size (EXPORT_CHUNK) is 500 and private; 510 good rows plus one bad
+    // row inside that first batch reproduces the exact failure this guards against: dropping the
+    // bad row from the parsed batch made it look short (499 of 500), so the export loop stopped
+    // after one chunk instead of fetching the second one, silently losing every row past it.
+    const leadsTable = await table();
+    const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const goodCount = 510;
+
+    const script = `
+<?php
+global $wpdb;
+$table = $args[0];
+$marker = $args[1];
+$good_count = (int) $args[2];
+
+// The bad row is inserted FIRST, so its auto-increment id is lower than every good row's — it
+// lands inside the first id-ordered 500-row batch, not wherever the bulk insert below happens to
+// place it.
+$bad_uuid = sprintf( '00000000-0000-4000-9000-%012d', 0 );
+$wpdb->query( $wpdb->prepare(
+	"INSERT INTO {$table} (request_uuid, created_at, status, move_type, rooms, origin_city, destination_city, distance_km, move_date, extras, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, sync_status, attempts, next_attempt_at, last_error, sent_at) VALUES (%s, UTC_TIMESTAMP(), 'not-a-real-status', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', '', %s, '570000000005', %s, UTC_TIMESTAMP(), 1130000, 1017000, 1243000, 'pending', 0, 0, '', NULL)",
+	$bad_uuid,
+	"Bulk bad row {$marker}",
+	"bulk-bad-{$marker}@example.com"
+) );
+
+$values = [];
+for ( $i = 0; $i < $good_count; $i++ ) {
+	$uuid = sprintf( '00000000-0000-4000-8000-%012d', $i );
+	$name = $wpdb->_real_escape( "Bulk {$marker} {$i}" );
+	$values[] = "('{$uuid}', UTC_TIMESTAMP(), 'new', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', '', '{$name}', '570000000004', 'bulk-{$marker}-{$i}@example.com', UTC_TIMESTAMP(), 1130000, 1017000, 1243000, 'pending', 0, 0, '', NULL)";
+}
+$wpdb->query( "INSERT INTO {$table} (request_uuid, created_at, status, move_type, rooms, origin_city, destination_city, distance_km, move_date, extras, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, sync_status, attempts, next_attempt_at, last_error, sent_at) VALUES " . implode( ',', $values ) );
+echo 'ok';
+`;
+
+    try {
+      await wp(['eval-file', '-', leadsTable, marker, String(goodCount)], script);
+
+      const insertedCount = await sqlWp(`SELECT COUNT(*) AS n FROM ${leadsTable} WHERE customer_name LIKE 'Bulk ${marker}%' OR customer_name = 'Bulk bad row ${marker}'`);
+      expect(insertedCount[0]?.n).toBe(String(goodCount + 1));
+
+      const page = await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } });
+      const html = await page.text();
+      const exportHref = scrapeHref(html, 'Export CSV');
+
+      const res = await fetch(new URL(exportHref, site('/')), { headers: { Cookie: adminCookies } });
+      expect(res.status).toBe(200);
+      const body = stripBom(await res.text());
+
+      expect(body).not.toContain(`Bulk bad row ${marker}`);
+      const goodRowCount = body.split(`Bulk ${marker} `).length - 1;
+      expect(goodRowCount).toBe(goodCount);
+      // The last good row (by insertion order / id) is present: proof the export didn't stop
+      // after the first, bad-row-shortened chunk and silently drop the second chunk's rows.
+      expect(body).toContain(`Bulk ${marker} ${String(goodCount - 1)}`);
+    } finally {
+      await sqlWp(`DELETE FROM ${leadsTable} WHERE customer_name LIKE 'Bulk ${marker}%' OR customer_name = 'Bulk bad row ${marker}'`);
+    }
   });
 
   it('retries a failed delivery: requeued to pending with attempts reset, "queued for delivery" in the notice', async () => {
@@ -234,6 +344,76 @@ describe('admin: leads list, status, export, retry', () => {
     const noticeHtml = await afterRedirect.text();
     expect(noticeHtml).toContain('queued for delivery');
     expect(noticeHtml).not.toMatch(/\bsent\b/i);
+  });
+
+  it('shows last_error as visible text in the Delivery column, not only in a title, and escapes it', async () => {
+    const leadsTable = await table();
+    const errorText = 'HTTP 500: <script>alert(1)</script>';
+    await sqlWp(`UPDATE ${leadsTable} SET last_error = '${errorText.replace("'", "''")}' WHERE request_uuid = '${plainLeadUuid}'`);
+
+    try {
+      const page = await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } });
+      const html = await page.text();
+      // Visible as text, not only inside the span's title attribute.
+      expect(html).toContain('<small>HTTP 500: &lt;script&gt;alert(1)&lt;/script&gt;</small>');
+      expect(html).toContain('title="HTTP 500: &lt;script&gt;alert(1)&lt;/script&gt;"');
+      expect(html).not.toContain('<script>alert(1)</script>');
+    } finally {
+      await sqlWp(`UPDATE ${leadsTable} SET last_error = '' WHERE request_uuid = '${plainLeadUuid}'`);
+    }
+  });
+
+  it('deletes a lead through the scraped per-row link, and rejects a wrong nonce without deleting it', async () => {
+    const leadsTable = await table();
+    const toDelete = validLead({ name: 'Delete Me' });
+    const deleteRes = await rest(LEADS_PATH, toDelete, { nonce });
+    expect(deleteRes.status).toBe(201);
+    const deleteUuid = toDelete.submission_id as string;
+    const leadId = (await rowByUuid(deleteUuid)).id;
+
+    const page = await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } });
+    const html = await page.text();
+    const deleteHref = scrapeDeleteHref(html, leadId);
+
+    const wrongNonceUrl = new URL(deleteHref, site('/'));
+    wrongNonceUrl.searchParams.set('_wpnonce', 'not-a-real-nonce');
+    const wrongNonceRes = await fetch(wrongNonceUrl, { headers: { Cookie: adminCookies }, redirect: 'manual' });
+    expect(wrongNonceRes.status).toBe(403);
+    const stillThere = await sqlWp(`SELECT id FROM ${leadsTable} WHERE id = ${leadId}`);
+    expect(stillThere).toHaveLength(1);
+
+    const res = await fetch(new URL(deleteHref, site('/')), { headers: { Cookie: adminCookies }, redirect: 'manual' });
+    expect(res.status).toBe(302);
+    const afterDelete = await sqlWp(`SELECT id FROM ${leadsTable} WHERE id = ${leadId}`);
+    expect(afterDelete).toHaveLength(0);
+
+    const redirectLocation = res.headers.get('location');
+    expect(redirectLocation).toBeDefined();
+    const afterRedirect = await fetch(site(redirectLocation!), { headers: { Cookie: adminCookies } });
+    expect(await afterRedirect.text()).toContain('The lead was deleted.');
+  });
+
+  it('shows the rate-limited-submissions notice once a submit request has been rate-limited, and not before', async () => {
+    await resetRateLimits();
+
+    const beforeBurst = await fetch(site(DASHBOARD_PAGE), { headers: { Cookie: adminCookies } });
+    expect(await beforeBurst.text()).not.toContain('rate-limited in the current 24-hour window');
+
+    // Five submit requests exhaust the default submit limit; the sixth is rejected and counted.
+    for (let i = 0; i < 5; i++) {
+      const res = await rest(LEADS_PATH, validLead(), { nonce });
+      expect(res.status).toBe(201);
+    }
+    const limited = await rest(LEADS_PATH, validLead(), { nonce });
+    expect(limited.status).toBe(429);
+
+    const dashboard = await fetch(site(DASHBOARD_PAGE), { headers: { Cookie: adminCookies } });
+    expect(await dashboard.text()).toContain('1 quote submission was rate-limited in the current 24-hour window.');
+
+    const leadsPage = await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } });
+    expect(await leadsPage.text()).toContain('1 quote submission was rate-limited in the current 24-hour window.');
+
+    await resetRateLimits();
   });
 
   it('shows the stuck-delivery notice for a failed lead and an hour-old pending lead, on the Dashboard and the Leads page, and not otherwise', async () => {
@@ -262,6 +442,30 @@ describe('admin: leads list, status, export, retry', () => {
 
     const clearDashboard = await fetch(site(DASHBOARD_PAGE), { headers: { Cookie: adminCookies } });
     expect(await clearDashboard.text()).not.toContain(STUCK_NOTICE_TEXT);
+  });
+
+  it('excludes a won or lost lead from the stuck-delivery notice even while it is failed or long-pending', async () => {
+    const leadsTable = await table();
+
+    await sqlWp(`UPDATE ${leadsTable} SET sync_status = 'failed', status = 'won' WHERE request_uuid = '${formulaLeadUuid}'`);
+    await sqlWp(`UPDATE ${leadsTable} SET sync_status = 'pending', status = 'lost', created_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 61 MINUTE) WHERE request_uuid = '${scriptLeadUuid}'`);
+
+    try {
+      const stillQualifying = await sqlWp(
+        `SELECT id FROM ${leadsTable} WHERE status NOT IN ('won', 'lost') AND ( sync_status = 'failed' OR ( sync_status = 'pending' AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 HOUR) ) )`,
+      );
+      if (stillQualifying.length > 0) throw new Error(`expected no stuck leads once won/lost are excluded, found ${String(stillQualifying.length)}: ${JSON.stringify(stillQualifying)}`);
+
+      const leadsPage = await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } });
+      expect(await leadsPage.text()).not.toContain(STUCK_NOTICE_TEXT);
+
+      const dashboard = await fetch(site(DASHBOARD_PAGE), { headers: { Cookie: adminCookies } });
+      expect(await dashboard.text()).not.toContain(STUCK_NOTICE_TEXT);
+    } finally {
+      // Restore both rows to a non-stuck, non-closed state so a later test in this file (or a
+      // retry of this one) never inherits a closed status it didn't set itself.
+      await sqlWp(`UPDATE ${leadsTable} SET sync_status = 'sent', status = 'new' WHERE request_uuid IN ('${formulaLeadUuid}', '${scriptLeadUuid}')`);
+    }
   });
 
   it('logs nothing from the plugin', async () => {

@@ -99,9 +99,15 @@ describe('parseLead', () => {
     expect(parseLead(withEstimate({ currency: 'USD' }))).toBeNull();
   });
 
-  it('rejects an amount outside [low, high]', () => {
-    expect(parseLead(withEstimate({ amount: (valid.estimate as { low: number }).low - 1 }))).toBeNull();
-    expect(parseLead(withEstimate({ amount: (valid.estimate as { high: number }).high + 1 }))).toBeNull();
+  it('rejects low greater than high, regardless of amount', () => {
+    const estimate = valid.estimate as { low: number; high: number };
+    expect(parseLead(withEstimate({ low: estimate.high, high: estimate.low }))).toBeNull();
+  });
+
+  it('accepts an amount outside [low, high]: range_percent 0 can make amount fall outside a low/high rounded to the nearest 1,000 COP', () => {
+    const estimate = valid.estimate as { low: number; high: number };
+    expect(parseLead(withEstimate({ amount: estimate.low - 1 }))).not.toBeNull();
+    expect(parseLead(withEstimate({ amount: estimate.high + 1 }))).not.toBeNull();
   });
 
   it('accepts an amount equal to low or high', () => {

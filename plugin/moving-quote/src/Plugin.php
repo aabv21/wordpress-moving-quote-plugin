@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote;
 
-use Chivabox\MovingQuote\Admin\{LeadsPage, Menu, SettingsPage, StuckDeliveryNotice};
+use Chivabox\MovingQuote\Admin\{LeadsPage, Menu, PersonalData, SettingsPage, StuckDeliveryNotice};
 use Chivabox\MovingQuote\Delivery\Outbox;
 use Chivabox\MovingQuote\Frontend\Shortcode;
 use Chivabox\MovingQuote\Install\Installer;
@@ -18,8 +18,11 @@ final class Plugin {
 	public static function boot( string $plugin_file ): void {
 		add_action(
 			'init',
-			static function (): void {
-				load_plugin_textdomain( 'moving-quote', false, 'moving-quote/languages' );
+			static function () use ( $plugin_file ): void {
+				// dirname( plugin_basename( $plugin_file ) ) is the plugin's own folder name
+				// relative to wp-content/plugins, not a hardcoded 'moving-quote', which would
+				// silently stop finding translations the moment the folder is ever renamed.
+				load_plugin_textdomain( 'moving-quote', false, dirname( plugin_basename( $plugin_file ) ) . '/languages' );
 			}
 		);
 
@@ -34,6 +37,7 @@ final class Plugin {
 		SettingsPage::register();
 		LeadsPage::register_hooks();
 		StuckDeliveryNotice::register();
+		PersonalData::register();
 		Shortcode::register();
 
 		add_action(

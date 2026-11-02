@@ -19,7 +19,7 @@ What exists today:
 - `docker/php/Dockerfile`, `compose.yaml` — the PHP tools image (PHP 8.3, Composer, PHPUnit, PHPStan, PHPCS), run only through `command npm run php -- …`. There is no local `php` or `composer`.
 - `composer.json`, `composer.lock`, `phpcs.xml.dist`, `phpstan.neon.dist`, `phpunit.xml.dist` — the PHP tooling config at repo root.
 - `tests/php/` — PHPUnit tests for the plugin's pure classes, at `tests/php/**/*Test.php`.
-- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), `src/Pricing/`, `src/Settings/` (`Defaults` and `SettingsSanitizer` are pure; `Options` reads the stored option), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below), `src/Admin/` (the settings page and the leads admin; see "Settings" and "Leads admin" below), `src/Leads/` (the leads domain: `LeadStatus`, `SyncStatus`, the value objects, `LeadValidator`, `LeadRepository`; see "REST API", "Delivery", and "Leads admin" below), `src/Security/` (`RateLimiter`), `src/Rest/` (`EstimateController`, `LeadController`, `Messages`), `src/Delivery/` (signing, payload, retries, and the outbox; see "Delivery" below), and `src/Frontend/` (`Shortcode`; see "The quote form" below).
+- `plugin/moving-quote/` — the WordPress plugin (PHP, namespace `Chivabox\MovingQuote`), with `moving-quote.php` (the main file), `uninstall.php`, `composer.json`, the committed `vendor/` (the generated Composer autoloader), `src/Pricing/`, `src/Settings/` (`Defaults` and `SettingsSanitizer` are pure; `Options` reads the stored option), `src/Install/` (the leads table schema and the install lifecycle; see "Install lifecycle" below), `src/Admin/` (the settings page and the leads admin; see "Settings" and "Leads admin" below), `src/Leads/` (the leads domain: `LeadStatus`, `SyncStatus`, the value objects, `LeadValidator`, `LeadRepository`; see "REST API", "Delivery", and "Leads admin" below), `src/Security/` (`RateLimiter`, `RateLimits`), `src/Rest/` (`EstimateController`, `LeadController`, `Messages`), `src/Delivery/` (signing, payload, retries, and the outbox; see "Delivery" below), and `src/Frontend/` (`Shortcode`; see "The quote form" below).
 - `plugin/moving-quote/templates/quote-form.php` — the `[moving_quote]` shortcode's markup, included by `Frontend\Shortcode::render()`.
 - `plugin/moving-quote/assets/quote-form.css` — the quote form's stylesheet. `plugin/moving-quote/assets/quote-form.js` is generated; see "The quote form" below.
 - `compose.yaml` — the full local stack: `db` (MySQL), `wordpress`, `wpcli` (idle, for one-off commands), `cron` (the WP-Cron loop sidecar), `postgres`, `n8n`, and `php` (the tools image). See "The local stack" below.
@@ -29,8 +29,9 @@ What exists today:
 - `setup.sh` — installs and configures WordPress idempotently against the running stack. See "The local stack" below.
 - `scripts/lib/docker.ts` — a small `docker compose` wrapper (`compose(args, input?)`) for TypeScript tooling.
 - `scripts/build-assets.ts` — bundles the frontend into the committed `plugin/moving-quote/assets/quote-form.js`; see "The quote form" below.
-- `src/frontend/` — the three-step quote form's TypeScript source: `quote-form.ts` (orchestration) and `lib/` (`debounce`, `latest`, `uuid`, `api`, `form-state` — small, independently tested modules). Type-checked under its own `src/frontend/tsconfig.json` (DOM lib) in addition to the root, Node-targeted one. See "The quote form" below.
+- `src/frontend/` — the three-step quote form's TypeScript source: `quote-form.ts` (orchestration) and `lib/` (`debounce`, `latest`, `uuid`, `api`, `form-state`, `estimate-display` — small, independently tested modules; `estimate-display` decides the display text for an estimate result, success or failure, and which field names should trigger a refetch). Type-checked under its own `src/frontend/tsconfig.json` (DOM lib) in addition to the root, Node-targeted one. See "The quote form" below.
 - `tests/fixtures/lead-payload.json` — the exact contract body `Delivery\LeadPayload::body()` produces for one fixed lead, read by `tests/php/Delivery/LeadPayloadTest.php`. See "Delivery" below.
+- `tests/fixtures/lead-payloads/` — 8 more edge-case fixtures (range 0 with an unrounded amount, a same-city 0 km move, every extra, the maximum rooms, a tab-normalized name, a 100-code-point name with an emoji, a plus-tagged email, an empty `site_name`), each the exact body `Delivery\LeadPayload::body()` produces for its own `LeadRecord`. `tests/php/Delivery/LeadPayloadParityTest.php` proves each one is PHP's real output; `tests/nodes/lead-payload-parity.test.ts` proves TypeScript's `parseLead()` accepts every one. See "Delivery" below.
 - `vitest.stack.config.ts`, `tests/stack/` — the stack-test harness (`tests/stack/lib/stack.ts`, `tests/stack/lib/leads.ts`, `tests/stack/lib/receiver.ts`, `tests/stack/lib/jwt.ts`, `tests/stack/global-setup.ts`) and tests (`tests/stack/wp/`, `tests/stack/n8n/`) that drive the real Compose stack over HTTP and WP-CLI. See "The local stack" and "Delivery" below. `tests/stack/lib/leads.ts`'s `createPendingRowParker()` gives one stack-test file its own scoped pair of park/restore functions over the leads table's `pending` rows, shared by every file that needs to keep a cron run from touching a row it doesn't own.
 - `tests/frontend/` — Vitest unit tests for `src/frontend/lib/*`, at `tests/frontend/*.test.ts`.
 - `scripts/lib/manifest.ts` — the single source of truth for fixed workflow/credential/code-node IDs (`WORKFLOWS`, `CREDENTIALS`, `CODE_NODES`, `ERROR_WORKFLOW_ID`). `WORKFLOWS` holds all three published workflows (`lead-intake`, `process-lead`, `error-handler`); `CODE_NODES` holds `lead-intake`'s `Verify request` (from `src/nodes/verify-request.ts`) and `process-lead`'s `Map lead` (from `src/nodes/map-lead.ts`). It also exports `googleCredentialIds(credentials)`, pure and derived from `CREDENTIALS` by type, used by `tests/stack/lib/stack.ts` and unit-tested directly with no `.env` dependency. `scripts/lib/` also holds the workflow types, `normalizeWorkflow`, `listJsonFiles`, the Docker Compose and `.env` helpers (`compose.ts`), and the `/healthz` and webhook-liveness polls (`health.ts`).
@@ -116,7 +117,8 @@ A call made right after `npm run setup` restarts n8n can still run the previous 
 
 ## Install lifecycle
 
-- **Activate** (`Install\Installer::activate()`) creates the leads table through `dbDelta` (`Install\Schema::sql()`), seeds `moving_quote_settings` with the pricing defaults without overwriting an existing value, sets `moving_quote_db_version`, and schedules the outbox cron hook.
+- **Single-site only.** `Install\Installer::activate( bool $network_wide = false )` refuses with `wp_die()` (`back_link: true`) whenever `is_multisite()` is true — not only on a "Network Activate", since `$network_wide` itself is false for a plain, per-site activation on a Multisite install too, which this plugin has never been verified against. Refusing on `is_multisite()` instead of `$network_wide` also closes the SSRF read-back a network-wide activation would otherwise give every site's own admin through a lead's `last_error`, by pointing their own site's webhook URL at an internal address and reading the response text back from a failed delivery attempt.
+- **Activate** (on a single site) creates the leads table through `dbDelta` (`Install\Schema::sql()`), seeds `moving_quote_settings` with the pricing defaults without overwriting an existing value, sets `moving_quote_db_version`, and schedules the outbox cron hook.
 - **Deactivate** only clears the scheduled hook. The leads table and both options stay: deactivating is not the same as uninstalling.
 - **Upgrade** (`Install\Installer::maybe_upgrade()`) runs on every `plugins_loaded`. When the stored `moving_quote_db_version` differs from the plugin's, it reruns `dbDelta` and updates the version, so an existing site picks up a schema change on its next request.
 - **Uninstall** (`plugin/moving-quote/uninstall.php`, run only by WordPress when the plugin is deleted) drops the leads table, deletes both options, deletes the rate-limit transients, and clears the scheduled hook. This is the one path that removes data.
@@ -132,14 +134,16 @@ A call made right after `npm run setup` restarts n8n can still run the previous 
 
 ## Leads admin
 
-- **The page.** `Admin\Menu::register()` points the top-level "Moving quotes" page and its "Leads" submenu at `Admin\LeadsPage::render()`, which requires `wp-admin/includes/class-wp-list-table.php` (not autoloaded by core) before instantiating `Admin\LeadsListTable`, a `WP_List_Table` subclass. Columns: Received (`America/Bogota`), Reference, Customer (name, phone, email), Move (date, type, rooms), Route (origin → destination, km), Estimate (the same `COP low – high` display text the REST API uses), Status (a per-row form posting to `admin-post.php`), and Delivery (the sync label, attempt count, `last_error` in a `title`, and a "Retry delivery" link on `failed` rows only). Views: All and the five `LeadStatus` values, each with a live `COUNT(*)`-backed count; 20 rows per page; an unrecognized `status` query arg reads as "All".
+- **The page.** `Admin\Menu::register()` points the top-level "Moving quotes" page and its "Leads" submenu at `Admin\LeadsPage::render()`, which requires `wp-admin/includes/class-wp-list-table.php` (not autoloaded by core) before instantiating `Admin\LeadsListTable`, a `WP_List_Table` subclass. Columns: Received (`America/Bogota`), Reference, Customer (name, phone, email), Move (date, type, rooms), Route (origin → destination, km), Estimate (the same `COP low – high` display text the REST API uses), Status (a per-row form posting to `admin-post.php`, plus a "Delete" link below it), and Delivery (the sync label, attempt count, `last_error` in a `title`, and a "Retry delivery" link on `failed` rows only). Views: All and the five `LeadStatus` values, each with a live `COUNT(*)`-backed count; 20 rows per page; an unrecognized `status` query arg reads as "All".
   - `LeadsListTable::single_row_columns()` overrides the base class's generic column dispatch to call this table's own `column_$name()` methods directly, each already escaping its own dynamic output (`esc_html`/`esc_attr`/`esc_url`); it must not run that trusted markup back through `wp_kses_post()`, which would strip the status column's own `<form>`, `<select>`, and hidden `<input>` tags (none of which are in `wp_kses_post()`'s post-content allow-list).
-- **The handlers.** `Admin\LeadsPage::register_hooks()` wires three `admin_post_moving_quote_*` actions. `admin-post.php` itself has no capability gate (unlike a menu page, which core's own `wp-admin/includes/menu.php` already denies with 403 before any callback runs) — every handler here calls `current_user_can( 'manage_options' )` itself first, `wp_die()`-ing with an explicit `403` (`wp_die()` defaults to 500 otherwise) before it ever calls `check_admin_referer()`.
+- **The handlers.** `Admin\LeadsPage::register_hooks()` wires four `admin_post_moving_quote_*` actions. `admin-post.php` itself has no capability gate (unlike a menu page, which core's own `wp-admin/includes/menu.php` already denies with 403 before any callback runs) — every handler here calls `current_user_can( 'manage_options' )` itself first, `wp_die()`-ing with an explicit `403` (`wp_die()` defaults to 500 otherwise) before it ever calls `check_admin_referer()`.
   - `handle_update_status()` reads the posted `status`, applies it through `LeadRepository::update_status()` (an unrecognized value is a no-op), and redirects to the list with a notice.
   - `handle_retry()` calls `LeadRepository::requeue()`, which only acts on a `failed` row: back to `pending`, attempts reset to 0, due immediately. The redirect notice says the lead was "queued for delivery" — never "sent", since this only requeues it; actual delivery is cron's job.
+  - `handle_delete()` calls `LeadRepository::delete()`, checked the same way every other handler here is: `manage_options` (inside `require_id()`), then this row's own `moving_quote_delete_lead_{id}` nonce. A wrong or missing nonce is rejected by `check_admin_referer()` with 403 before the delete call ever runs. The row's own link confirms with a plain `confirm()` before the browser ever follows it.
   - `handle_export()` sends `nocache_headers()`, `text/csv; charset=utf-8`, and `attachment; filename="moving-leads-{Y-m-d in Bogota}.csv"`, writes the UTF-8 BOM and the `Admin\LeadCsv::HEADER` row, then streams `LeadRepository::chunk_after()` batches of 500 (an ascending-id cursor, so a row added mid-export can't be skipped or re-read the way `page()`'s `created_at` ordering could) through `fputcsv( $out, $row, ',', '"', '' )` — note its default row terminator is a plain `\n`, not `\r\n` — and `exit`s right after, so nothing can `echo` onto the stream afterward.
 - **CSV safety.** `Admin\CsvEscaper::cell()` (pure) prefixes a value with `'` when its string form starts with `=`, `+`, `-`, `@`, a tab, or a carriage return — the set of prefixes that make Excel, LibreOffice, or Google Sheets read a cell as a formula — so hostile data already in the table (e.g. a name typed as a formula) can never execute when the export is opened; `null` becomes `''`. `Admin\LeadCsv::row()` (pure) builds one row from a `LeadRecord`: `received_at` converts `created_at` (stored UTC) to the given timezone and formats `Y-m-d H:i`; every other field (`status`, `move_type`, the comma-joined `extras`, `sync_status`, …) is the raw stored value, not its display label; every cell passes through `CsvEscaper`.
-- **The stuck-delivery notice.** `Admin\StuckDeliveryNotice::register()` hooks `admin_notices`; `maybe_render()` shows a `notice-warning` only to a `manage_options` user on the Dashboard (`get_current_screen()->id === 'dashboard'`) or the Leads page (`'toplevel_page_' . Menu::SLUG`), and only when `LeadRepository::count_stuck()` (every `failed` lead, plus every `pending` lead whose `created_at` is over an hour old) is non-zero. The notice text states the count and links to the Leads page.
+- **The stuck-delivery notice.** `Admin\StuckDeliveryNotice::register()` hooks `admin_notices`; `maybe_render()` shows a `notice-warning` only to a `manage_options` user on the Dashboard (`get_current_screen()->id === 'dashboard'`) or the Leads page (`'toplevel_page_' . Menu::SLUG`), and only when `LeadRepository::count_stuck()` (every `failed` lead, plus every `pending` lead whose `created_at` is over an hour old, excluding any lead the team has already marked `won` or `lost`) is non-zero. The notice text states the count and links to the Leads page. A second, separate notice shows the count of `submit` requests rejected as rate-limited in the current 24-hour window, once that count is non-zero (see "REST API" below).
+- **Personal data.** `Admin\PersonalData::register()` wires `wp_privacy_personal_data_exporters` and `wp_privacy_personal_data_erasers`, both keyed by email and run only through WordPress core's own Tools → Export/Erase Personal Data screens (core already requires `manage_options` to reach them). The exporter (`export()`) returns every field of every lead matching the requested email, grouped under a `moving-quote-leads` group; the eraser (`erase()`) deletes every matching row through `LeadRepository::delete()` and reports how many it removed. Neither accepts or needs its own nonce: core's privacy tools own that request's lifecycle (a confirmation email to the requester, then the export or erasure), and call these two callbacks directly, not through `admin-post.php`.
 
 ## REST API
 
@@ -150,6 +154,60 @@ A call made right after `npm run setup` restarts n8n can still run the previous 
   - **The nonce has two error codes.** A missing `X-WP-Nonce` header gets the plugin's own 403 `moving_quote_bad_nonce`. A stale or forged nonce never reaches the plugin at all: WordPress core's `rest_cookie_check_errors` rejects it first, with 403 `rest_cookie_invalid_nonce` ("Cookie check failed"). The estimate route sends no nonce and must never receive one from the frontend.
   - Responses: 201 `{"ok":true,"reference":"MQ-…","estimate":{…}}` for a new lead; 200 with the same shape for a duplicate `submission_id` (nothing is saved or counted against the limit again); 201 `{"ok":true}` for a filled honeypot (nothing saved); 422 `moving_quote_invalid`; 429 `moving_quote_rate_limited`; 500 `moving_quote_save_failed` for any other insert failure (logged without PII).
 - **`Security\RateLimiter`** stores fixed-window counts in transients keyed `moving_quote_rl_{bucket}_{hash}`, hashed from the client IP so the IP itself never appears in the database. `client_ip()` reads `REMOTE_ADDR`, filterable through `moving_quote_client_ip`. Its read-check-write section is guarded by a MySQL named lock (`GET_LOCK`/`RELEASE_LOCK`), so a concurrent burst against the same bucket can't all read the same stale count. MySQL returns `'1'` on success, `'0'` on timeout, `NULL` on error; WordPress Playground's SQLite translator dummies the same two functions out as an always-granted, meaningless lock, returning `'1=1'` instead — `acquire_lock()` therefore counts only `'1'` and `'1=1'` as granted, so any other value still fails closed.
+  - **`moving_quote_client_ip`.** `REMOTE_ADDR` is the direct TCP peer, which is a reverse proxy's own address, not the visitor's, once one sits in front of WordPress — every request would then share one rate-limit bucket. Behind a trusted proxy, filter this to the real client IP, but only once `REMOTE_ADDR` itself is a configured proxy address; trusting `X-Forwarded-For` or `CF-Connecting-IP` unconditionally lets any visitor spoof that header and pick their own bucket. The leftmost hop of `X-Forwarded-For` is whatever the original client sent, so a visitor who forges that header simply writes their own chosen IP there — only the rightmost hop that isn't itself a trusted proxy was actually added by infrastructure you control. For example:
+
+    ```php
+    /** True when IPv4 $ip falls inside CIDR block $cidr (e.g. '173.245.48.0/20'). */
+    function moving_quote_ip_in_cidr( string $ip, string $cidr ): bool {
+        [ $subnet, $bits ] = explode( '/', $cidr );
+        $ip_long           = ip2long( $ip );
+        $subnet_long       = ip2long( $subnet );
+        if ( false === $ip_long || false === $subnet_long ) {
+            return false;
+        }
+        $mask = -1 << ( 32 - (int) $bits );
+        return ( $ip_long & $mask ) === ( $subnet_long & $mask );
+    }
+
+    add_filter( 'moving_quote_client_ip', function ( string $ip ): string {
+        // Cloudflare's own edge IP ranges (narrowed from https://www.cloudflare.com/ips/, kept in
+        // sync with that page). CF-Connecting-IP is trusted ONLY when the request's own
+        // REMOTE_ADDR is one of these — never unconditionally, since nothing stops a visitor who
+        // reaches WordPress directly from sending that header themselves.
+        $cloudflare_ranges = [ '173.245.48.0/20', '103.21.244.0/22' ];
+        $is_cloudflare      = false;
+        foreach ( $cloudflare_ranges as $range ) {
+            if ( moving_quote_ip_in_cidr( $ip, $range ) ) {
+                $is_cloudflare = true;
+                break;
+            }
+        }
+        if ( $is_cloudflare ) {
+            $forwarded = isset( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) : '';
+            return false !== filter_var( $forwarded, FILTER_VALIDATE_IP ) ? $forwarded : $ip;
+        }
+
+        // Any other trusted proxy (your own load balancer, for example): walk X-Forwarded-For
+        // from the right and take the first hop that isn't itself one of your trusted proxies.
+        // The leftmost hop is the one a client can set directly, so reading from the right is
+        // what makes this immune to a visitor who simply adds their own fake header.
+        $trusted_proxies = [ '10.0.0.5' ]; // your own reverse proxy's address, not Cloudflare's
+        if ( ! in_array( $ip, $trusted_proxies, true ) ) {
+            return $ip; // not behind a trusted proxy: REMOTE_ADDR is already the real client
+        }
+        $header = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) : '';
+        $hops   = array_reverse( array_map( 'trim', explode( ',', $header ) ) );
+        foreach ( $hops as $hop ) {
+            if ( in_array( $hop, $trusted_proxies, true ) ) {
+                continue;
+            }
+            return false !== filter_var( $hop, FILTER_VALIDATE_IP ) ? $hop : $ip;
+        }
+        return $ip;
+    } );
+    ```
+  - **`moving_quote_rate_limits`.** `Security\RateLimits::estimate()`/`::submit()` read both buckets' `limit`/`window_seconds` through this one filter, which receives and must return the full `['estimate' => [...], 'submit' => [...]]` shape; an entry that's missing or malformed falls back to today's defaults (120/600 s, 5/3,600 s) for that bucket only. Both REST controllers call these instead of hardcoding their own limit.
+  - **Rate-limited submissions are counted.** `RateLimiter::record_rate_limited_submission()` increments a single transient (`RateLimiter::RATE_LIMITED_COUNT_TRANSIENT`, a fixed 24-hour window starting at the first 429 it counts — not a rolling one, so a steady trickle across two consecutive windows never sums into one figure — and never an IP or any other per-visitor data) every time `/leads` answers 429; `StuckDeliveryNotice` shows the count when it's non-zero.
 
 ## Delivery
 
@@ -193,7 +251,7 @@ Every saved lead is sent to n8n as a signed, authenticated HTTP request: once ri
    - `team`: `{ to, subject, text }`, the plain-text team alert (see "Why Email team is plain text" below).
    - `customer`: `{ to, reply_to, subject, html }`, the escaped-HTML customer summary. `escapeHtml()` covers `& < > " '`, so a crafted customer name can never break out of the `<p>` tags it's interpolated into.
 3. **Row fields** (Edit Fields, JSON mode). `jsonOutput: '={{ $json.row }}'` — the row Google Sheets will auto-map by field name.
-4. **Append lead row** (Google Sheets, credential `cvbCredGSheets01`, retry 3× at 1000 ms). `operation: 'append'`, `documentId`/`sheetName` resource locators read from `$('When called').first().json.config.google.leads_sheet_id`/`leads_tab` (`sheetName` in `name` mode: Sheets only matches a tab by title, not a numeric id, in that mode), `columns.mappingMode: 'autoMapInputData'`, `options.cellFormat: 'RAW'` — the pin that makes the phone column store `570000000001` as literal text instead of `5.7E+11`, and a formula-looking name store as literal text instead of running.
+4. **Append lead row** (Google Sheets, credential `cvbCredGSheets01`, retry 3× at 1000 ms). `operation: 'append'`, `documentId`/`sheetName` resource locators read from `$('When called').first().json.config.google.leads_sheet_id`/`leads_tab` (`sheetName` in `name` mode: Sheets only matches a tab by title, not a numeric id, in that mode), `columns.mappingMode: 'autoMapInputData'`, `options.cellFormat: 'RAW'` — the pin that makes the phone column store `570000000001` as literal text instead of `5.7E+11`, and a formula-looking name store as literal text instead of running. `options.handlingExtraData: 'error'` is pinned too: the 2.45.6 default (`insertInNewColumn`) silently adds a new column when a sent field doesn't match any existing header, which would "repair" a renamed sheet header instead of failing — pinning `error` makes a header mismatch fail this node loudly (and alert through `error-handler`) instead.
 5. **Email team** and **Email customer** (Gmail, credential `cvbCredGmail0001`, retry 3× at 1000 ms, both wired from **Append lead row** so a lead that never reached the sheet still notifies no one), both reading from **Map lead**'s own output:
    - **Email team**: `emailType: 'text'`, every field from `$('Map lead').first().json.team`.
    - **Email customer**: `emailType: 'html'`, every field from `$('Map lead').first().json.customer`, plus `options.replyTo` set to `customer.reply_to` (the team's address) so a reply from the customer reaches the team, not n8n.
@@ -229,8 +287,20 @@ Every one of those four expressions was resolved through n8n's real data proxy o
 The retry stays: losing it would make a real transient failure permanently drop a lead instead of recovering from one, which is the far more common case. The symptom and recovery:
 
 1. **Symptom.** A lead is present in `processed_events` (so `lead-intake` itself saw it as accepted or duplicate) but missing from the `Moving leads` sheet — found by comparing a WordPress lead's `request_uuid` against both tables, not by anything n8n itself flags.
-2. Delete that lead's row from `processed_events` (identified by its `event_id` = the lead's `request_uuid`).
-3. Set the matching WordPress leads-table row's `sync_status` back to `pending` and its `next_attempt_at` due (0, or any time in the past).
+2. Delete that lead's row from `processed_events` (identified by its `event_id` = the lead's `request_uuid`):
+
+   ```sh
+   docker compose exec -T postgres sh -c "psql -U \"\$APP_DB_USER\" -d app -c \"DELETE FROM processed_events WHERE event_id = '<request_uuid>'\""
+   ```
+
+   The outer command is double-quoted so `docker compose exec` passes it as one argument to `sh -c`; `\$APP_DB_USER` is escaped so it expands inside the container's own shell (where that variable is set), not on the host.
+
+3. Set the matching WordPress leads-table row's `sync_status` back to `pending` and its `next_attempt_at` due (0, or any time in the past). The stack can't use `wp db query` (the `wpcli` image's bundled MariaDB client isn't guaranteed compatible with MySQL 8.4's wire protocol), so run this through `wp eval` instead, which executes PHP through WordPress's own `$wpdb`:
+
+   ```sh
+   docker compose exec -T wpcli wp eval 'global $wpdb; $wpdb->update($wpdb->prefix."moving_quote_leads", ["sync_status" => "pending", "next_attempt_at" => 0], ["request_uuid" => "<request_uuid>"]);'
+   ```
+
 4. Run the outbox cron (`wp cron event run moving_quote_process_outbox`, or wait for the sidecar's own 60 s loop). WordPress's own retry resends the identical signed lead; with the `processed_events` row gone, this time it's a genuinely new id, so it reaches `Respond accepted` and the hand-off to `process-lead` runs.
 
 **Security: what n8n 2.45.6 actually does with the stored token.** It stores the incoming `Authorization` header verbatim in `execution_data` for every outcome of this workflow, with no redaction — confirmed from `ExecutionPersistence.create()`, which builds the trigger output from raw `req.headers`. What happens to that row next depends on how the run ends:

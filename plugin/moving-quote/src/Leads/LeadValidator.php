@@ -140,7 +140,14 @@ final class LeadValidator {
 		return null;
 	}
 
-	/** @param array<string, string> $errors */
+	/**
+	 * Validates a city name and, once it matches a configured city case-insensitively, normalizes
+	 * it to that city's own canonical spelling — `DistanceTable::distance_km()` looks up its
+	 * `$this->distances` array by exact string, so an accepted-but-differently-cased value (e.g.
+	 * "cartagena") would otherwise never find the route a correctly-cased submission does.
+	 *
+	 * @param array<string, string> $errors
+	 */
 	private static function validate_city( string $field, mixed $value, DistanceTable $distances, array &$errors ): string {
 		if ( null === $value ) {
 			$errors[ $field ] = 'required';
@@ -150,20 +157,22 @@ final class LeadValidator {
 			$errors[ $field ] = 'invalid';
 			return '';
 		}
-		if ( ! self::city_known( $value, $distances ) ) {
+		$canonical = self::canonical_city( $value, $distances );
+		if ( null === $canonical ) {
 			$errors[ $field ] = 'unknown_city';
 			return $value;
 		}
-		return $value;
+		return $canonical;
 	}
 
-	private static function city_known( string $city, DistanceTable $distances ): bool {
+	/** The configured city matching `$city` case-insensitively, in its own canonical spelling; null when none matches. */
+	private static function canonical_city( string $city, DistanceTable $distances ): ?string {
 		foreach ( $distances->cities() as $known ) {
 			if ( 0 === strcasecmp( $known, $city ) ) {
-				return true;
+				return $known;
 			}
 		}
-		return false;
+		return null;
 	}
 
 	/**
@@ -324,15 +333,26 @@ final class LeadValidator {
 			$errors['email'] = 'required';
 			return '';
 		}
-		if ( ! is_string( $value ) || mb_strlen( $value ) > self::EMAIL_MAX_LEN || false === filter_var( $value, FILTER_VALIDATE_EMAIL ) ) {
-			$errors['email'] = 'invalid';
-			return '';
-		}
-		if ( 1 === preg_match( self::FORBIDDEN_EMAIL_CHARACTER_PATTERN, $value ) ) {
+		if ( ! is_string( $value ) || mb_strlen( $value ) > self::EMAIL_MAX_LEN || ! self::is_simple_email( $value ) ) {
 			$errors['email'] = 'invalid';
 			return '';
 		}
 		return $value;
+	}
+
+	/**
+	 * A simple address: `FILTER_VALIDATE_EMAIL` passes, and none of `" , ; < > ( ) [ ] : \` or
+	 * whitespace/control characters appear anywhere in it. `FILTER_VALIDATE_EMAIL` alone accepts a
+	 * quoted local part such as `"a,b"@example.com`, which n8n's Gmail node splits on the comma
+	 * into a second recipient — this rejects exactly what that quoting would otherwise smuggle
+	 * through. Shared with `Settings\SettingsSanitizer`, so a saved team address always passes the
+	 * same rule `src/nodes/lead.ts`'s `isSimpleEmail()` enforces on the n8n side.
+	 */
+	public static function is_simple_email( string $value ): bool {
+		if ( false === filter_var( $value, FILTER_VALIDATE_EMAIL ) ) {
+			return false;
+		}
+		return 1 !== preg_match( self::FORBIDDEN_EMAIL_CHARACTER_PATTERN, $value );
 	}
 
 	/** @param array<string, string> $errors */

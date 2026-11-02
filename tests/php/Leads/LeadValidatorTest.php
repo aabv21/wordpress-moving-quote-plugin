@@ -140,6 +140,28 @@ final class LeadValidatorTest extends TestCase {
 		self::assertSame( [], $result->extras );
 	}
 
+	/**
+	 * `DistanceTable::distance_km()` looks up its routes by exact string, while a city is accepted
+	 * case-insensitively — "cartagena" must normalize to the configured "Cartagena" so the route
+	 * lookup (and the resulting price) is identical regardless of how the visitor capitalized it.
+	 */
+	public function test_city_name_is_normalized_to_its_canonical_spelling_so_pricing_matches(): void {
+		$distances = DistanceTable::from_settings( Defaults::settings() );
+
+		$lowercase = LeadValidator::quote( [ 'move_type' => 'house', 'rooms' => '4', 'origin' => 'Barranquilla', 'destination' => 'cartagena' ], $distances );
+		$canonical = LeadValidator::quote( [ 'move_type' => 'house', 'rooms' => '4', 'origin' => 'Barranquilla', 'destination' => 'Cartagena' ], $distances );
+
+		self::assertInstanceOf( \Chivabox\MovingQuote\Pricing\QuoteInput::class, $lowercase );
+		self::assertInstanceOf( \Chivabox\MovingQuote\Pricing\QuoteInput::class, $canonical );
+		self::assertSame( 'Cartagena', $lowercase->destination );
+		self::assertSame( $canonical->destination, $lowercase->destination );
+
+		$priced_lowercase = \Chivabox\MovingQuote\Pricing\Calculator::estimate( $lowercase, \Chivabox\MovingQuote\Pricing\Rates::from_settings( Defaults::settings() ), $distances );
+		$priced_canonical = \Chivabox\MovingQuote\Pricing\Calculator::estimate( $canonical, \Chivabox\MovingQuote\Pricing\Rates::from_settings( Defaults::settings() ), $distances );
+		self::assertSame( $priced_canonical->amount, $priced_lowercase->amount );
+		self::assertSame( $priced_canonical->distance_km, $priced_lowercase->distance_km );
+	}
+
 	/** @return array<string, array{string, string}> */
 	public static function control_characters_in_name(): array {
 		return [

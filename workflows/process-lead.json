@@ -112,7 +112,8 @@
           "convertFieldsToString": false
         },
         "options": {
-          "cellFormat": "RAW"
+          "cellFormat": "RAW",
+          "handlingExtraData": "error"
         }
       },
       "credentials": {

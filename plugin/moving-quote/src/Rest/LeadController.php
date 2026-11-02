@@ -6,7 +6,7 @@ namespace Chivabox\MovingQuote\Rest;
 use Chivabox\MovingQuote\Delivery\Outbox;
 use Chivabox\MovingQuote\Leads\{FieldErrors, LeadDraft, LeadRecord, LeadRepository, LeadValidator};
 use Chivabox\MovingQuote\Pricing\{Calculator, Estimate};
-use Chivabox\MovingQuote\Security\RateLimiter;
+use Chivabox\MovingQuote\Security\{RateLimiter, RateLimits};
 use Chivabox\MovingQuote\Settings\Options;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -25,10 +25,8 @@ use WP_REST_Response;
  * anything.
  */
 final class LeadController {
-	private const NAMESPACE       = 'moving-quote/v1';
-	private const ROUTE           = '/leads';
-	private const SUBMIT_LIMIT    = 5;
-	private const SUBMIT_WINDOW_S = 3600;
+	private const NAMESPACE = 'moving-quote/v1';
+	private const ROUTE     = '/leads';
 
 	public static function register(): void {
 		// No args schema: every field is validated by LeadValidator, so a restrictive schema here
@@ -84,9 +82,11 @@ final class LeadController {
 			return self::saved( $existing );
 		}
 
+		$bucket      = RateLimits::submit();
 		$limiter     = new RateLimiter();
-		$retry_after = $limiter->hit( 'submit', self::SUBMIT_LIMIT, self::SUBMIT_WINDOW_S );
+		$retry_after = $limiter->hit( 'submit', $bucket['limit'], $bucket['window_seconds'] );
 		if ( 0 !== $retry_after ) {
+			RateLimiter::record_rate_limited_submission();
 			return self::rate_limited( $retry_after );
 		}
 

@@ -32,8 +32,11 @@ $steps = [
 	__( 'Your details', 'moving-quote' ),
 ];
 
-$privacy_url  = get_privacy_policy_url();
-$today        = current_time( 'Y-m-d' );
+$privacy_url = get_privacy_policy_url();
+// The server rule (Leads\LeadValidator::validate_move_date(), called with a hardcoded
+// America/Bogota zone, not the site's own configured timezone) computes "today" the same way, so
+// the date input's own min can never fall a day behind or ahead of what the REST API will accept.
+$today        = ( new DateTimeImmutable( 'now', new DateTimeZone( 'America/Bogota' ) ) )->format( 'Y-m-d' );
 $encoded_json = wp_json_encode( $config );
 $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 ?>

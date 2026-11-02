@@ -1,9 +1,10 @@
-import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const EXAMPLE_PATH = '.env.example';
 const ENV_PATH = '.env';
+const N8N_IMPORT_DIR = '.n8n-import';
 
 function defaultRandomHex(): string {
   return randomBytes(32).toString('hex');
@@ -47,6 +48,28 @@ export function writeEnvFile(path: string, text: string): void {
   renameSync(tmpPath, path);
 }
 
+/**
+ * Creates `path` at mode 0700 if it doesn't exist yet, and leaves it (and whatever it already
+ * holds) alone otherwise — never removed or recreated. Without this, Docker Compose creates the
+ * bind-mounted `.n8n-import/` itself on first `up`, owned by `root` on Linux, which then blocks
+ * `npm run setup`'s own credential import from writing into it.
+ *
+ * NOTE: mode 0700 only lets the n8n container's own `node` user (uid 1000) write into this
+ * directory when the host's own uid running this script is also 1000 — true for the first user
+ * account on most single-user Linux installs, but not guaranteed. A host uid that doesn't match
+ * still leaves the directory root-owned from the n8n container's point of view (bind mounts carry
+ * the host's uid numbers through as-is, with no remapping), reproducing the same import failure
+ * this function exists to avoid. Docker Desktop's own Linux VM sidesteps this entirely: every
+ * bind-mounted file appears owned by whatever uid the container process runs as, not the macOS
+ * or Windows host's own uid, so this ceiling is Linux-host-only.
+ */
+export function ensureN8nImportDir(path: string): void {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is the caller-provided .n8n-import path, not user input
+  if (existsSync(path)) return;
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is the caller-provided .n8n-import path, not user input
+  mkdirSync(path, { mode: 0o700 });
+}
+
 function main(): void {
   if (existsSync(ENV_PATH)) {
     console.error('.env already exists; delete it to regenerate.');
@@ -55,6 +78,7 @@ function main(): void {
   }
   const example = readFileSync(EXAMPLE_PATH, 'utf8');
   writeEnvFile(ENV_PATH, fillSecrets(example));
+  ensureN8nImportDir(N8N_IMPORT_DIR);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();

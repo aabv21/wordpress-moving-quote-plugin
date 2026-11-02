@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Admin;
 
 use Chivabox\MovingQuote\Leads\LeadRepository;
+use Chivabox\MovingQuote\Security\RateLimiter;
 
 /**
  * Warns the site owner when delivery to n8n is stuck: a lead that has already given up (`failed`),
@@ -24,22 +25,40 @@ final class StuckDeliveryNotice {
 		}
 
 		$count = ( new LeadRepository() )->count_stuck( time() - self::STUCK_AFTER_SECONDS );
+		if ( 0 !== $count ) {
+			printf(
+				'<div class="notice notice-warning"><p>%s</p></div>',
+				wp_kses_post(
+					sprintf(
+						/* translators: 1: number of stuck leads, 2: link to the Leads page */
+						_n( '%1$d lead has not reached n8n yet. %2$s', '%1$d leads have not reached n8n yet. %2$s', $count, 'moving-quote' ),
+						$count,
+						sprintf(
+							'<a href="%s">%s</a>',
+							esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ),
+							esc_html__( 'View leads', 'moving-quote' )
+						)
+					)
+				)
+			);
+		}
+
+		self::maybe_render_rate_limited_notice();
+	}
+
+	private static function maybe_render_rate_limited_notice(): void {
+		$count = RateLimiter::rate_limited_submission_count();
 		if ( 0 === $count ) {
 			return;
 		}
 
 		printf(
 			'<div class="notice notice-warning"><p>%s</p></div>',
-			wp_kses_post(
+			esc_html(
 				sprintf(
-					/* translators: 1: number of stuck leads, 2: link to the Leads page */
-					_n( '%1$d lead has not reached n8n yet. %2$s', '%1$d leads have not reached n8n yet. %2$s', $count, 'moving-quote' ),
-					$count,
-					sprintf(
-						'<a href="%s">%s</a>',
-						esc_url( admin_url( 'admin.php?page=' . Menu::SLUG ) ),
-						esc_html__( 'View leads', 'moving-quote' )
-					)
+					/* translators: %d: number of rate-limited quote submissions in the current 24-hour window */
+					_n( '%d quote submission was rate-limited in the current 24-hour window.', '%d quote submissions were rate-limited in the current 24-hour window.', $count, 'moving-quote' ),
+					$count
 				)
 			)
 		);

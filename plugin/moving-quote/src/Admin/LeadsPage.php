@@ -18,6 +18,7 @@ final class LeadsPage {
 		add_action( 'admin_post_moving_quote_update_status', [ self::class, 'handle_update_status' ] );
 		add_action( 'admin_post_moving_quote_export_csv', [ self::class, 'handle_export' ] );
 		add_action( 'admin_post_moving_quote_retry_delivery', [ self::class, 'handle_retry' ] );
+		add_action( 'admin_post_moving_quote_delete_lead', [ self::class, 'handle_delete' ] );
 	}
 
 	/** Renders the list table and an "Export CSV" button that keeps the current status filter. */
@@ -63,6 +64,7 @@ final class LeadsPage {
 		$text   = match ( $notice ) {
 			'status_updated' => __( 'Lead status updated.', 'moving-quote' ),
 			'retry_queued'   => __( 'The lead was queued for delivery.', 'moving-quote' ),
+			'lead_deleted'   => __( 'The lead was deleted.', 'moving-quote' ),
 			default          => '',
 		};
 		if ( '' === $text ) {
@@ -98,6 +100,16 @@ final class LeadsPage {
 		self::redirect_to_list( 'retry_queued' );
 	}
 
+	/** Permanently deletes one lead row, checked the same way every other handler here is: `manage_options` first (inside `require_id()`), then this row's own nonce. */
+	public static function handle_delete(): void {
+		$id = self::require_id();
+		check_admin_referer( 'moving_quote_delete_lead_' . $id );
+
+		( new LeadRepository() )->delete( $id );
+
+		self::redirect_to_list( 'lead_deleted' );
+	}
+
 	/** Streams every matching lead as CSV: a UTF-8 BOM, the header, then batches of `EXPORT_CHUNK`. */
 	public static function handle_export(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -112,7 +124,7 @@ final class LeadsPage {
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="moving-leads-' . gmdate( 'Y-m-d', ( new \DateTimeImmutable( 'now', $tz ) )->getTimestamp() ) . '.csv"' );
+		header( 'Content-Disposition: attachment; filename="moving-leads-' . ( new \DateTimeImmutable( 'now', $tz ) )->format( 'Y-m-d' ) . '.csv"' );
 
 		$out = fopen( 'php://output', 'w' );
 		if ( false === $out ) {
@@ -122,16 +134,21 @@ final class LeadsPage {
 		fwrite( $out, "\u{FEFF}" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- streaming to php://output, not a filesystem path; WP_Filesystem has no equivalent.
 		fputcsv( $out, LeadCsv::HEADER, ',', '"', '' );
 
-		$repository  = new LeadRepository();
-		$after_id    = 0;
-		$chunk_count = self::EXPORT_CHUNK;
-		while ( self::EXPORT_CHUNK === $chunk_count ) {
-			$leads       = $repository->chunk_after( $status, $after_id, self::EXPORT_CHUNK );
-			$chunk_count = count( $leads );
-			foreach ( $leads as $lead ) {
+		$repository = new LeadRepository();
+		$after_id   = 0;
+		$raw_count  = self::EXPORT_CHUNK;
+		while ( self::EXPORT_CHUNK === $raw_count ) {
+			$chunk     = $repository->chunk_after( $status, $after_id, self::EXPORT_CHUNK );
+			$raw_count = $chunk['raw_count'];
+			foreach ( $chunk['records'] as $lead ) {
 				fputcsv( $out, LeadCsv::row( $lead, $tz ), ',', '"', '' );
-				$after_id = $lead->id;
 			}
+			// Advance past the whole raw batch, including a trailing unparseable row that never
+			// became a record: driving the loop from raw_count (not count($chunk['records'])) is
+			// what keeps a batch with one bad row from looking like the last, short page and
+			// stopping the export early; advancing the cursor by last_raw_id is what keeps that
+			// same bad row from being re-fetched, and re-skipped, on every subsequent call.
+			$after_id = $chunk['last_raw_id'];
 		}
 
 		fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming to php://output, not a filesystem path; WP_Filesystem has no equivalent.

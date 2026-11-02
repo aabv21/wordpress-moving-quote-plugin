@@ -203,7 +203,7 @@ describe('process-lead.json', () => {
     });
   });
 
-  it('pins "Append lead row": append, autoMapInputData, RAW cell format, and the config-driven document/sheet locators', () => {
+  it('pins "Append lead row": append, autoMapInputData, RAW cell format, handlingExtraData error, and the config-driven document/sheet locators', () => {
     const n = node(wf, 'Append lead row');
     expect(n.parameters.resource).toBe('sheet');
     expect(n.parameters.operation).toBe('append');
@@ -219,6 +219,10 @@ describe('process-lead.json', () => {
     });
     expect((n.parameters.columns as { mappingMode?: string }).mappingMode).toBe('autoMapInputData');
     expect((n.parameters.options as { cellFormat?: string }).cellFormat).toBe('RAW');
+    // The 2.45.6 default ('insertInNewColumn') adds a new column when the sheet's own headers
+    // drift from what's sent, silently "repairing" a renamed header instead of failing loudly;
+    // 'error' makes a header mismatch fail the node (and alert) instead.
+    expect((n.parameters.options as { handlingExtraData?: string }).handlingExtraData).toBe('error');
     expect(n.retryOnFail).toBe(true);
     expect(n.maxTries).toBe(3);
     expect(n.waitBetweenTries).toBe(1000);

@@ -169,7 +169,7 @@ final class LeadsListTable extends WP_List_Table {
 		return esc_html( Messages::display( new \Chivabox\MovingQuote\Pricing\Estimate( $lead->estimate_cop, $lead->estimate_low_cop, $lead->estimate_high_cop, $lead->distance_km ) ) );
 	}
 
-	/** The status column: a per-row form with a select and an "Update" button, submitting straight to `admin-post.php`. */
+	/** The status column: a per-row form with a select and an "Update" button, submitting straight to `admin-post.php`, plus a "Delete" link below it. */
 	private function column_status( LeadRecord $lead ): string {
 		$options = '';
 		foreach ( LeadStatus::cases() as $case ) {
@@ -181,6 +181,17 @@ final class LeadsListTable extends WP_List_Table {
 			);
 		}
 
+		$delete_url = wp_nonce_url(
+			add_query_arg(
+				[
+					'action' => 'moving_quote_delete_lead',
+					'id'     => $lead->id,
+				],
+				admin_url( 'admin-post.php' )
+			),
+			'moving_quote_delete_lead_' . $lead->id
+		);
+
 		return sprintf(
 			'<form method="post" action="%1$s">
 				<input type="hidden" name="action" value="moving_quote_update_status" />
@@ -188,16 +199,20 @@ final class LeadsListTable extends WP_List_Table {
 				%3$s
 				<select name="status">%4$s</select>
 				<button type="submit" class="button">%5$s</button>
-			</form>',
+			</form>
+			<a href="%6$s" class="submitdelete" onclick="return confirm(%7$s)">%8$s</a>',
 			esc_url( admin_url( 'admin-post.php' ) ),
 			$lead->id,
 			wp_nonce_field( 'moving_quote_update_status_' . $lead->id, '_wpnonce', true, false ),
 			$options,
-			esc_html__( 'Update', 'moving-quote' )
+			esc_html__( 'Update', 'moving-quote' ),
+			esc_url( $delete_url ),
+			esc_attr( (string) wp_json_encode( __( 'Delete this lead? This cannot be undone.', 'moving-quote' ) ) ),
+			esc_html__( 'Delete', 'moving-quote' )
 		);
 	}
 
-	/** The delivery column: the sync label, attempts, `last_error` in a `title`, and a "Retry delivery" link on `failed` rows. */
+	/** The delivery column: the sync label, attempts, `last_error` visible as small text (also kept in a `title`), and a "Retry delivery" link on `failed` rows. */
 	private function column_delivery( LeadRecord $lead ): string {
 		$label = sprintf(
 			/* translators: 1: sync status label, 2: attempt count */
@@ -207,6 +222,10 @@ final class LeadsListTable extends WP_List_Table {
 		);
 
 		$html = sprintf( '<span title="%s">%s</span>', esc_attr( $lead->last_error ), esc_html( $label ) );
+
+		if ( '' !== $lead->last_error ) {
+			$html .= sprintf( '<br /><small>%s</small>', esc_html( $lead->last_error ) );
+		}
 
 		if ( SyncStatus::Failed === $lead->sync_status ) {
 			$retry_url = wp_nonce_url(

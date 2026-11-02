@@ -108,6 +108,16 @@ describe('the quote page', () => {
     expect(config.thankYouUrl).toMatch(/\/thank-you\/$/);
   });
 
+  it("sets the move-date input's min to today in America/Bogota, not the site's own configured timezone", async () => {
+    const res = await fetch(site(QUOTE_PAGE_PATH));
+    const html = await res.text();
+    const min = /<input[^>]*\bid="mq-move-date"[^>]*\bmin="([^"]*)"/.exec(html)?.[1];
+    expect(min).toBeDefined();
+
+    const bogotaToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    expect(min).toBe(bogotaToday);
+  });
+
   it('does not load the quote-form script on a page without the shortcode', async () => {
     const res = await fetch(site('/'));
     expect(res.status).toBe(200);

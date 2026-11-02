@@ -5,7 +5,7 @@ namespace Chivabox\MovingQuote\Rest;
 
 use Chivabox\MovingQuote\Leads\{FieldErrors, LeadValidator};
 use Chivabox\MovingQuote\Pricing\Calculator;
-use Chivabox\MovingQuote\Security\RateLimiter;
+use Chivabox\MovingQuote\Security\{RateLimiter, RateLimits};
 use Chivabox\MovingQuote\Settings\Options;
 use WP_Error;
 use WP_REST_Request;
@@ -16,10 +16,8 @@ use WP_REST_Response;
  * data, and nothing is ever saved.
  */
 final class EstimateController {
-	private const NAMESPACE     = 'moving-quote/v1';
-	private const ROUTE         = '/estimate';
-	private const RATE_LIMIT    = 120;
-	private const RATE_WINDOW_S = 600;
+	private const NAMESPACE = 'moving-quote/v1';
+	private const ROUTE     = '/estimate';
 
 	public static function register(): void {
 		// No args schema: every field is validated by LeadValidator, so a restrictive schema here
@@ -36,8 +34,9 @@ final class EstimateController {
 	}
 
 	public static function handle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$bucket      = RateLimits::estimate();
 		$limiter     = new RateLimiter();
-		$retry_after = $limiter->hit( 'estimate', self::RATE_LIMIT, self::RATE_WINDOW_S );
+		$retry_after = $limiter->hit( 'estimate', $bucket['limit'], $bucket['window_seconds'] );
 		if ( 0 !== $retry_after ) {
 			return self::rate_limited( $retry_after );
 		}

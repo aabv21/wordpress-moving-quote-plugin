@@ -172,6 +172,17 @@ final class SettingsSanitizerTest extends TestCase {
 		self::assertSame( 'invalid_email', $bad->errors['team_email'] );
 	}
 
+	/**
+	 * `FILTER_VALIDATE_EMAIL` alone accepts a quoted local part like `"a,b"@example.com`, which
+	 * n8n's Gmail node splits on the comma into a second recipient. Reusing
+	 * `LeadValidator::is_simple_email()` rejects it here too, so a saved team address can never
+	 * fail delivery's own, stricter check once a lead actually sends.
+	 */
+	public function test_team_email_rejects_a_quoted_local_part_filter_validate_email_alone_would_accept(): void {
+		$result = self::sanitize_form( self::form( [ 'team_email' => '"a,b"@example.com' ] ) );
+		self::assertSame( 'invalid_email', $result->errors['team_email'] );
+	}
+
 	public function test_is_idempotent(): void {
 		$first  = self::sanitize_form( self::form() );
 		$second = SettingsSanitizer::sanitize( $first->settings, self::current() );

@@ -16,8 +16,26 @@ final class Installer {
 
 	private const DB_VERSION_OPTION = 'moving_quote_db_version';
 
-	/** Runs on plugin activation: creates the table, seeds defaults, and schedules the cron hook. */
-	public static function activate(): void {
+	/**
+	 * Runs on plugin activation: creates the table, seeds defaults, and schedules the cron hook.
+	 * Refuses on a Multisite install — checked with `is_multisite()`, not just the `$network_wide`
+	 * argument `register_activation_hook()`'s callback receives on a "Network Activate": that
+	 * argument is false for a plain, per-site activation on a Multisite install too, which this
+	 * plugin has never been verified against (shared tables, `switch_to_blog()`, …) and which
+	 * would also give every site's own admin (not just the network admin) an SSRF read-back
+	 * through a lead's `last_error`, by pointing their own site's webhook URL at an internal
+	 * address and reading the response text back from a failed delivery attempt.
+	 */
+	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $network_wide must stay in the signature: register_activation_hook() always calls back with it, and is_multisite() alone (not this argument) is now what the refusal checks.
+	public static function activate( bool $network_wide = false ): void {
+		if ( is_multisite() ) {
+			wp_die(
+				esc_html__( "Chivabox moving quotes doesn't support Multisite.", 'moving-quote' ),
+				esc_html__( 'Plugin activation error', 'moving-quote' ),
+				[ 'back_link' => true ]
+			);
+		}
+
 		self::run_db_delta();
 		self::ensure_settings_and_schedule();
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );

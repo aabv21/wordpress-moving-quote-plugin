@@ -192,6 +192,12 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
+/**
+ * `low` and `high` are each rounded to the nearest 1,000 COP (`Pricing\Calculator::rounded_bound`),
+ * but `amount` is not — with `range_percent` 0, which Settings allows, an `amount` that isn't a
+ * multiple of 1,000 then falls outside `[low, high]` even though the estimate is entirely valid.
+ * Only `low <= high` is checked here; `amount` is unconstrained relative to either bound.
+ */
 function parseEstimate(value: unknown): Lead['estimate'] | null {
   if (!isRecord(value) || !hasOnlyKeys(value, ['currency', 'amount', 'low', 'high'])) return null;
   const { currency, amount, low, high } = value;
@@ -200,7 +206,7 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
   if (!isNonNegativeSafeInteger(amount)) return null;
   if (!isNonNegativeSafeInteger(low)) return null;
   if (!isNonNegativeSafeInteger(high)) return null;
-  if (low > high || amount < low || amount > high) return null;
+  if (low > high) return null;
 
   return { currency, amount, low, high };
 }

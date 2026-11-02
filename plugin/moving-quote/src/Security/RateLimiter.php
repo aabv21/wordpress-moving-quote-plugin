@@ -14,10 +14,12 @@ namespace Chivabox\MovingQuote\Security;
  * given bucket.
  */
 final class RateLimiter {
-	private const TRANSIENT_PREFIX = 'moving_quote_rl_';
-	private const HASH_LENGTH      = 20;
-	private const LOCK_TIMEOUT_S   = 2;
-	private const LOCK_FAILED_WAIT = 2;
+	private const TRANSIENT_PREFIX            = 'moving_quote_rl_';
+	private const HASH_LENGTH                 = 20;
+	private const LOCK_TIMEOUT_S              = 2;
+	private const LOCK_FAILED_WAIT            = 2;
+	public const RATE_LIMITED_COUNT_TRANSIENT = 'moving_quote_rate_limited_submissions';
+	public const RATE_LIMITED_COUNT_WINDOW    = DAY_IN_SECONDS;
 
 	/**
 	 * Counts one hit against `$bucket` for the current client. Returns 0 when the request is
@@ -88,6 +90,53 @@ final class RateLimiter {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a session-scoped advisory lock, not a data query; no caching wrapper applies.
 		$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $key ) );
+	}
+
+	/**
+	 * Counts one `submit` request that was rejected for being rate-limited. Holds only a count and
+	 * a reset time in a single transient (`RATE_LIMITED_COUNT_TRANSIENT`) — never an IP address or
+	 * any other per-visitor data — so `StuckDeliveryNotice` can tell the site owner how many
+	 * submissions were rate-limited without identifying any of them.
+	 *
+	 * The window is fixed, not rolling: it starts at the first 429 after the transient expired or
+	 * was empty, and runs for a flat `RATE_LIMITED_COUNT_WINDOW` (24 h) from that moment, during
+	 * which every further 429 only increments `count` without moving `reset`. A burst at hour 23
+	 * of one window and another at hour 1 of the next are both counted, but never summed into one
+	 * "last 24 hours" figure the way a true rolling window would.
+	 */
+	public static function record_rate_limited_submission(): void {
+		$now  = time();
+		$data = get_transient( self::RATE_LIMITED_COUNT_TRANSIENT );
+
+		if ( ! is_array( $data ) || ! isset( $data['count'], $data['reset'] ) || ! is_int( $data['count'] ) || ! is_int( $data['reset'] ) || $data['reset'] <= $now ) {
+			set_transient(
+				self::RATE_LIMITED_COUNT_TRANSIENT,
+				[
+					'count' => 1,
+					'reset' => $now + self::RATE_LIMITED_COUNT_WINDOW,
+				],
+				self::RATE_LIMITED_COUNT_WINDOW
+			);
+			return;
+		}
+
+		set_transient(
+			self::RATE_LIMITED_COUNT_TRANSIENT,
+			[
+				'count' => $data['count'] + 1,
+				'reset' => $data['reset'],
+			],
+			$data['reset'] - $now
+		);
+	}
+
+	/** How many `submit` requests were rejected as rate-limited in the current fixed 24-hour window (see `record_rate_limited_submission()`). */
+	public static function rate_limited_submission_count(): int {
+		$data = get_transient( self::RATE_LIMITED_COUNT_TRANSIENT );
+		if ( ! is_array( $data ) || ! isset( $data['count'] ) || ! is_int( $data['count'] ) ) {
+			return 0;
+		}
+		return $data['count'];
 	}
 
 	/** The current request's client IP, filterable for use behind a trusted proxy. */

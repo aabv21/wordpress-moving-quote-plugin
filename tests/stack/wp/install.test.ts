@@ -94,6 +94,19 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
     expect(uuidIndex?.Non_unique).toBe('0');
   });
 
+  it('activation runs to completion on a single-site install regardless of the network_wide argument', async () => {
+    // Installer::activate() refuses on is_multisite(), not on the $network_wide argument
+    // register_activation_hook()'s callback receives — defining the MULTISITE constant to
+    // simulate that path breaks WP-CLI's own bootstrap without the real multisite database
+    // tables (wp_site, wp_blogs, …) this stack's single-site WordPress install doesn't have, so
+    // the refusal branch itself isn't exercised here. What's verifiable on this stack: a call
+    // with $network_wide true still runs to completion instead of being refused, confirming that
+    // argument alone (now unused by the check) never triggers it.
+    await wp(['eval', 'delete_option( "moving_quote_db_version" ); delete_option( "moving_quote_settings" );']);
+    await wp(['eval', '\\Chivabox\\MovingQuote\\Install\\Installer::activate( true );']);
+    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe('1\n');
+  });
+
   it('seeds moving_quote_settings with the pricing defaults', async () => {
     const stored = await wpJson<Record<string, unknown>>(['option', 'get', 'moving_quote_settings']);
     const defaults = await pricingDefaults();
@@ -165,9 +178,13 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
     expect(settings.per_km).toBe(4321);
   });
 
-  it('uninstall drops the table, both options, the rate-limit transient, and the cron hook', async () => {
+  it('uninstall drops the table, both options, the rate-limit transient, the rate-limited-submissions counter, and the cron hook', async () => {
     await wp(['transient', 'set', 'moving_quote_rl_test', '1', '600']);
     await expect(rateLimitTransientRowCount()).resolves.toBe(2);
+
+    await wp(['transient', 'set', 'moving_quote_rate_limited_submissions', '1', '600']);
+    const counterRowsBefore = await sqlWp("SELECT option_name FROM wp_options WHERE option_name LIKE '%moving_quote_rate_limited_submissions%'");
+    expect(counterRowsBefore).toHaveLength(2); // the value row and its timeout row
 
     await wp(['plugin', 'uninstall', 'moving-quote', '--deactivate', '--skip-delete']);
 
@@ -175,6 +192,8 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
     await expect(wp(['option', 'get', 'moving_quote_settings'])).rejects.toThrow();
     await expect(wp(['option', 'get', 'moving_quote_db_version'])).rejects.toThrow();
     await expect(rateLimitTransientRowCount()).resolves.toBe(0);
+    const counterRowsAfter = await sqlWp("SELECT option_name FROM wp_options WHERE option_name LIKE '%moving_quote_rate_limited_submissions%'");
+    expect(counterRowsAfter).toHaveLength(0);
     await expect(cronHookScheduled()).resolves.toBe(false);
   });
 

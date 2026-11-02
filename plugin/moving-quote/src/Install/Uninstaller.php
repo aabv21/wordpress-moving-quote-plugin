@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Install;
 
+use Chivabox\MovingQuote\Security\RateLimiter;
+
 /**
  * Removes everything the plugin leaves behind: the leads table, its options, its rate-limit
  * transients, and the outbox cron hook.
@@ -19,10 +21,12 @@ final class Uninstaller {
 		delete_option( 'moving_quote_db_version' );
 
 		self::delete_rate_limit_transients();
+		delete_transient( RateLimiter::RATE_LIMITED_COUNT_TRANSIENT );
 
 		wp_clear_scheduled_hook( Installer::CRON_HOOK );
 	}
 
+	/** The per-IP rate-limit buckets (`moving_quote_rl_*`) — not the separate rate-limited-submissions counter, deleted above through the public API `delete_transient()` already covers. */
 	private static function delete_rate_limit_transients(): void {
 		global $wpdb;
 

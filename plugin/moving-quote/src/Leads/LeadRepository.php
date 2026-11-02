@@ -5,6 +5,7 @@ namespace Chivabox\MovingQuote\Leads;
 
 use Chivabox\MovingQuote\Delivery\SyncUpdate;
 use Chivabox\MovingQuote\Pricing\Estimate;
+use ValueError;
 
 /**
  * Reads and writes the leads table directly: no caching wrapper applies to a table this small,
@@ -91,6 +92,42 @@ final class LeadRepository {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
 		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', $this->table(), $id ), ARRAY_A );
 		return self::typed_row( $row );
+	}
+
+	/**
+	 * Every lead whose `email` matches `$email` exactly, newest first. The one lookup the
+	 * WordPress personal-data exporter keys on. Skips a row `LeadRecord::from_row()` can't parse,
+	 * the same way `page()` and `chunk_after()` do, instead of letting one bad row fatal the whole
+	 * export request.
+	 *
+	 * @return list<LeadRecord>
+	 */
+	public function find_by_email( string $email ): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( 'SELECT * FROM %i WHERE email = %s ORDER BY created_at DESC, id DESC', $this->table(), $email ),
+			ARRAY_A
+		);
+
+		/** @var list<array<string, string|null>>|null $rows ARRAY_A always keys by column name */
+		return self::parseable_rows( $rows ?? [] );
+	}
+
+	/**
+	 * Permanently deletes every lead row whose `email` matches `$email` exactly, in one statement.
+	 * The WordPress personal-data eraser's own lookup: unlike `find_by_email()`, this never has to
+	 * parse a row to delete it, so a row with an unparseable `status` (which `find_by_email()`
+	 * would skip) is still erased. Returns the number of rows deleted.
+	 */
+	public function delete_by_email( string $email ): int {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$deleted = $wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE email = %s', $this->table(), $email ) );
+
+		return false === $deleted ? 0 : $deleted;
 	}
 
 	/** `get_row(..., ARRAY_A)` returns a column-name-keyed row, or null when nothing matched. */
@@ -220,7 +257,7 @@ final class LeadRepository {
 		}
 
 		/** @var list<array<string, string|null>>|null $rows ARRAY_A always keys by column name */
-		return array_map( [ LeadRecord::class, 'from_row' ], $rows ?? [] );
+		return self::parseable_rows( $rows ?? [] );
 	}
 
 	/**
@@ -304,7 +341,15 @@ final class LeadRepository {
 	 * only ever move forward, so a batch never re-reads or skips a row even if the table changes
 	 * while the export is streaming.
 	 *
-	 * @return list<LeadRecord>
+	 * Returns the raw batch's own row count and last id alongside the parsed records: `records` can
+	 * be shorter than `raw_count` when one or more rows in the batch were unparseable and skipped,
+	 * and the caller must drive its "is there another batch?" loop from `raw_count`, not
+	 * `count( records )` — otherwise a batch that happened to contain a bad row looks like the last,
+	 * short page of results and the export stops early, silently dropping every good row after it.
+	 * `last_raw_id` (not necessarily a parsed record's own id) is what the caller's cursor must
+	 * advance to, so a skipped row at the end of a batch is never re-fetched on the next call.
+	 *
+	 * @return array{records: list<LeadRecord>, raw_count: int, last_raw_id: int}
 	 */
 	public function chunk_after( ?LeadStatus $status, int $after_id, int $limit ): array {
 		global $wpdb;
@@ -335,12 +380,21 @@ final class LeadRepository {
 		}
 
 		/** @var list<array<string, string|null>>|null $rows ARRAY_A always keys by column name */
-		return array_map( [ LeadRecord::class, 'from_row' ], $rows ?? [] );
+		$raw_rows = $rows ?? [];
+		$last_row = $raw_rows[ count( $raw_rows ) - 1 ] ?? null;
+
+		return [
+			'records'     => self::parseable_rows( $raw_rows ),
+			'raw_count'   => count( $raw_rows ),
+			'last_raw_id' => null === $last_row ? $after_id : (int) $last_row['id'],
+		];
 	}
 
 	/**
 	 * How many leads look stuck: every `failed` row, plus every `pending` row whose `created_at`
-	 * (stored UTC) is older than `$stale_before` (a Unix timestamp).
+	 * (stored UTC) is older than `$stale_before` (a Unix timestamp). A lead the team has already
+	 * closed out (`won` or `lost`) no longer counts, even if its own delivery never finished —
+	 * resolving the lead resolves the notice too.
 	 */
 	public function count_stuck( int $stale_before ): int {
 		global $wpdb;
@@ -348,8 +402,10 @@ final class LeadRepository {
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
 		$count = $wpdb->get_var(
 			$wpdb->prepare(
-				'SELECT COUNT(*) FROM %i WHERE sync_status = %s OR ( sync_status = %s AND created_at < %s )',
+				'SELECT COUNT(*) FROM %i WHERE status NOT IN ( %s, %s ) AND ( sync_status = %s OR ( sync_status = %s AND created_at < %s ) )',
 				$this->table(),
+				LeadStatus::Won->value,
+				LeadStatus::Lost->value,
 				SyncStatus::Failed->value,
 				SyncStatus::Pending->value,
 				gmdate( 'Y-m-d H:i:s', $stale_before )
@@ -357,5 +413,34 @@ final class LeadRepository {
 		);
 
 		return (int) $count;
+	}
+
+	/** Permanently deletes one lead row. A missing id is a no-op. */
+	public function delete( int $id ): void {
+		global $wpdb;
+
+		$wpdb->delete( $this->table(), [ 'id' => $id ], [ '%d' ] );
+	}
+
+	/**
+	 * Converts every row to a `LeadRecord`, skipping any row `LeadRecord::from_row()` can't parse
+	 * (most likely an unknown `status` value written by a different plugin version) instead of
+	 * letting that one row fatal the whole admin Leads page or CSV export, the same way
+	 * `Delivery\Outbox::process_due()` already skips a poison row rather than losing the rest of
+	 * its batch behind it.
+	 *
+	 * @param list<array<string, string|null>> $rows
+	 * @return list<LeadRecord>
+	 */
+	private static function parseable_rows( array $rows ): array {
+		$records = [];
+		foreach ( $rows as $row ) {
+			try {
+				$records[] = LeadRecord::from_row( $row );
+			} catch ( ValueError ) {
+				continue;
+			}
+		}
+		return $records;
 	}
 }

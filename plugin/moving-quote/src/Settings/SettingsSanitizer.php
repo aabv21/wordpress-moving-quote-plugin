@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Settings;
 
+use Chivabox\MovingQuote\Leads\LeadValidator;
+
 /**
  * Validates and normalizes the settings form's posted strings into the typed settings shape,
  * without calling any WordPress function. A field that fails validation keeps its value from the
@@ -318,7 +320,14 @@ final class SettingsSanitizer {
 		return [ $input, null ];
 	}
 
-	/** @return array{string, string|null} */
+	/**
+	 * Beyond `FILTER_VALIDATE_EMAIL`, also requires the same simple-address shape
+	 * `Leads\LeadValidator::is_simple_email()` enforces on a submitted lead's own email — no
+	 * forbidden character anywhere in the value — so a saved team address always passes n8n's
+	 * `isSimpleEmail()` too, instead of silently failing delivery once a lead actually sends.
+	 *
+	 * @return array{string, string|null}
+	 */
 	private static function sanitize_email( mixed $input, string $current ): array {
 		if ( ! is_string( $input ) ) {
 			return [ $current, 'invalid_email' ];
@@ -326,7 +335,7 @@ final class SettingsSanitizer {
 		if ( '' === $input ) {
 			return [ '', null ];
 		}
-		if ( false === filter_var( $input, FILTER_VALIDATE_EMAIL ) ) {
+		if ( ! LeadValidator::is_simple_email( $input ) ) {
 			return [ $current, 'invalid_email' ];
 		}
 		return [ $input, null ];

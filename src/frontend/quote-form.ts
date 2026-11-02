@@ -1,5 +1,6 @@
 import { postJson } from './lib/api.ts';
 import { debounce } from './lib/debounce.ts';
+import { affectsEstimate, estimateDisplayText } from './lib/estimate-display.ts';
 import { estimateRequest, firstStepWithError, missingRequired } from './lib/form-state.ts';
 import type { FormValues } from './lib/form-state.ts';
 import { latestOnly } from './lib/latest.ts';
@@ -116,11 +117,8 @@ function initQuoteForm(form: HTMLFormElement): void {
     if (!request) return;
 
     const result = await postJson(config.estimateUrl, request);
-    if (!result.ok) return;
-
-    const data = result.data as { display?: unknown };
-    if (estimateValue && typeof data.display === 'string') {
-      estimateValue.textContent = data.display;
+    if (estimateValue) {
+      estimateValue.textContent = estimateDisplayText(result);
     }
   });
 
@@ -130,8 +128,18 @@ function initQuoteForm(form: HTMLFormElement): void {
     fetchEstimate().catch(() => undefined);
   }, ESTIMATE_DEBOUNCE_MS);
 
-  form.addEventListener('input', runEstimate);
-  form.addEventListener('change', runEstimate);
+  // The name, phone, and email fields never affect price: filtering them out here (rather than
+  // in fetchEstimate itself) means a keystroke in any of them never even debounces a call that
+  // would just return early, let alone spend a request against the estimate rate limit.
+  function onFieldEvent(event: Event): void {
+    const target = event.target;
+    const fieldName = target instanceof HTMLElement ? target.getAttribute('name') : null;
+    if (fieldName !== null && !affectsEstimate(fieldName)) return;
+    runEstimate();
+  }
+
+  form.addEventListener('input', onFieldEvent);
+  form.addEventListener('change', onFieldEvent);
 
   form.querySelectorAll<HTMLButtonElement>('[data-next]').forEach((button) => {
     button.addEventListener('click', () => {
