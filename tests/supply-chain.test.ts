@@ -115,38 +115,33 @@ test('every Compose image is pinned by digest', () => {
   }
 });
 
-test('every long-running Compose service sets no-new-privileges', () => {
+// Reads the merged, effective Compose config (not the raw YAML text) so `n8n-worker`'s own
+// settings, inherited from `n8n` through `extends` in compose.queue.yaml, are checked too, instead
+// of only the services that happen to write their own security_opt/cap_drop block.
+const composeConfig = async (args: string[]): Promise<Record<string, { security_opt?: string[]; cap_drop?: string[] }>> => {
+  const { stdout } = await execFileAsync('docker', ['compose', ...args, 'config', '--format', 'json']);
+  return (JSON.parse(stdout) as { services: Record<string, { security_opt?: string[]; cap_drop?: string[] }> }).services;
+};
+
+test('every long-running Compose service disables privilege escalation', async () => {
   // "php" is excluded: it's a one-shot `docker compose run` tools container (profiles: [tools]),
-  // never a long-running service. "n8n-worker" (compose.queue.yaml) inherits the base n8n
-  // service's security_opt through `extends`, so it has no security_opt block of its own to find
-  // here — it's covered by the n8n service's own occurrence instead.
-  const longRunningServices = ['db', 'wordpress', 'wpcli', 'cron', 'postgres', 'n8n', 'redis'];
-  const composeYaml = readFileSync('compose.yaml', 'utf8');
-  const queueYaml = readFileSync('compose.queue.yaml', 'utf8');
-
-  for (const service of longRunningServices) {
-    const inComposeYaml = composeYaml.includes(`\n  ${service}:\n`);
-    const inQueueYaml = queueYaml.includes(`\n  ${service}:\n`);
-    expect(inComposeYaml || inQueueYaml, `expected to find service "${service}" in compose.yaml or compose.queue.yaml`).toBe(true);
+  // never a long-running service.
+  const queue = await composeConfig(['-f', 'compose.yaml', '-f', 'compose.queue.yaml']);
+  for (const name of ['db', 'wordpress', 'wpcli', 'cron', 'postgres', 'n8n', 'redis', 'n8n-worker']) {
+    expect(queue[name]?.security_opt, name).toContain('no-new-privileges:true');
   }
-
-  const noNewPrivilegesCount = (content: string): number => [...content.matchAll(/no-new-privileges:true/g)].length;
-  // db, wordpress, wpcli, cron, postgres, n8n in compose.yaml, plus redis in compose.queue.yaml.
-  expect(noNewPrivilegesCount(composeYaml)).toBe(6);
-  expect(noNewPrivilegesCount(queueYaml)).toBe(1);
 });
 
-test('the n8n service drops every Linux capability; every other service keeps its own', () => {
-  const composeYaml = readFileSync('compose.yaml', 'utf8');
-  const n8nBlockMatch = /\n {2}n8n:\n([\s\S]*?)\n {2}\S/.exec(`${composeYaml}\n  \0`);
-  expect(n8nBlockMatch).not.toBeNull();
-  expect(n8nBlockMatch?.[1]).toMatch(/cap_drop:\s*\[\s*ALL\s*\]/);
-
-  // Only n8n carries cap_drop: Postgres, MySQL, WordPress/Apache, and Redis each switch users
-  // internally at startup (dropping from root to their own service account), which needs a
-  // capability (e.g. chown, setuid/setgid) this repo hasn't proven safe to drop per-image yet.
-  const capDropCount = [...composeYaml.matchAll(/cap_drop:/g)].length;
-  expect(capDropCount).toBe(1);
+test('only n8n (and the worker that extends it) drops every Linux capability', async () => {
+  const queue = await composeConfig(['-f', 'compose.yaml', '-f', 'compose.queue.yaml']);
+  expect(queue.n8n?.cap_drop).toEqual(['ALL']);
+  expect(queue['n8n-worker']?.cap_drop).toEqual(['ALL']);
+  // Postgres, MySQL, WordPress/Apache, and Redis each switch users internally at startup
+  // (dropping from root to their own service account), which needs a capability (e.g. chown,
+  // setuid/setgid) this repo hasn't proven safe to drop per-image yet.
+  for (const name of ['db', 'wordpress', 'wpcli', 'cron', 'postgres', 'redis']) {
+    expect(queue[name]?.cap_drop, name).toBeUndefined();
+  }
 });
 
 test('the PHP Dockerfile pins FROM and COPY --from by digest', () => {
@@ -194,10 +189,16 @@ test('every `docker run` image reference in .github/workflows/*.yml is pinned by
   let checked = 0;
   for (const file of files) {
     const content = readFileSync(join(workflowsDir, file), 'utf8');
-    const images = [...content.matchAll(/docker run\b[^\n]*?\s(\S+\/\S+:\S+)/g)].map((m) => m[1]).filter((image): image is string => image !== undefined);
+    // Matches an image reference with or without an owner/repo slash (e.g. `composer:2.11.0@sha256:…`
+    // as well as `koalaman/shellcheck:v0.11.0@sha256:…`); a line this can't parse at all still fails
+    // the digest check below instead of silently never being counted.
+    const images = content
+      .split('\n')
+      .filter((line) => /\bdocker run\b/.test(line))
+      .map((line) => /\s([a-z0-9][\w./-]*:\S+)/.exec(line)?.[1] ?? `unparsed: ${line.trim()}`);
     checked += images.length;
     for (const image of images) {
-      if (!/@sha256:[a-f0-9]{64}$/.test(image)) offenders.push(`${file}: ${image}`);
+      if (!/^[\w./-]+:[\w.-]+@sha256:[a-f0-9]{64}$/.test(image)) offenders.push(`${file}: ${image}`);
     }
   }
   expect(checked).toBeGreaterThan(0);

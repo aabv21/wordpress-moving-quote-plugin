@@ -27,10 +27,23 @@ export function hasPlaceholderInSqlComment(query: string): boolean {
 // External services that must retry instead of failing a workflow run on a transient error.
 const RETRY_REQUIRED_TYPES = new Set(['n8n-nodes-base.postgres', 'n8n-nodes-base.googleSheets', 'n8n-nodes-base.gmail', 'n8n-nodes-base.httpRequest']);
 
+/**
+ * True for a manifest credential entry whose `data` sets `customScopes: true` and `enabledScopes`
+ * to exactly `gmail.send` — the shape `cvbCredGmail0001` uses. Narrowed this way, n8n 2.45.6's
+ * Gmail node can only call `POST users/me/messages/send`; any node option that makes it call a
+ * different endpoint (`options.senderName`, which calls `GET users/me/profile` first) fails with
+ * a 403 once the credential is re-consented under this scope.
+ */
+function isSendOnlyGmailCredential(credential: { data: (env: Readonly<Record<string, string>>) => Record<string, unknown> }): boolean {
+  const data = credential.data({});
+  return data.customScopes === true && data.enabledScopes === 'https://www.googleapis.com/auth/gmail.send';
+}
+
 export function checkWorkflow(
   wf: WorkflowJson,
-  opts: { file: string; credentialIds: ReadonlySet<string>; codeNodes: readonly CodeNodeEntry[] },
+  opts: { file: string; credentialIds: ReadonlySet<string>; codeNodes: readonly CodeNodeEntry[]; credentials?: typeof CREDENTIALS },
 ): string[] {
+  const credentials = opts.credentials ?? CREDENTIALS;
   const errors: string[] = [];
   // Widen past WorkflowJson's own (optimistic) field types so a malformed or hand-edited file can
   // be reported instead of crashing the check.
@@ -84,6 +97,18 @@ export function checkWorkflow(
 
     if (RETRY_REQUIRED_TYPES.has(node.type) && !(node.retryOnFail === true && node.maxTries === 3 && node.waitBetweenTries === 1000)) {
       errors.push(`node ${node.name} must retry 3 times with a 1000 ms wait`);
+    }
+
+    if (node.type === 'n8n-nodes-base.gmail') {
+      const options = node.parameters.options;
+      const hasSenderName = options !== null && typeof options === 'object' && 'senderName' in (options as Record<string, unknown>);
+      if (hasSenderName) {
+        const credentialId = Object.values(node.credentials ?? {})[0]?.id;
+        const credential = credentials.find((c) => c.id === credentialId);
+        if (credential && isSendOnlyGmailCredential(credential)) {
+          errors.push(`node ${node.name} sets options.senderName, which calls GET users/me/profile — not authorized by its send-only Gmail credential`);
+        }
+      }
     }
 
     if (node.type === 'n8n-nodes-base.postgres' && node.parameters.operation === 'executeQuery') {

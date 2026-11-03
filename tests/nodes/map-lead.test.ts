@@ -61,11 +61,6 @@ describe('map-lead', () => {
     expect(run({ lead: { ...lead, site_name: 'Chivabox\r\nBcc: x@example.com' }, config }).customer.subject).not.toMatch(/[\r\n]/);
   });
 
-  it('outputs a one-line sender_name for both Gmail nodes to share', () => {
-    expect(run({ lead, config }).sender_name).toBe('Chivabox Movers');
-    expect(run({ lead: { ...lead, site_name: 'Chivabox\r\nBcc: x@example.com' }, config }).sender_name).toBe('Chivabox  Bcc: x@example.com');
-  });
-
   it('never lets a line break in a lead field forge an extra line in the team alert', () => {
     const name = 'Ana\nPhone: 570000000099';
     const { team } = run({ lead: { ...lead, customer: { ...lead.customer, name } }, config });

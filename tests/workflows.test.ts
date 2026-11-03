@@ -78,6 +78,86 @@ it('every Google Sheets and Gmail node across workflows/ retries 3 times with a 
   }
 });
 
+it('no Gmail node across workflows/ sets options.senderName on a send-only-scoped credential', () => {
+  // n8n 2.45.6's Gmail node only calls options.senderName's extra GET users/me/profile when that
+  // option is set; a credential narrowed to gmail.send alone (cvbCredGmail0001) isn't authorized
+  // for that call, so every Gmail node wired to one must leave senderName unset.
+  const matches = allNodesOfType('n8n-nodes-base.gmail');
+  expect(matches.length).toBeGreaterThan(0);
+  for (const { file, node: n } of matches) {
+    const options = n.parameters.options as { senderName?: unknown } | undefined;
+    expect(options?.senderName, `${file} › ${n.name}`).toBeUndefined();
+  }
+});
+
+describe('checkWorkflow: Gmail senderName vs a send-only credential', () => {
+  const sendOnlyCredential = {
+    id: 'credSendOnly01',
+    name: 'Send-only Gmail',
+    type: 'gmailOAuth2',
+    env: [],
+    data: () => ({ customScopes: true, enabledScopes: 'https://www.googleapis.com/auth/gmail.send' }),
+  };
+  const broadCredential = {
+    id: 'credBroad00001',
+    name: 'Broad Gmail',
+    type: 'gmailOAuth2',
+    env: [],
+    data: () => ({}),
+  };
+  const baseWorkflow = {
+    id: 'wfTest00000001',
+    name: 'Test',
+    nodes: [] as WorkflowNode[],
+    connections: {},
+    settings: { executionOrder: 'v1', timezone: 'America/Bogota', callerPolicy: 'workflowsFromSameOwner', errorWorkflow: 'cvbErrorHandler1' },
+  };
+  const gmailNode = (credentialId: string, senderName?: string): WorkflowNode => ({
+    id: 'nodeGmail0000001',
+    name: 'Email team',
+    type: 'n8n-nodes-base.gmail',
+    typeVersion: 2.2,
+    position: [0, 0],
+    retryOnFail: true,
+    maxTries: 3,
+    waitBetweenTries: 1000,
+    parameters: {
+      resource: 'message',
+      operation: 'send',
+      sendTo: 'a@example.com',
+      subject: 'x',
+      emailType: 'text',
+      message: 'x',
+      options: senderName === undefined ? { appendAttribution: false } : { appendAttribution: false, senderName },
+    },
+    credentials: { gmailOAuth2: { id: credentialId, name: 'Gmail' } },
+  });
+  const opts = (creds: typeof CREDENTIALS) => ({
+    file: 'test.json',
+    credentialIds: new Set(creds.map((c) => c.id)),
+    codeNodes: CODE_NODES,
+    credentials: creds,
+  });
+
+  it('fails when a Gmail node sets options.senderName while its credential is send-only', () => {
+    const wf = { ...baseWorkflow, nodes: [gmailNode('credSendOnly01', '={{ $json.sender_name }}')] } as unknown as WorkflowJson;
+    const errors = checkWorkflow(wf, opts([sendOnlyCredential]));
+    expect(errors.some((e) => e.includes('senderName'))).toBe(true);
+  });
+
+  it('passes when a Gmail node sets options.senderName on a broader-scoped credential', () => {
+    const wf = { ...baseWorkflow, nodes: [gmailNode('credBroad00001', '={{ $json.sender_name }}')] } as unknown as WorkflowJson;
+    const errors = checkWorkflow(wf, opts([broadCredential]));
+    expect(errors.some((e) => e.includes('senderName'))).toBe(false);
+  });
+
+  it('passes when a Gmail node on a send-only credential leaves senderName unset', () => {
+    const wf = { ...baseWorkflow, nodes: [gmailNode('credSendOnly01')] } as unknown as WorkflowJson;
+    const errors = checkWorkflow(wf, opts([sendOnlyCredential]));
+    expect(errors.some((e) => e.includes('senderName'))).toBe(false);
+  });
+});
+
 it('no workflow in workflows/ anchors a cross-node reference with .item', () => {
   for (const path of listJsonFiles('workflows')) {
     const wf = readWorkflow(path);
@@ -235,7 +315,7 @@ describe('process-lead.json', () => {
     expect(n.waitBetweenTries).toBe(1000);
   });
 
-  it('pins "Email team" as plain text, anchored on "Map lead"', () => {
+  it('pins "Email team" as plain text, anchored on "Map lead", with no senderName (send-only credential)', () => {
     const n = node(wf, 'Email team');
     expect(n.parameters.emailType).toBe('text');
     expect(n.parameters.sendTo).toBe("={{ $('Map lead').first().json.team.to }}");
@@ -243,10 +323,10 @@ describe('process-lead.json', () => {
     expect(n.parameters.message).toBe("={{ $('Map lead').first().json.team.text }}");
     const options = n.parameters.options as { appendAttribution?: boolean; senderName?: string };
     expect(options.appendAttribution).toBe(false);
-    expect(options.senderName).toBe("={{ $('Map lead').first().json.sender_name }}");
+    expect(options.senderName).toBeUndefined();
   });
 
-  it('pins "Email customer" as HTML with a reply-to set to the team address', () => {
+  it('pins "Email customer" as HTML with a reply-to set to the team address, with no senderName (send-only credential)', () => {
     const n = node(wf, 'Email customer');
     expect(n.parameters.emailType).toBe('html');
     expect(n.parameters.sendTo).toBe("={{ $('Map lead').first().json.customer.to }}");
@@ -255,7 +335,7 @@ describe('process-lead.json', () => {
     const options = n.parameters.options as { appendAttribution?: boolean; replyTo?: string; senderName?: string };
     expect(options.appendAttribution).toBe(false);
     expect(options.replyTo).toBe("={{ $('Map lead').first().json.customer.reply_to }}");
-    expect(options.senderName).toBe("={{ $('Map lead').first().json.sender_name }}");
+    expect(options.senderName).toBeUndefined();
   });
 });
 

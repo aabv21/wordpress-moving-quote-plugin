@@ -87,7 +87,6 @@ interface MapLeadOutput {
   row: SheetRow;
   team: { to: string; subject: string; text: string };
   customer: { to: string; reply_to: string; subject: string; html: string };
-  sender_name: string;
 }
 
 /**
@@ -154,6 +153,5 @@ export function run(input: { lead: Lead; config: Config }): MapLeadOutput {
     row,
     team: { to: lead.team_email, subject: teamSubject, text: teamText },
     customer: { to: customer.email, reply_to: lead.team_email, subject: customerSubject, html: customerHtml },
-    sender_name: oneLine(lead.site_name),
   };
 }
