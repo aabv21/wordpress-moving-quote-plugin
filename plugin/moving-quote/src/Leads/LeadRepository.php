@@ -116,6 +116,26 @@ final class LeadRepository {
 	}
 
 	/**
+	 * Every `request_uuid` belonging to a lead whose `email` matches `$email` exactly, newest
+	 * first — regardless of whether its `status` parses. The WordPress personal-data eraser's own
+	 * pre-delete lookup: it names which leads are about to lose their one database copy while
+	 * copies elsewhere (the delivered sheet row, the two sent emails, a failed n8n execution)
+	 * stay out of reach, so the eraser can warn by reference even for a row `find_by_email()`
+	 * itself would skip.
+	 *
+	 * @return list<string>
+	 */
+	public function uuids_by_email( string $email ): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$uuids = $wpdb->get_col( $wpdb->prepare( 'SELECT request_uuid FROM %i WHERE email = %s ORDER BY created_at DESC, id DESC', $this->table(), $email ) );
+
+		/** @var list<string> $uuids get_col() returns a plain list of column values */
+		return $uuids;
+	}
+
+	/**
 	 * Permanently deletes every lead row whose `email` matches `$email` exactly, in one statement.
 	 * The WordPress personal-data eraser's own lookup: unlike `find_by_email()`, this never has to
 	 * parse a row to delete it, so a row with an unparseable `status` (which `find_by_email()`

@@ -4,6 +4,11 @@ import { disableDelivery, resetRateLimits, restNonce, rest, sqlWp, table, wp } f
 
 const LEADS_PATH = '/moving-quote/v1/leads';
 
+/** The customer-facing reference `LeadRecord::reference()` builds: `MQ-` plus the first 8 hex of the UUID, uppercased. */
+function referenceFor(requestUuid: string): string {
+  return `MQ-${requestUuid.replaceAll('-', '').slice(0, 8).toUpperCase()}`;
+}
+
 interface ExporterResult {
   done: boolean;
   data: Array<{ group_id: string; item_id: string; data: Array<{ name: string; value: string }> }>;
@@ -13,6 +18,7 @@ interface EraserResult {
   done: boolean;
   items_removed: boolean;
   items_retained: boolean;
+  messages: string[];
 }
 
 /**
@@ -123,13 +129,27 @@ describe('personal data: export and erase', () => {
     const erased = await eraseFor(email);
     expect(erased.done).toBe(true);
     expect(erased.items_removed).toBe(true);
-    expect(erased.items_retained).toBe(false);
+    // The row itself is gone, but copies still exist outside this database: the lead was synced
+    // to n8n inline right after insert (delivery is disabled for this whole file, but the eraser
+    // itself makes no assumption about that — it always warns), so a copy can still sit in the
+    // Moving leads sheet, in the two notification emails already sent, or in a failed n8n
+    // execution's stored data for up to 168 h. The eraser can't reach any of those, so it must
+    // say so instead of reporting a full erasure — named by this lead's own MQ-… reference, the
+    // one identifier a site owner can actually search the sheet and their inbox for.
+    expect(erased.items_retained).toBe(true);
+    expect(erased.messages.length).toBeGreaterThan(0);
+    expect(erased.messages.join(' ')).toContain(referenceFor(lead.submission_id as string));
+    expect(erased.messages.join(' ')).toMatch(/sheet/i);
+    expect(erased.messages.join(' ')).toMatch(/email|gmail/i);
+    expect(erased.messages.join(' ')).toMatch(/n8n/i);
 
     const after = await sqlWp(`SELECT id FROM ${leadsTable} WHERE email = '${email}'`);
     expect(after).toHaveLength(0);
 
     const emptyErase = await eraseFor(`no-such-lead-${crypto.randomUUID()}@example.com`);
     expect(emptyErase.items_removed).toBe(false);
+    expect(emptyErase.items_retained).toBe(false);
+    expect(emptyErase.messages).toEqual([]);
   });
 
   it('erases a lead whose status is unparseable, which the exporter would have skipped', async () => {
@@ -150,6 +170,11 @@ describe('personal data: export and erase', () => {
 
       const erased = await eraseFor(email);
       expect(erased.items_removed).toBe(true);
+      // The eraser warns by reference even for a row its own exporter can't parse: it deletes by
+      // a direct SQL statement, not through the parsed-row path, so an unparseable status is no
+      // excuse to skip the warning either.
+      expect(erased.items_retained).toBe(true);
+      expect(erased.messages.join(' ')).toContain(referenceFor(uuid));
 
       const after = await sqlWp(`SELECT id FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
       expect(after).toHaveLength(0);

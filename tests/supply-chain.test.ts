@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 
@@ -114,6 +115,40 @@ test('every Compose image is pinned by digest', () => {
   }
 });
 
+test('every long-running Compose service sets no-new-privileges', () => {
+  // "php" is excluded: it's a one-shot `docker compose run` tools container (profiles: [tools]),
+  // never a long-running service. "n8n-worker" (compose.queue.yaml) inherits the base n8n
+  // service's security_opt through `extends`, so it has no security_opt block of its own to find
+  // here — it's covered by the n8n service's own occurrence instead.
+  const longRunningServices = ['db', 'wordpress', 'wpcli', 'cron', 'postgres', 'n8n', 'redis'];
+  const composeYaml = readFileSync('compose.yaml', 'utf8');
+  const queueYaml = readFileSync('compose.queue.yaml', 'utf8');
+
+  for (const service of longRunningServices) {
+    const inComposeYaml = composeYaml.includes(`\n  ${service}:\n`);
+    const inQueueYaml = queueYaml.includes(`\n  ${service}:\n`);
+    expect(inComposeYaml || inQueueYaml, `expected to find service "${service}" in compose.yaml or compose.queue.yaml`).toBe(true);
+  }
+
+  const noNewPrivilegesCount = (content: string): number => [...content.matchAll(/no-new-privileges:true/g)].length;
+  // db, wordpress, wpcli, cron, postgres, n8n in compose.yaml, plus redis in compose.queue.yaml.
+  expect(noNewPrivilegesCount(composeYaml)).toBe(6);
+  expect(noNewPrivilegesCount(queueYaml)).toBe(1);
+});
+
+test('the n8n service drops every Linux capability; every other service keeps its own', () => {
+  const composeYaml = readFileSync('compose.yaml', 'utf8');
+  const n8nBlockMatch = /\n {2}n8n:\n([\s\S]*?)\n {2}\S/.exec(`${composeYaml}\n  \0`);
+  expect(n8nBlockMatch).not.toBeNull();
+  expect(n8nBlockMatch?.[1]).toMatch(/cap_drop:\s*\[\s*ALL\s*\]/);
+
+  // Only n8n carries cap_drop: Postgres, MySQL, WordPress/Apache, and Redis each switch users
+  // internally at startup (dropping from root to their own service account), which needs a
+  // capability (e.g. chown, setuid/setgid) this repo hasn't proven safe to drop per-image yet.
+  const capDropCount = [...composeYaml.matchAll(/cap_drop:/g)].length;
+  expect(capDropCount).toBe(1);
+});
+
 test('the PHP Dockerfile pins FROM and COPY --from by digest', () => {
   const content = readFileSync('docker/php/Dockerfile', 'utf8');
   const fromLines = [...content.matchAll(/^FROM\s+(\S+)/gm)].map((m) => m[1]);
@@ -148,4 +183,33 @@ test('composer.json allow-plugins is an object listing only installed plugins', 
 test('composer.json prefers stable releases', () => {
   expect(composer['minimum-stability']).toBe('stable');
   expect(composer['prefer-stable']).toBe(true);
+});
+
+test('every `docker run` image reference in .github/workflows/*.yml is pinned by digest', () => {
+  const workflowsDir = '.github/workflows';
+  const files = readdirSync(workflowsDir).filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'));
+  expect(files.length).toBeGreaterThan(0);
+
+  const offenders: string[] = [];
+  let checked = 0;
+  for (const file of files) {
+    const content = readFileSync(join(workflowsDir, file), 'utf8');
+    const images = [...content.matchAll(/docker run\b[^\n]*?\s(\S+\/\S+:\S+)/g)].map((m) => m[1]).filter((image): image is string => image !== undefined);
+    checked += images.length;
+    for (const image of images) {
+      if (!/@sha256:[a-f0-9]{64}$/.test(image)) offenders.push(`${file}: ${image}`);
+    }
+  }
+  expect(checked).toBeGreaterThan(0);
+  expect(offenders).toEqual([]);
+});
+
+test('zizmor is installed from a hash-pinned requirements file with --require-hashes', () => {
+  const content = readFileSync('.github/workflows/ci.yml', 'utf8');
+  expect(content).toMatch(/pip install --require-hashes -r \.github\/zizmor-requirements\.txt/);
+
+  const requirements = readFileSync('.github/zizmor-requirements.txt', 'utf8');
+  expect(requirements).toMatch(/^zizmor==1\.31\.1\s*\\/m);
+  const hashes = [...requirements.matchAll(/--hash=sha256:[a-f0-9]{64}/g)];
+  expect(hashes.length).toBeGreaterThan(0);
 });

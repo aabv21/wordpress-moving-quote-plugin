@@ -1,9 +1,9 @@
 import { postJson } from './lib/api.ts';
 import { debounce } from './lib/debounce.ts';
-import { affectsEstimate, estimateDisplayText } from './lib/estimate-display.ts';
+import { affectsEstimate } from './lib/estimate-display.ts';
+import { createEstimateFetcher } from './lib/estimate-fetch.ts';
 import { estimateRequest, firstStepWithError, missingRequired } from './lib/form-state.ts';
 import type { FormValues } from './lib/form-state.ts';
-import { latestOnly } from './lib/latest.ts';
 import { uuidV4 } from './lib/uuid.ts';
 
 interface QuoteFormConfig {
@@ -112,20 +112,16 @@ function initQuoteForm(form: HTMLFormElement): void {
     if (errorRegion) errorRegion.textContent = '';
   }
 
-  const fetchEstimate = latestOnly(async (): Promise<void> => {
-    const request = estimateRequest(readValues(form));
-    if (!request) return;
-
-    const result = await postJson(config.estimateUrl, request);
-    if (estimateValue) {
-      estimateValue.textContent = estimateDisplayText(result);
-    }
+  const fetchEstimate = createEstimateFetcher(config.estimateUrl, (text) => {
+    if (estimateValue) estimateValue.textContent = text;
   });
 
   // debounce()'s callback is declared void-returning; the promise fetchEstimate() produces is
   // caught right here; nothing above is dropped.
   const runEstimate = debounce(() => {
-    fetchEstimate().catch(() => undefined);
+    const request = estimateRequest(readValues(form));
+    if (!request) return;
+    fetchEstimate(request).catch(() => undefined);
   }, ESTIMATE_DEBOUNCE_MS);
 
   // The name, phone, and email fields never affect price: filtering them out here (rather than

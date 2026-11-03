@@ -6,6 +6,5 @@ config/*
 node_modules/
 /vendor/
 .phpunit.cache/
-.superpowers/
 .DS_Store
 docs/diagrams/*.delivery.json

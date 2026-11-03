@@ -20,6 +20,21 @@ it('shapes the JWT and Postgres data for n8n 2.45.6', () => {
   expect(byId.get('cvbCredLeadJwt01')).toEqual({ keyType: 'passphrase', secret: 'lead_webhook_secret-test', algorithm: 'HS256' });
   expect(byId.get('cvbCredAppDb0001')).toEqual({ host: 'postgres', port: 5432, database: 'app', user: 'app_runtime_db_user-test', password: 'app_runtime_db_password-test', ssl: 'disable' });
 });
+it('narrows the Gmail credential to the send-only scope, never the default GmailOAuth2Api scope list', () => {
+  const byId = new Map(plan({}).credentials.map((c) => [c.id, c.data]));
+  const gmailData = byId.get('cvbCredGmail0001') as Record<string, unknown>;
+  expect(gmailData['customScopes']).toBe(true);
+  expect(gmailData['enabledScopes']).toBe('https://www.googleapis.com/auth/gmail.send');
+  // Never the broader default scopes (gmail.modify, the full mail.google.com access, …)
+  // GmailOAuth2Api.credentials.js falls back to when customScopes is unset.
+  expect(gmailData['enabledScopes']).not.toMatch(/gmail\.modify|mail\.google\.com/);
+
+  // The Sheets credential is unaffected: it's a different Google service with its own (unlisted
+  // here, left at n8n's own default) scope, not narrowed by this change.
+  const sheetsData = byId.get('cvbCredGSheets01') as Record<string, unknown>;
+  expect(sheetsData['customScopes']).toBeUndefined();
+  expect(sheetsData['enabledScopes']).toBeUndefined();
+});
 it('every env var set skips nothing', () => expect(plan({}).skipped).toEqual([]));
 it('skips credentials with missing env and names the variables', () =>
   expect(plan({ env: { APP_RUNTIME_DB_USER: 'u', APP_RUNTIME_DB_PASSWORD: 'p' } }).skipped).toContainEqual({ id: 'cvbCredLeadJwt01', reason: 'missing LEAD_WEBHOOK_SECRET' }));

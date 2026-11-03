@@ -48,11 +48,22 @@ final class LeadsPage {
 			<h1><?php esc_html_e( 'Moving quotes', 'moving-quote' ); ?></h1>
 			<?php self::render_notice(); ?>
 			<a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'moving-quote' ); ?></a>
-			<form method="get">
-				<input type="hidden" name="page" value="<?php echo esc_attr( Menu::SLUG ); ?>" />
-				<?php $table->views(); ?>
-				<?php $table->display(); ?>
-			</form>
+			<?php
+			/*
+			 * No wrapping <form method="get"> here on purpose: this table has no bulk actions and no
+			 * search box, and WP_List_Table::display() already prints every row's own
+			 * <form method="post" action="admin-post.php"> (see LeadsListTable::column_status()). HTML
+			 * doesn't allow nested forms -- the parser drops a nested <form>'s own start tag, folding
+			 * its controls into whichever form is still open, so a wrapping GET form here would
+			 * silently fold the first row's status controls into itself, and that lead would never
+			 * actually change status. Every pagination control is a plain link carrying its own query
+			 * args (including `status`), except the "Current Page" number box, which has no form of
+			 * its own to submit via Enter -- an accepted, minor loss next to a status update that
+			 * silently never takes effect.
+			 */
+			?>
+			<?php $table->views(); ?>
+			<?php $table->display(); ?>
 		</div>
 		<?php
 	}

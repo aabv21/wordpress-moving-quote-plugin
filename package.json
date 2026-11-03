@@ -19,7 +19,7 @@
     "export": "node scripts/export-workflows.ts",
     "test:stack": "vitest run --config vitest.stack.config.ts",
     "test:stack:wp": "vitest run --config vitest.stack.config.ts tests/stack/wp",
-    "php": "docker compose run --rm php"
+    "php": "docker compose run --rm --user \"$(id -u):$(id -g)\" php"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

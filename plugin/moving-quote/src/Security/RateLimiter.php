@@ -33,14 +33,14 @@ final class RateLimiter {
 	public function hit( string $bucket, int $limit, int $window_seconds ): int {
 		$key = $this->transient_key( $bucket );
 
-		if ( ! $this->acquire_lock( $key ) ) {
+		if ( ! self::acquire_lock( $key ) ) {
 			return self::LOCK_FAILED_WAIT;
 		}
 
 		try {
 			return $this->count_hit( $key, $limit, $window_seconds );
 		} finally {
-			$this->release_lock( $key );
+			self::release_lock( $key );
 		}
 	}
 
@@ -76,7 +76,7 @@ final class RateLimiter {
 	}
 
 	/** True once `GET_LOCK()` reports success (`1`); false on a timeout (`0`) or an error (`NULL`). */
-	private function acquire_lock( string $key ): bool {
+	private static function acquire_lock( string $key ): bool {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a session-scoped advisory lock, not a data query; no caching wrapper applies.
 		$result = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', $key, self::LOCK_TIMEOUT_S ) );
@@ -86,7 +86,7 @@ final class RateLimiter {
 		return '1' === $result || '1=1' === $result;
 	}
 
-	private function release_lock( string $key ): void {
+	private static function release_lock( string $key ): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a session-scoped advisory lock, not a data query; no caching wrapper applies.
 		$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $key ) );
@@ -103,31 +103,48 @@ final class RateLimiter {
 	 * which every further 429 only increments `count` without moving `reset`. A burst at hour 23
 	 * of one window and another at hour 1 of the next are both counted, but never summed into one
 	 * "last 24 hours" figure the way a true rolling window would.
+	 *
+	 * This read-modify-write is guarded by the same MySQL named lock `hit()` uses, keyed on this
+	 * counter's own transient name, for the same reason: without it, a concurrent burst of 429s
+	 * can all read the same stale count before any of them writes the incremented value back,
+	 * undercounting how many submissions were actually rate-limited. Fails closed like `hit()`:
+	 * if the lock can't be acquired, this one 429 simply isn't counted, rather than risk a lost
+	 * update silently dropping it from the next read instead. A missed count here only understates
+	 * a dashboard notice, never the rate limit itself — `hit()`'s own lock is what keeps the limit
+	 * correct.
 	 */
 	public static function record_rate_limited_submission(): void {
-		$now  = time();
-		$data = get_transient( self::RATE_LIMITED_COUNT_TRANSIENT );
-
-		if ( ! is_array( $data ) || ! isset( $data['count'], $data['reset'] ) || ! is_int( $data['count'] ) || ! is_int( $data['reset'] ) || $data['reset'] <= $now ) {
-			set_transient(
-				self::RATE_LIMITED_COUNT_TRANSIENT,
-				[
-					'count' => 1,
-					'reset' => $now + self::RATE_LIMITED_COUNT_WINDOW,
-				],
-				self::RATE_LIMITED_COUNT_WINDOW
-			);
+		if ( ! self::acquire_lock( self::RATE_LIMITED_COUNT_TRANSIENT ) ) {
 			return;
 		}
 
-		set_transient(
-			self::RATE_LIMITED_COUNT_TRANSIENT,
-			[
-				'count' => $data['count'] + 1,
-				'reset' => $data['reset'],
-			],
-			$data['reset'] - $now
-		);
+		try {
+			$now  = time();
+			$data = get_transient( self::RATE_LIMITED_COUNT_TRANSIENT );
+
+			if ( ! is_array( $data ) || ! isset( $data['count'], $data['reset'] ) || ! is_int( $data['count'] ) || ! is_int( $data['reset'] ) || $data['reset'] <= $now ) {
+				set_transient(
+					self::RATE_LIMITED_COUNT_TRANSIENT,
+					[
+						'count' => 1,
+						'reset' => $now + self::RATE_LIMITED_COUNT_WINDOW,
+					],
+					self::RATE_LIMITED_COUNT_WINDOW
+				);
+				return;
+			}
+
+			set_transient(
+				self::RATE_LIMITED_COUNT_TRANSIENT,
+				[
+					'count' => $data['count'] + 1,
+					'reset' => $data['reset'],
+				],
+				$data['reset'] - $now
+			);
+		} finally {
+			self::release_lock( self::RATE_LIMITED_COUNT_TRANSIENT );
+		}
 	}
 
 	/** How many `submit` requests were rejected as rate-limited in the current fixed 24-hour window (see `record_rate_limited_submission()`). */
@@ -149,7 +166,40 @@ final class RateLimiter {
 	}
 
 	private function transient_key( string $bucket ): string {
-		$hash = hash_hmac( 'sha256', $this->client_ip(), wp_salt( 'nonce' ) );
+		$hash = hash_hmac( 'sha256', self::normalize_ip( $this->client_ip() ), wp_salt( 'nonce' ) );
 		return self::TRANSIENT_PREFIX . $bucket . '_' . substr( $hash, 0, self::HASH_LENGTH );
+	}
+
+	/**
+	 * Normalizes `$ip` for rate-limit bucketing: an IPv4 address (including an IPv4-mapped IPv6
+	 * address, `::ffff:a.b.c.d`) is returned unchanged; any other IPv6 address has its last 64
+	 * bits zeroed, so every address inside the same /64 shares one bucket instead of each one
+	 * minting its own fresh budget — a single visitor's ISP-assigned prefix commonly spans a /64,
+	 * handing out a fresh address (and so a fresh, unlimited budget) on every request otherwise.
+	 * A value that doesn't parse as either (e.g. already empty, or a hostname some future caller
+	 * passed in) is returned unchanged, same as today.
+	 */
+	public static function normalize_ip( string $ip ): string {
+		$binary = inet_pton( $ip );
+		if ( false === $binary || 16 !== strlen( $binary ) ) {
+			// Not a parseable IPv6 address (includes every IPv4 address, which inet_pton() packs
+			// into 4 bytes, not 16): nothing to collapse.
+			return $ip;
+		}
+
+		if ( false !== filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+			return $ip; // unreachable in practice (inet_pton() already returned 4 bytes above for IPv4), kept as a defensive no-op.
+		}
+
+		// An IPv4-mapped IPv6 address (::ffff:a.b.c.d) carries a real IPv4 client behind it; collapsing
+		// its last 64 bits would be meaningless (the mapped address has no /64 of its own), so it's
+		// left exactly as given, same as a plain IPv4 address.
+		if ( str_starts_with( $binary, "\0\0\0\0\0\0\0\0\0\0\xff\xff" ) ) {
+			return $ip;
+		}
+
+		$prefix    = substr( $binary, 0, 8 ) . str_repeat( "\0", 8 );
+		$collapsed = inet_ntop( $prefix );
+		return false !== $collapsed ? $collapsed : $ip;
 	}
 }

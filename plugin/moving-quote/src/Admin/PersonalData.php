@@ -162,6 +162,14 @@ final class PersonalData {
 	 * `find_by_email()` would skip) must still be erased, since an erasure request exists
 	 * precisely to remove data the parsed view doesn't need to make sense of first.
 	 *
+	 * Deleting this plugin's own row is not a full erasure: every delivered lead was synced to
+	 * n8n right after insert, so a copy can still sit in the Moving leads sheet, in the two
+	 * notification emails already sent (team and customer), or — for up to 168 hours — in a
+	 * failed n8n execution's stored data (see "Security: what n8n 2.45.6 actually does with the
+	 * stored token" in AGENTS.md). None of those are reachable from WordPress, so whenever a row
+	 * was actually deleted, this reports `items_retained` and names each deleted lead's own
+	 * `MQ-…` reference as what to remove by hand from those three places.
+	 *
 	 * @return array{items_removed: bool, items_retained: bool, messages: list<string>, done: bool}
 	 */
 	public static function erase( string $email_address, int $page = 1 ): array {
@@ -174,12 +182,31 @@ final class PersonalData {
 			];
 		}
 
-		$deleted = ( new LeadRepository() )->delete_by_email( $email_address );
+		$repository = new LeadRepository();
+		$uuids      = $repository->uuids_by_email( $email_address );
+		$deleted    = $repository->delete_by_email( $email_address );
+
+		if ( 0 === $deleted ) {
+			return [
+				'items_removed'  => false,
+				'items_retained' => false,
+				'messages'       => [],
+				'done'           => true,
+			];
+		}
+
+		$references = array_map( [ LeadRecord::class, 'reference_for' ], $uuids );
 
 		return [
-			'items_removed'  => $deleted > 0,
-			'items_retained' => false,
-			'messages'       => [],
+			'items_removed'  => true,
+			'items_retained' => true,
+			'messages'       => [
+				sprintf(
+					/* translators: %s: a comma-separated list of MQ-… lead references */
+					__( 'The database record for %s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the "New lead" emails already sent to the team and the customer, and — for up to 7 days — in a failed delivery\'s stored n8n execution data. Remove those by hand if needed.', 'moving-quote' ),
+					implode( ', ', $references )
+				),
+			],
 			'done'           => true,
 		];
 	}

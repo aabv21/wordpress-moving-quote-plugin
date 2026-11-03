@@ -85,7 +85,18 @@ export const CREDENTIALS: readonly CredentialEntry[] = [
     name: 'Gmail',
     type: 'gmailOAuth2',
     env: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
-    data: (env) => ({ clientId: readEnv(env, 'GOOGLE_OAUTH_CLIENT_ID'), clientSecret: readEnv(env, 'GOOGLE_OAUTH_CLIENT_SECRET') }),
+    // n8n's own GmailOAuth2Api.credentials.js (n8n-nodes-base, checked against the pinned
+    // 2.45.6 image) defaults to six scopes, including gmail.modify and the full mail.google.com
+    // access — far more than this workflow needs. process-lead's two emails and error-handler's
+    // alert only ever send; customScopes + enabledScopes narrow the OAuth consent (and the token
+    // it issues) to gmail.send alone, the least-privilege scope for a credential this repo never
+    // reads a mailbox with.
+    data: (env) => ({
+      clientId: readEnv(env, 'GOOGLE_OAUTH_CLIENT_ID'),
+      clientSecret: readEnv(env, 'GOOGLE_OAUTH_CLIENT_SECRET'),
+      customScopes: true,
+      enabledScopes: 'https://www.googleapis.com/auth/gmail.send',
+    }),
   },
 ];
 

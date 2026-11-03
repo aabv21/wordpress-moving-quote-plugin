@@ -1,8 +1,12 @@
+import { execFile } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 import { describe, expect, it } from 'vitest';
 import { ensureN8nImportDir, fillSecrets, writeEnvFile } from '../scripts/init-env.ts';
+
+const execFileAsync = promisify(execFile);
 
 const example = ['# MySQL', 'MYSQL_USER=wordpress', 'MYSQL_PASSWORD=', 'N8N_ENCRYPTION_KEY=', 'LEAD_WEBHOOK_SECRET=',
   'GOOGLE_OAUTH_CLIENT_SECRET=', 'WP_ADMIN_PASSWORD=preset', ''].join('\n');
@@ -12,6 +16,15 @@ describe('fillSecrets', () => {
     let n = 0;
     expect(fillSecrets(example, () => `hex${String(++n)}`)).toBe(['# MySQL', 'MYSQL_USER=wordpress', 'MYSQL_PASSWORD=hex1',
       'N8N_ENCRYPTION_KEY=hex2', 'LEAD_WEBHOOK_SECRET=hex3', 'GOOGLE_OAUTH_CLIENT_SECRET=', 'WP_ADMIN_PASSWORD=preset', ''].join('\n'));
+  });
+});
+
+describe('.env.tmp', () => {
+  it('is git-ignored at the repo root, so a crashed writeEnvFile() run never leaves every .env secret trackable', async () => {
+    // writeEnvFile() above writes .env.tmp (holding the same secrets .env itself would) before
+    // renaming it over .env; a crashed run between those two steps can leave that tmp file
+    // behind. `git check-ignore -q` exits 0 only when the path is actually ignored.
+    await expect(execFileAsync('git', ['check-ignore', '-q', '.env.tmp'])).resolves.toBeDefined();
   });
 });
 

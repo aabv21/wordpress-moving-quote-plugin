@@ -144,6 +144,22 @@ describe('admin: leads list, status, export, retry', () => {
 
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+
+    // HTML doesn't allow nested forms: any <form> still open when the list table's own <table
+    // class="wp-list-table"> starts would make the parser drop every row's own <form
+    // method="post"> start tag, folding its controls into whichever form is still open instead —
+    // the first row's "Update" button would then just resubmit that outer form (if it were a GET
+    // filter form, switching the list filter with the nonce landing in the URL), never actually
+    // updating that lead's status. Every <form> opened before the table must already be closed by
+    // the time the table starts: no unbalanced, still-open start tag.
+    const tableIndex = html.indexOf('<table class="wp-list-table');
+    expect(tableIndex).toBeGreaterThan(-1);
+    const beforeTable = html.slice(0, tableIndex);
+    const opens = [...beforeTable.matchAll(/<form\b/g)].length;
+    const closes = [...beforeTable.matchAll(/<\/form>/g)].length;
+    expect(opens).toBe(closes);
+    // The specific regression this guards: no bare <form method="get"> wrapping the whole table.
+    expect(html).not.toContain('<form method="get">');
   });
 
   it('updates a lead status through the scraped per-row form, rejects a wrong nonce, filters by status, and blocks a subscriber', async () => {

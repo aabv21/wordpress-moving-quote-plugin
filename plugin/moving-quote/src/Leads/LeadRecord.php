@@ -69,7 +69,17 @@ final readonly class LeadRecord {
 
 	/** The short, customer-facing reference: `MQ-` plus the first 8 hex of the request UUID, uppercased. */
 	public function reference(): string {
-		$hex = str_replace( '-', '', $this->request_uuid );
+		return self::reference_for( $this->request_uuid );
+	}
+
+	/**
+	 * The same reference `reference()` builds, from a bare `request_uuid` with no full
+	 * `LeadRecord` needed — used where a row exists only as an id (e.g. the personal-data
+	 * eraser naming a lead whose copies elsewhere it can't reach, before or instead of parsing
+	 * the row into a record at all).
+	 */
+	public static function reference_for( string $request_uuid ): string {
+		$hex = str_replace( '-', '', $request_uuid );
 		return 'MQ-' . strtoupper( substr( $hex, 0, 8 ) );
 	}
 }
