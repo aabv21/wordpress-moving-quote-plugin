@@ -97,6 +97,9 @@ describe('the quote page', () => {
     expect(honeypot).toBeDefined();
     expect(honeypot).toContain('tabindex="-1"');
     expect(honeypot).toContain('autocomplete="off"');
+    // Its wrapper is hidden from assistive technology, so the "leave this empty" label is never read out.
+    const honeypotWrapper = /<p[^>]*\bclass="[^"]*moving-quote__honeypot[^"]*"[^>]*>/.exec(html)?.[0];
+    expect(honeypotWrapper).toContain('aria-hidden="true"');
 
     expect(html).toMatch(/<script[^>]*\bsrc="[^"]*\/plugins\/moving-quote\/assets\/quote-form\.js[^"]*"/);
 
@@ -176,5 +179,31 @@ describe('the quote page', () => {
     } finally {
       await wp(['option', 'update', OPTION_NAME, before, '--format=json']);
     }
+  });
+});
+
+/**
+ * Renders `[moving_quote_reference]` the way the thank-you page does, with `value` as the
+ * `reference` query argument. The value travels base64-encoded, so no quote or angle bracket in it
+ * can change the PHP that sets it.
+ */
+function renderReference(value: string): Promise<string> {
+  const encoded = Buffer.from(value, 'utf8').toString('base64');
+  return wp(['eval', `$_GET['reference'] = base64_decode( '${encoded}' ); echo do_shortcode( '[moving_quote_reference]' );`]);
+}
+
+describe('the thank-you page reference shortcode', () => {
+  it('shows a well-formed reference from the query string', async () => {
+    const html = await renderReference('MQ-0123ABCD');
+    expect(html).toContain('<strong translate="no" style="white-space: nowrap">MQ-0123ABCD</strong>');
+  });
+
+  // The markup and newline cases would each sanitize down to a valid reference: they must still render nothing.
+  it.each(['', 'mq-0123abcd', 'MQ-0123ABC', 'MQ-0123ABCD\n', 'MQ-0123ABCD<script>alert(1)</script>', '<b>MQ-0123ABCD</b>'])('renders nothing for %j', async (value) => {
+    expect(await renderReference(value)).toBe('');
+  });
+
+  it('renders nothing when the page is opened without a reference', async () => {
+    expect(await wp(['eval', "echo do_shortcode( '[moving_quote_reference]' );"])).toBe('');
   });
 });

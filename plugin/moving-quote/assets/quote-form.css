@@ -1,9 +1,86 @@
+/*
+ * The [moving_quote] form. Every color, radius, and spacing value comes from the --mq-* tokens on
+ * .moving-quote; nothing below hard-codes its own. The form draws its own light surface, so every
+ * text and control color is checked against a background this file controls, whatever the theme
+ * paints around it (a dark theme included). Type is inherited from the theme: family and weight
+ * as-is, size scaled within a readable range. Selectors are scoped under .moving-quote so a theme's
+ * own element styles (button, input, p) never outrank them.
+ */
+
 .moving-quote {
+  /* Color: each pair is checked against WCAG AA in the README's "The quote form's design tokens". */
+  --mq-color-primary: #1d4ed8;
+  --mq-color-primary-hover: #1e40af;
+  --mq-color-cta: #c2410c;
+  --mq-color-cta-hover: #9a3412;
+  --mq-color-on-fill: #fff;
+  --mq-color-text: #0f172a;
+  --mq-color-muted: #475569;
+  --mq-color-border: #64748b;
+  --mq-color-divider: #cbd5e1;
+  --mq-color-surface: #f8fafc;
+  --mq-color-field: #fff;
+  --mq-color-panel: #eff6ff;
+  --mq-color-panel-border: #bfdbfe;
+  --mq-color-error: #b91c1c;
+  --mq-color-success: #15803d;
+
+  /* Shape and spacing. */
+  --mq-radius: 8px;
+  --mq-space-1: 4px;
+  --mq-space-2: 8px;
+  --mq-space-3: 12px;
+  --mq-space-4: 16px;
+  --mq-space-5: 24px;
+  --mq-space-6: 32px;
+  --mq-target: 44px;
+  --mq-marker: 32px;
+  --mq-card-padding: var(--mq-space-4);
+
+  /* Motion: color, opacity, and transform only. */
+  --mq-duration: 150ms;
+  --mq-ease: ease-out;
+
+  /*
+   * Icons drawn with mask-image take their color from background-color (a token); the black in each
+   * SVG below only marks which pixels are opaque.
+   */
+  --mq-icon-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9.5' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M12 7.5v5.5' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='16.5' r='1.25'/%3E%3C/svg%3E");
+  --mq-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='black' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  container: moving-quote / inline-size;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 40rem;
-  margin: 0 auto;
+  margin-inline: auto;
+  padding: var(--mq-card-padding);
+  color: var(--mq-color-text);
+  font-size: clamp(1rem, 0.875em, 1.25rem);
+  line-height: 1.5;
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-divider);
+  border-radius: var(--mq-radius);
+  color-scheme: light;
 }
 
-.moving-quote__offscreen {
+@media (min-width: 37.5em) {
+  .moving-quote {
+    --mq-card-padding: var(--mq-space-5);
+  }
+}
+
+.moving-quote *,
+.moving-quote *::before,
+.moving-quote *::after {
+  box-sizing: border-box;
+}
+
+/* The fieldset, error, hint, and success elements carry display rules of their own below. */
+.moving-quote [hidden] {
+  display: none !important;
+}
+
+.moving-quote .moving-quote__offscreen {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -11,153 +88,575 @@
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
 
-.moving-quote__progress {
+.moving-quote .moving-quote__noscript {
+  margin: 0 0 var(--mq-space-4);
+}
+
+/*
+ * Focus: one ring for every focusable element. Some themes ring every :focus, including the focus
+ * this form moves onto a step's legend after a mouse click; inside the form only :focus-visible
+ * draws it, so keyboard users always get this ring and pointer users don't get a stray one.
+ */
+.moving-quote :focus:not(:focus-visible) {
+  outline: none;
+}
+
+.moving-quote :focus-visible {
+  outline: 2px solid var(--mq-color-primary);
+  outline-offset: 2px;
+}
+
+.moving-quote .moving-quote__check a {
+  color: var(--mq-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Progress stepper: a numbered marker per step, a check once a step is done. */
+.moving-quote .moving-quote__progress {
   display: flex;
+  margin: 0 0 var(--mq-space-5);
+  padding: 0 0 var(--mq-space-5);
   list-style: none;
-  gap: 0.5rem;
-  padding: 0;
-  margin: 0 0 1.5rem;
+  border-bottom: 1px solid var(--mq-color-divider);
 }
 
-.moving-quote__progress li {
-  flex: 1;
-  padding: 0.5rem;
+.moving-quote .moving-quote__progress-step {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: var(--mq-space-2);
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+  line-height: 1.3;
   text-align: center;
-  font-size: 0.875rem;
-  border-bottom: 3px solid #d0d5dd;
-  color: #475467;
 }
 
-.moving-quote__progress li[aria-current='step'] {
-  border-bottom-color: #1d4ed8;
-  color: #1d4ed8;
+/* The connector from the previous step's marker to this one's. */
+.moving-quote .moving-quote__progress-step + .moving-quote__progress-step::before {
+  position: absolute;
+  top: calc(var(--mq-marker) / 2 - 1px);
+  right: calc(50% + var(--mq-marker) / 2 + var(--mq-space-2));
+  left: calc(-50% + var(--mq-marker) / 2 + var(--mq-space-2));
+  height: 2px;
+  content: '';
+  background-color: var(--mq-color-divider);
+  border-radius: 1px;
+}
+
+.moving-quote .moving-quote__progress-marker {
+  display: grid;
+  place-items: center;
+  width: var(--mq-marker);
+  height: var(--mq-marker);
+  color: var(--mq-color-muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  background-color: var(--mq-color-field);
+  border: 2px solid var(--mq-color-border);
+  border-radius: 50%;
+  transition:
+    background-color var(--mq-duration) var(--mq-ease),
+    border-color var(--mq-duration) var(--mq-ease),
+    color var(--mq-duration) var(--mq-ease);
+}
+
+.moving-quote .moving-quote__progress-label {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.moving-quote .moving-quote__progress-step[aria-current='step'] {
+  color: var(--mq-color-text);
   font-weight: 600;
 }
 
-.moving-quote fieldset {
+.moving-quote .moving-quote__progress-step[aria-current='step'] .moving-quote__progress-marker {
+  color: var(--mq-color-on-fill);
+  background-color: var(--mq-color-primary);
+  border-color: var(--mq-color-primary);
+}
+
+.moving-quote .moving-quote__progress-step[aria-current='step']::before {
+  background-color: var(--mq-color-primary);
+}
+
+/* Done: every step before the current one. Without :has(), it keeps the upcoming look. */
+.moving-quote .moving-quote__progress-step:has(~ [aria-current='step']) {
+  color: var(--mq-color-text);
+}
+
+.moving-quote .moving-quote__progress-step:has(~ [aria-current='step'])::before {
+  background-color: var(--mq-color-primary);
+}
+
+.moving-quote .moving-quote__progress-step:has(~ [aria-current='step']) .moving-quote__progress-marker {
+  font-size: 0;
+  background-color: var(--mq-color-panel);
+  border-color: var(--mq-color-primary);
+}
+
+.moving-quote .moving-quote__progress-step:has(~ [aria-current='step']) .moving-quote__progress-marker::before {
+  width: 16px;
+  height: 16px;
+  content: '';
+  background-color: var(--mq-color-primary);
+  -webkit-mask: var(--mq-icon-check) center / contain no-repeat;
+  mask: var(--mq-icon-check) center / contain no-repeat;
+}
+
+/* Steps. */
+.moving-quote .moving-quote__step {
+  min-width: 0; /* a fieldset's default min-content width would otherwise overflow a narrow screen */
+  margin: 0;
+  padding: 0;
   border: 0;
-  padding: 0;
-  margin: 0 0 1.5rem;
 }
 
-.moving-quote legend {
-  font-size: 1.25rem;
+.moving-quote .moving-quote__legend {
+  float: none;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  color: var(--mq-color-text);
+  font-size: 1.25em;
+  font-weight: 700;
+  line-height: 1.3;
+  text-wrap: balance;
+  border-radius: var(--mq-space-1);
+}
+
+.moving-quote .moving-quote__legend:focus-visible {
+  outline-offset: var(--mq-space-1);
+}
+
+.moving-quote .moving-quote__legend + * {
+  margin-top: var(--mq-space-4);
+}
+
+.moving-quote .moving-quote__intro {
+  margin-bottom: 0;
+  color: var(--mq-color-muted);
+  text-wrap: pretty;
+}
+
+/* Fields: one column, two once the form itself is wide enough. */
+.moving-quote .moving-quote__fields,
+.moving-quote .moving-quote__options {
+  display: grid;
+  gap: var(--mq-space-4);
+  align-items: start;
+}
+
+.moving-quote .moving-quote__options {
+  gap: var(--mq-space-3);
+}
+
+.moving-quote .moving-quote__intro + .moving-quote__options {
+  margin-top: var(--mq-space-3);
+}
+
+@container moving-quote (min-width: 32rem) {
+  .moving-quote .moving-quote__fields,
+  .moving-quote .moving-quote__options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .moving-quote .moving-quote__field--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.moving-quote .moving-quote__field,
+.moving-quote .moving-quote__option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mq-space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.moving-quote .moving-quote__label {
+  display: block;
+  margin: 0;
+  color: var(--mq-color-text);
   font-weight: 600;
-  margin-bottom: 1rem;
-  padding: 0;
+  line-height: 1.3;
 }
 
-.moving-quote legend:focus {
-  outline: 2px solid #1d4ed8;
-  outline-offset: 2px;
-}
-
-.moving-quote p {
-  margin: 0 0 1rem;
-}
-
-.moving-quote label {
+.moving-quote .moving-quote__control {
   display: block;
-  margin-bottom: 0.25rem;
-  font-weight: 500;
-}
-
-.moving-quote input[type='text'],
-.moving-quote input[type='tel'],
-.moving-quote input[type='email'],
-.moving-quote input[type='date'],
-.moving-quote select {
   width: 100%;
-  box-sizing: border-box;
-  padding: 0.625rem;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.375rem;
-  font-size: 1rem;
+  min-height: var(--mq-target);
+  margin: 0;
+  padding: var(--mq-space-2) var(--mq-space-3);
+  color: var(--mq-color-text);
+  font: inherit;
+  font-size: max(16px, 1em); /* below 16px, iOS Safari zooms the page on focus */
+  line-height: 1.4;
+  background-color: var(--mq-color-field);
+  border: 1px solid var(--mq-color-border);
+  border-radius: var(--mq-radius);
+  box-shadow: none;
+  transition: border-color var(--mq-duration) var(--mq-ease);
 }
 
-.moving-quote input:focus-visible,
-.moving-quote select:focus-visible,
-.moving-quote button:focus-visible {
-  outline: 2px solid #1d4ed8;
-  outline-offset: 2px;
+.moving-quote .moving-quote__control:focus-visible {
+  border-color: var(--mq-color-primary);
+  outline-offset: 1px;
 }
 
-.moving-quote input[aria-invalid='true'],
-.moving-quote select[aria-invalid='true'] {
-  border-color: #d92d20;
+.moving-quote .moving-quote__control[aria-invalid='true'] {
+  border-color: var(--mq-color-error);
+  box-shadow: inset 0 0 0 1px var(--mq-color-error);
 }
 
-.moving-quote__error {
-  display: block;
-  color: #d92d20;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+/* Errors: always text with an icon, never color alone. */
+.moving-quote .moving-quote__error,
+.moving-quote .moving-quote__form-error,
+.moving-quote .moving-quote__estimate-error {
+  display: flex;
+  gap: var(--mq-space-2);
+  align-items: flex-start;
+  color: var(--mq-color-error);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
-.moving-quote button {
-  padding: 0.625rem 1.25rem;
-  border: 1px solid transparent;
-  border-radius: 0.375rem;
-  font-size: 1rem;
-  cursor: pointer;
-  margin-right: 0.5rem;
+.moving-quote .moving-quote__error {
+  font-size: 0.875em;
+  text-wrap: pretty;
 }
 
-.moving-quote button[data-next],
-.moving-quote button[data-submit] {
-  background: #1d4ed8;
-  color: #fff;
-}
-
-.moving-quote button[data-back] {
-  background: #fff;
-  border-color: #d0d5dd;
-  color: #344054;
-}
-
-.moving-quote button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.moving-quote__estimate {
-  padding: 1rem;
-  background: #f0f4ff;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.moving-quote__disclaimer {
-  font-size: 0.8125rem;
-  color: #475467;
-  margin: 0.5rem 0 0;
-}
-
-.moving-quote__form-error {
-  color: #d92d20;
-  font-weight: 500;
-  min-height: 1.25rem;
-}
-
-.moving-quote__form-error:empty {
+.moving-quote .moving-quote__error:empty,
+.moving-quote .moving-quote__form-error:empty {
   display: none;
 }
 
-@media (max-width: 480px) {
-  .moving-quote {
-    padding: 0 0.5rem;
+.moving-quote .moving-quote__error::before,
+.moving-quote .moving-quote__form-error::before,
+.moving-quote .moving-quote__estimate-error::before {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  margin-top: 0.125em;
+  content: '';
+  background-color: currentcolor;
+  -webkit-mask: var(--mq-icon-alert) center / contain no-repeat;
+  mask: var(--mq-icon-alert) center / contain no-repeat;
+}
+
+.moving-quote .moving-quote__form-error {
+  margin: var(--mq-space-4) 0 0;
+  padding: var(--mq-space-3) var(--mq-space-4);
+  background-color: var(--mq-color-field);
+  border: 1px solid var(--mq-color-error);
+  border-radius: var(--mq-radius);
+}
+
+/* Checkboxes: the whole row is the hit target, at least 44px tall. */
+.moving-quote .moving-quote__check {
+  display: flex;
+  gap: var(--mq-space-3);
+  align-items: flex-start;
+  min-height: var(--mq-target);
+  margin: 0;
+  padding: var(--mq-space-3);
+  color: var(--mq-color-text);
+  line-height: 1.4;
+  background-color: var(--mq-color-field);
+  border: 1px solid var(--mq-color-divider);
+  border-radius: var(--mq-radius);
+  cursor: pointer;
+  transition:
+    background-color var(--mq-duration) var(--mq-ease),
+    border-color var(--mq-duration) var(--mq-ease);
+}
+
+.moving-quote .moving-quote__check:has(:checked) {
+  background-color: var(--mq-color-panel);
+  border-color: var(--mq-color-primary);
+}
+
+.moving-quote .moving-quote__check--plain,
+.moving-quote .moving-quote__check--plain:has(:checked) {
+  padding-inline: 0;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.moving-quote .moving-quote__checkbox {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: calc((1.4em - 20px) / 2) 0 0;
+  font: inherit;
+  accent-color: var(--mq-color-primary);
+  cursor: pointer;
+}
+
+/* An option row shows the ring itself instead of its small box, where :has() is supported. */
+@supports selector(:has(*)) {
+  .moving-quote .moving-quote__check:not(.moving-quote__check--plain):has(:focus-visible) {
+    outline: 2px solid var(--mq-color-primary);
+    outline-offset: 2px;
   }
 
-  .moving-quote__progress li {
-    font-size: 0.75rem;
+  .moving-quote .moving-quote__check:not(.moving-quote__check--plain) .moving-quote__checkbox:focus-visible {
+    outline: none;
+  }
+}
+
+/* Actions: on a narrow form the primary action fills the row; on a wide one it sits at the end. */
+.moving-quote .moving-quote__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mq-space-3);
+  justify-content: flex-end;
+  margin-top: var(--mq-space-5);
+}
+
+.moving-quote .moving-quote__button {
+  display: inline-flex;
+  flex: 1 1 auto;
+  gap: var(--mq-space-2);
+  align-items: center;
+  justify-content: center;
+  min-width: var(--mq-target);
+  min-height: var(--mq-target);
+  margin: 0;
+  padding: var(--mq-space-2) var(--mq-space-5);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: var(--mq-radius);
+  box-shadow: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--mq-duration) var(--mq-ease),
+    border-color var(--mq-duration) var(--mq-ease),
+    color var(--mq-duration) var(--mq-ease),
+    transform var(--mq-duration) var(--mq-ease);
+}
+
+.moving-quote .moving-quote__button--secondary {
+  flex: 0 0 auto;
+  margin-right: auto;
+  color: var(--mq-color-text);
+  background-color: var(--mq-color-field);
+  border-color: var(--mq-color-border);
+}
+
+.moving-quote .moving-quote__button--primary {
+  color: var(--mq-color-on-fill);
+  background-color: var(--mq-color-primary);
+}
+
+.moving-quote .moving-quote__button--cta {
+  color: var(--mq-color-on-fill);
+  background-color: var(--mq-color-cta);
+}
+
+@container moving-quote (min-width: 32rem) {
+  .moving-quote .moving-quote__button {
+    flex: 0 0 auto;
+  }
+}
+
+@media (hover: hover) {
+  .moving-quote .moving-quote__check a:hover {
+    color: var(--mq-color-primary-hover);
   }
 
-  .moving-quote button {
-    width: 100%;
-    margin: 0 0 0.5rem;
+  .moving-quote .moving-quote__control:hover:not(:focus-visible, [aria-invalid='true']) {
+    border-color: var(--mq-color-muted);
+  }
+
+  .moving-quote .moving-quote__check:not(.moving-quote__check--plain):hover {
+    border-color: var(--mq-color-border);
+  }
+
+  .moving-quote .moving-quote__button--secondary:hover {
+    background-color: var(--mq-color-panel);
+    border-color: var(--mq-color-text);
+  }
+
+  .moving-quote .moving-quote__button--primary:hover {
+    background-color: var(--mq-color-primary-hover);
+  }
+
+  .moving-quote .moving-quote__button--cta:hover:not(:disabled) {
+    background-color: var(--mq-color-cta-hover);
+  }
+}
+
+.moving-quote .moving-quote__button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.moving-quote .moving-quote__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/*
+ * Sending: the submit button is disabled while the request is in flight and reads "Sending…".
+ * It keeps full opacity (it is busy, not unavailable) and gains a spinner drawn in CSS.
+ */
+.moving-quote .moving-quote__button--cta:disabled {
+  cursor: progress;
+  opacity: 1;
+}
+
+.moving-quote .moving-quote__button--cta:disabled::before,
+.moving-quote .moving-quote__estimate[data-estimate-state='loading'] .moving-quote__estimate-label::after {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  content: '';
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: mq-spin 800ms linear infinite;
+}
+
+/* Inline success, for a form whose thank-you page doesn't exist. */
+.moving-quote .moving-quote__success {
+  display: grid;
+  gap: var(--mq-space-2);
+  justify-items: center;
+  padding: var(--mq-space-5) 0;
+  color: var(--mq-color-text);
+  text-align: center;
+  border-radius: var(--mq-space-1);
+}
+
+.moving-quote .moving-quote__success p {
+  max-width: 32em;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.moving-quote .moving-quote__success strong {
+  white-space: nowrap; /* keeps "MQ-" on the same line as its digits */
+}
+
+.moving-quote .moving-quote__success-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--mq-color-success);
+}
+
+.moving-quote .moving-quote__success .moving-quote__success-title {
+  color: var(--mq-color-success);
+  font-size: 1.25em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* Estimate: the card's footer band, a price range or one of its idle, loading, or error states. */
+.moving-quote .moving-quote__estimate {
+  margin: var(--mq-space-5) calc(var(--mq-card-padding) * -1) calc(var(--mq-card-padding) * -1);
+  padding: var(--mq-space-4) var(--mq-card-padding);
+  background-color: var(--mq-color-panel);
+  border-top: 1px solid var(--mq-color-panel-border);
+  border-radius: 0 0 calc(var(--mq-radius) - 1px) calc(var(--mq-radius) - 1px);
+}
+
+.moving-quote .moving-quote__estimate p {
+  margin: 0;
+}
+
+.moving-quote .moving-quote__estimate .moving-quote__estimate-label {
+  display: flex;
+  gap: var(--mq-space-2);
+  align-items: center;
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+  font-weight: 600;
+}
+
+.moving-quote .moving-quote__estimate .moving-quote__estimate-value {
+  margin-top: var(--mq-space-1);
+  color: var(--mq-color-text);
+  font-size: 1.375em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  text-wrap: balance;
+  transition: opacity var(--mq-duration) var(--mq-ease);
+}
+
+/* A stale range fades while its replacement loads; 0.7 keeps it above 4.5:1 on the panel. */
+.moving-quote .moving-quote__estimate[data-estimate-state='loading'] .moving-quote__estimate-value {
+  opacity: 0.7;
+}
+
+.moving-quote .moving-quote__estimate .moving-quote__estimate-error {
+  margin-top: var(--mq-space-2);
+  font-size: 0.875em;
+}
+
+.moving-quote .moving-quote__estimate .moving-quote__estimate-hint,
+.moving-quote .moving-quote__estimate .moving-quote__disclaimer {
+  margin-top: var(--mq-space-2);
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+@container moving-quote (min-width: 32rem) {
+  .moving-quote .moving-quote__estimate .moving-quote__estimate-value {
+    font-size: 1.5em;
+  }
+}
+
+@keyframes mq-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mq-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Reduced motion: no transitions, no press shift, and the spinners pulse in place instead of turning. */
+@media (prefers-reduced-motion: reduce) {
+  .moving-quote .moving-quote__progress-marker,
+  .moving-quote .moving-quote__control,
+  .moving-quote .moving-quote__check,
+  .moving-quote .moving-quote__button,
+  .moving-quote .moving-quote__estimate .moving-quote__estimate-value {
+    transition: none;
+  }
+
+  .moving-quote .moving-quote__button:active:not(:disabled) {
+    transform: none;
+  }
+
+  .moving-quote .moving-quote__button--cta:disabled::before,
+  .moving-quote .moving-quote__estimate[data-estimate-state='loading'] .moving-quote__estimate-label::after {
+    animation: mq-pulse 1.6s ease-in-out infinite;
   }
 }

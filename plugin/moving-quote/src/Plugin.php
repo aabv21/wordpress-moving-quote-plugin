@@ -5,7 +5,7 @@ namespace Chivabox\MovingQuote;
 
 use Chivabox\MovingQuote\Admin\{LeadsPage, Menu, PersonalData, SettingsPage, StuckDeliveryNotice};
 use Chivabox\MovingQuote\Delivery\Outbox;
-use Chivabox\MovingQuote\Frontend\Shortcode;
+use Chivabox\MovingQuote\Frontend\{ReferenceShortcode, Shortcode};
 use Chivabox\MovingQuote\Install\Installer;
 use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
 
@@ -13,7 +13,7 @@ use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
  * Plugin entry point: wires bootstrap hooks for the main plugin file.
  */
 final class Plugin {
-	public const VERSION = '1.0.0';
+	public const VERSION = '1.1.0';
 
 	public static function boot( string $plugin_file ): void {
 		add_action(
@@ -39,6 +39,7 @@ final class Plugin {
 		StuckDeliveryNotice::register();
 		PersonalData::register();
 		Shortcode::register();
+		ReferenceShortcode::register();
 
 		add_action(
 			'rest_api_init',

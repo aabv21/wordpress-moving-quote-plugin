@@ -10,9 +10,26 @@ export const ESTIMATE_PLACEHOLDER = '—';
  * for a route or combination the server just rejected.
  */
 export function estimateDisplayText(result: ApiResult): string {
-  if (!result.ok) return ESTIMATE_PLACEHOLDER;
-  const data = result.data as { display?: unknown };
-  return typeof data.display === 'string' ? data.display : ESTIMATE_PLACEHOLDER;
+  return displayString(result) ?? ESTIMATE_PLACEHOLDER;
+}
+
+/** Whether an estimate panel shows a price (`ready`) or its error message (`error`) after a result arrives. */
+export type EstimateOutcome = 'ready' | 'error';
+
+/**
+ * The panel state for one estimate API result: `ready` exactly when `estimateDisplayText()` shows
+ * the server's own range, `error` whenever it falls back to the placeholder — so the panel never
+ * shows a price and the error message at once, or neither.
+ */
+export function estimateOutcome(result: ApiResult): EstimateOutcome {
+  return displayString(result) === null ? 'error' : 'ready';
+}
+
+/** The server's `display` string from a successful result, or null for a failure or a body without one. */
+function displayString(result: ApiResult): string | null {
+  if (!result.ok) return null;
+  const data = result.data as { display?: unknown } | null;
+  return typeof data?.display === 'string' ? data.display : null;
 }
 
 /** Field names whose own `input` event must never trigger an estimate refetch: they don't affect price. */

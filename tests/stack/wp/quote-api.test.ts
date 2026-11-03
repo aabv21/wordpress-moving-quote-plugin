@@ -218,6 +218,14 @@ describe('quote and lead REST API', () => {
       expect(body.data?.errors?.rooms).toBe('Please check this value.');
     });
 
+    it('names what a valid phone or email looks like when either is malformed', async () => {
+      const res = await rest(LEADS_PATH, validLead({ phone: '12', email: 'not-an-email' }), { nonce });
+      expect(res.status).toBe(422);
+      const body = res.json as WpErrorBody;
+      expect(body.data?.errors?.phone).toBe('Enter a phone number with 10 to 15 digits.');
+      expect(body.data?.errors?.email).toBe('Enter an email address like name@example.com.');
+    });
+
     it('a duplicate submission (same submission_id) is idempotent: one row, same reference, back to back and in parallel', async () => {
       const first = validLead();
       const res1 = await rest(LEADS_PATH, first, { nonce });

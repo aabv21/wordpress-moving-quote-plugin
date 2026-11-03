@@ -157,7 +157,7 @@ final class LeadController {
 	}
 
 	private static function invalid( FieldErrors $errors ): WP_Error {
-		$messages = array_map( [ Messages::class, 'field' ], $errors->errors );
+		$messages = Messages::fields( $errors->errors );
 		return new WP_Error(
 			'moving_quote_invalid',
 			__( 'Please fix the highlighted fields.', 'moving-quote' ),

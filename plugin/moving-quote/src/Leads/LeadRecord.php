@@ -82,4 +82,13 @@ final readonly class LeadRecord {
 		$hex = str_replace( '-', '', $request_uuid );
 		return 'MQ-' . strtoupper( substr( $hex, 0, 8 ) );
 	}
+
+	/**
+	 * True when `$value` has the exact shape `reference_for()` produces: `MQ-` and 8 uppercase hex
+	 * digits. The thank-you page echoes a reference back from its own query string, so nothing
+	 * else may ever reach that output.
+	 */
+	public static function is_reference( string $value ): bool {
+		return 1 === preg_match( '/^MQ-[0-9A-F]{8}$/D', $value );
+	}
 }

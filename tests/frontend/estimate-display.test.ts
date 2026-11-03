@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiResult } from '../../src/frontend/lib/api.ts';
-import { affectsEstimate, ESTIMATE_PLACEHOLDER, estimateDisplayText } from '../../src/frontend/lib/estimate-display.ts';
+import { affectsEstimate, ESTIMATE_PLACEHOLDER, estimateDisplayText, estimateOutcome } from '../../src/frontend/lib/estimate-display.ts';
 
 describe('estimateDisplayText', () => {
   it('returns the server display string on success', () => {
@@ -25,6 +25,24 @@ describe('estimateDisplayText', () => {
 
   it('returns the placeholder when a successful response has no display string', () => {
     const result: ApiResult = { ok: true, status: 200, data: {} };
+    expect(estimateDisplayText(result)).toBe(ESTIMATE_PLACEHOLDER);
+  });
+});
+
+describe('estimateOutcome', () => {
+  it('is ready when the server sent a display string', () => {
+    const result: ApiResult = { ok: true, status: 200, data: { display: 'COP 1,017,000 – 1,243,000' } };
+    expect(estimateOutcome(result)).toBe('ready');
+  });
+
+  it.each<[string, ApiResult]>([
+    ['an unknown route', { ok: false, status: 422, code: 'moving_quote_invalid', message: 'invalid', fieldErrors: { destination: 'unknown_route' } }],
+    ['a rate limit', { ok: false, status: 429, code: 'moving_quote_rate_limited', message: 'too many', fieldErrors: {} }],
+    ['a network error', { ok: false, status: 0, code: 'network_error', message: 'network_error', fieldErrors: {} }],
+    ['a success without a display string', { ok: true, status: 200, data: {} }],
+    ['a success with a null body', { ok: true, status: 200, data: null }],
+  ])('is error for %s, exactly when the display text falls back to the placeholder', (_label, result) => {
+    expect(estimateOutcome(result)).toBe('error');
     expect(estimateDisplayText(result)).toBe(ESTIMATE_PLACEHOLDER);
   });
 });

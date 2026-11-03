@@ -13,6 +13,14 @@ interface WpPage {
   post_status: string;
 }
 
+interface WpNavigation {
+  ID: number;
+  post_status: string;
+  post_content: string;
+}
+
+const NAVIGATION_ARGS = ['post', 'list', '--post_type=wp_navigation', '--name=primary-navigation'];
+
 describe('WordPress runtime, after setup.sh', () => {
   beforeAll(async () => {
     await clearDebugLog();
@@ -43,6 +51,23 @@ describe('WordPress runtime, after setup.sh', () => {
     }
   });
 
+  it('creates one primary navigation menu that links Home and Get a Quote, never the thank-you page', async () => {
+    const menus = await wpJson<WpNavigation[]>([...NAVIGATION_ARGS, '--fields=ID,post_status,post_content']);
+    expect(menus).toHaveLength(1);
+    expect(menus[0]?.post_status).toBe('publish');
+    expect(menus[0]?.post_content).toContain('"url":"/"');
+    expect(menus[0]?.post_content).toContain('"url":"/get-a-quote/"');
+    expect(menus[0]?.post_content).not.toContain('thank-you');
+  });
+
+  it("uses that menu as the theme's header navigation", async () => {
+    const html = await (await fetch(site('/'))).text();
+    const headerNav = /<nav\b[^>]*\bwp-block-navigation\b[\s\S]*?<\/nav>/.exec(html)?.[0];
+    expect(headerNav).toBeDefined();
+    expect(headerNav).toContain('/get-a-quote/');
+    expect(headerNav).not.toContain('/thank-you/');
+  });
+
   it('sets page_on_front to the home page', async () => {
     const [home] = await wpJson<WpPage[]>(['post', 'list', '--post_type=page', '--name=home', '--fields=ID']);
     const pageOnFront = (await wp(['option', 'get', 'page_on_front'])).trim();
@@ -60,12 +85,14 @@ describe('WordPress runtime, after setup.sh', () => {
     expect(quote.status).toBe(200);
   });
 
-  it('stays idempotent: a second run creates no duplicate pages', async () => {
+  it('stays idempotent: a second run creates no duplicate pages or menus', async () => {
     await execFileAsync('./setup.sh');
     for (const slug of SLUGS) {
       const pages = await wpJson<WpPage[]>(['post', 'list', '--post_type=page', `--name=${slug}`, '--fields=ID']);
       expect(pages).toHaveLength(1);
     }
+    const menus = await wpJson<WpNavigation[]>([...NAVIGATION_ARGS, '--fields=ID']);
+    expect(menus).toHaveLength(1);
   });
 
   it('logs nothing from the plugin', async () => {

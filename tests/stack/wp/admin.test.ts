@@ -145,6 +145,11 @@ describe('admin: leads list, status, export, retry', () => {
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
 
+    // Every row's status <select> has its own label, naming the lead, for a screen reader.
+    const plainLeadId = (await rowByUuid(plainLeadUuid)).id;
+    expect(html).toContain(`<label class="screen-reader-text" for="moving-quote-status-${plainLeadId}">Status of lead ${referenceFor(plainLeadUuid)}</label>`);
+    expect(html).toContain(`<select id="moving-quote-status-${plainLeadId}" name="status">`);
+
     // HTML doesn't allow nested forms: any <form> still open when the list table's own <table
     // class="wp-list-table"> starts would make the parser drop every row's own <form
     // method="post"> start tag, folding its controls into whichever form is still open instead —

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Moving Quote
  * Description: Three-step moving quote form with live estimates, a leads list, and signed delivery to n8n.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Requires at least: 7.0
  * Requires PHP: 8.3
  * Author: Andrés Buelvas

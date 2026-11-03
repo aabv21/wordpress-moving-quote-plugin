@@ -81,7 +81,9 @@ final class Shortcode {
 
 	/**
 	 * The embedded `data-config` payload: the two REST URLs, a fresh `wp_rest` nonce, the
-	 * thank-you URL (or null), and every translated string the frontend shows.
+	 * thank-you URL (or null), and every translated string the frontend writes itself. Text the
+	 * template already renders (the estimate panel's states, the inline success message) stays
+	 * in the template instead.
 	 *
 	 * @return array{
 	 *     estimateUrl: string,
@@ -94,7 +96,6 @@ final class Shortcode {
 	 *         rateLimited: string,
 	 *         sessionExpired: string,
 	 *         genericError: string,
-	 *         successInline: string,
 	 *     },
 	 * }
 	 */
@@ -110,7 +111,6 @@ final class Shortcode {
 				'rateLimited'    => __( 'Too many requests. Please try again later.', 'moving-quote' ),
 				'sessionExpired' => __( 'Your session expired. Reload the page and try again.', 'moving-quote' ),
 				'genericError'   => __( 'Please fix the highlighted fields.', 'moving-quote' ),
-				'successInline'  => __( 'Thank you! We received your request. A member of our team will call you to confirm the details and the final price.', 'moving-quote' ),
 			],
 		];
 	}

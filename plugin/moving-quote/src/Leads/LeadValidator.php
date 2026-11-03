@@ -16,8 +16,8 @@ final class LeadValidator {
 	private const NAME_MIN_LEN             = 2;
 	private const NAME_MAX_LEN             = 100;
 	private const EMAIL_MAX_LEN            = 254;
-	private const PHONE_MIN_LEN            = 10;
-	private const PHONE_MAX_LEN            = 15;
+	public const PHONE_MIN_LEN             = 10;
+	public const PHONE_MAX_LEN             = 15;
 	private const MOVE_DATE_MAX_DAYS_AHEAD = 365;
 
 	/**

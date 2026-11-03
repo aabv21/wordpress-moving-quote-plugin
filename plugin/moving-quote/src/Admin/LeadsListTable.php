@@ -150,8 +150,14 @@ final class LeadsListTable extends WP_List_Table {
 		return sprintf(
 			'%s<br />%s<br />%s',
 			esc_html( $lead->move_date ),
-			esc_html( $lead->move_type ),
-			esc_html( (string) $lead->rooms )
+			esc_html( self::move_type_label( $lead->move_type ) ),
+			esc_html(
+				sprintf(
+					/* translators: %d: number of rooms */
+					_n( '%d room', '%d rooms', $lead->rooms, 'moving-quote' ),
+					$lead->rooms
+				)
+			)
 		);
 	}
 
@@ -197,7 +203,8 @@ final class LeadsListTable extends WP_List_Table {
 				<input type="hidden" name="action" value="moving_quote_update_status" />
 				<input type="hidden" name="id" value="%2$d" />
 				%3$s
-				<select name="status">%4$s</select>
+				<label class="screen-reader-text" for="moving-quote-status-%2$d">%9$s</label>
+				<select id="moving-quote-status-%2$d" name="status">%4$s</select>
 				<button type="submit" class="button">%5$s</button>
 			</form>
 			<a href="%6$s" class="submitdelete" onclick="return confirm(%7$s)">%8$s</a>',
@@ -208,7 +215,14 @@ final class LeadsListTable extends WP_List_Table {
 			esc_html__( 'Update', 'moving-quote' ),
 			esc_url( $delete_url ),
 			esc_attr( (string) wp_json_encode( __( 'Delete this lead? This cannot be undone.', 'moving-quote' ) ) ),
-			esc_html__( 'Delete', 'moving-quote' )
+			esc_html__( 'Delete', 'moving-quote' ),
+			esc_html(
+				sprintf(
+					/* translators: %s: the lead's reference, e.g. MQ-1A2B3C4D */
+					__( 'Status of lead %s', 'moving-quote' ),
+					$lead->reference()
+				)
+			)
 		);
 	}
 
@@ -247,7 +261,11 @@ final class LeadsListTable extends WP_List_Table {
 	/**
 	 * Dispatches to this table's own `column_$name` methods, which WP_List_Table's generic
 	 * dispatch can't call directly: they're typed to take a `LeadRecord`, not the `object|array`
-	 * the base class declares.
+	 * the base class declares. Each cell keeps the markup core's own dispatch gives it: a
+	 * `data-colname` label, and for the primary column (core's default, the first one: Received) a
+	 * `<th scope="row">` row header with the `column-primary` class and the "Show more details"
+	 * toggle. Core's narrow-screen stylesheet keys on exactly that markup, so the list collapses into
+	 * one line per lead that expands into labelled rows, instead of a stack of unlabelled values.
 	 *
 	 * @param object|array<string, mixed> $item
 	 */
@@ -256,14 +274,39 @@ final class LeadsListTable extends WP_List_Table {
 			return;
 		}
 
-		foreach ( array_keys( $this->get_columns() ) as $column_name ) {
-			$method = 'column_' . $column_name;
-			$value  = method_exists( $this, $method ) ? $this->$method( $item ) : '';
+		$primary = $this->get_primary_column_name();
+		foreach ( $this->get_columns() as $column_name => $column_label ) {
+			$method     = 'column_' . $column_name;
+			$value      = method_exists( $this, $method ) ? $this->$method( $item ) : '';
+			$classes    = $column_name . ' column-' . $column_name;
+			$is_primary = $primary === $column_name;
+			if ( $is_primary ) {
+				$classes .= ' has-row-actions column-primary';
+				// Core's own toggle button: the same markup and text WP_List_Table gives every primary column.
+				$value .= $this->handle_row_actions( $item, $column_name, $primary );
+			}
 			// Each column_$name() method above already escapes every dynamic value it includes
 			// (esc_html/esc_attr/esc_url); wp_kses_post() would strip the column's own <form>,
 			// <select>, and hidden <input> markup, which aren't in its allowed post-content tag list.
-			printf( '<td class="%1$s column-%1$s">%2$s</td>', esc_attr( $column_name ), $value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $value is pre-escaped HTML built by this class's own column_$name() methods, not raw user input.
+			printf(
+				'<%1$s class="%2$s" data-colname="%3$s">%4$s</%5$s>',
+				$is_primary ? 'th scope="row"' : 'td',
+				esc_attr( $classes ),
+				esc_attr( wp_strip_all_tags( $column_label ) ),
+				$value, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- pre-escaped HTML built by this class's own column_$name() methods (and core's own toggle button), not raw user input.
+				$is_primary ? 'th' : 'td'
+			);
 		}
+	}
+
+	/** The display label for a stored move type, or the raw value for one this plugin version doesn't know. */
+	public static function move_type_label( string $move_type ): string {
+		$labels = [
+			'apartment' => __( 'Apartment', 'moving-quote' ),
+			'house'     => __( 'House', 'moving-quote' ),
+			'office'    => __( 'Office', 'moving-quote' ),
+		];
+		return $labels[ $move_type ] ?? $move_type;
 	}
 
 	public static function status_label( LeadStatus $status ): string {

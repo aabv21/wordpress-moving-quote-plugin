@@ -1,9 +1,11 @@
 import { postJson } from './lib/api.ts';
 import { debounce } from './lib/debounce.ts';
-import { affectsEstimate } from './lib/estimate-display.ts';
+import { affectsEstimate, ESTIMATE_PLACEHOLDER } from './lib/estimate-display.ts';
+import type { EstimateOutcome } from './lib/estimate-display.ts';
 import { createEstimateFetcher } from './lib/estimate-fetch.ts';
 import { estimateRequest, firstStepWithError, missingRequired } from './lib/form-state.ts';
 import type { FormValues } from './lib/form-state.ts';
+import { leadReference, thankYouHref } from './lib/reference.ts';
 import { uuidV4 } from './lib/uuid.ts';
 
 interface QuoteFormConfig {
@@ -17,9 +19,11 @@ interface QuoteFormConfig {
     rateLimited: string;
     sessionExpired: string;
     genericError: string;
-    successInline: string;
   };
 }
+
+/** The estimate panel's state: nothing to price yet, a request in flight, a price shown, or a failure shown. */
+type EstimateState = 'idle' | 'loading' | EstimateOutcome;
 
 const TOTAL_STEPS = 3;
 const ESTIMATE_DEBOUNCE_MS = 300;
@@ -64,6 +68,10 @@ function initQuoteForm(form: HTMLFormElement): void {
   const progressItems = Array.from(form.querySelectorAll<HTMLLIElement>('[data-progress-step]'));
   const estimateRegion = form.querySelector<HTMLElement>('.moving-quote__estimate');
   const estimateValue = estimateRegion?.querySelector<HTMLElement>('[data-estimate-value]') ?? null;
+  const estimateResult = estimateRegion?.querySelector<HTMLElement>('[data-estimate-result]') ?? null;
+  const estimateError = estimateRegion?.querySelector<HTMLElement>('[data-estimate-error]') ?? null;
+  const estimateHint = estimateRegion?.querySelector<HTMLElement>('[data-estimate-hint]') ?? null;
+  const successRegion = form.querySelector<HTMLElement>('[data-success]');
   const errorRegion = form.querySelector<HTMLElement>('[data-form-error]');
   const submitButton = form.querySelector<HTMLButtonElement>('[data-submit]');
   const submitLabel = submitButton?.textContent ?? '';
@@ -112,16 +120,40 @@ function initQuoteForm(form: HTMLFormElement): void {
     if (errorRegion) errorRegion.textContent = '';
   }
 
-  const fetchEstimate = createEstimateFetcher(config.estimateUrl, (text) => {
-    if (estimateValue) estimateValue.textContent = text;
-  });
+  /**
+   * Sets the panel's `data-estimate-state` (which the stylesheet keys its loading and error looks
+   * on) and shows only the text that state needs: the hint before anything can be priced, the
+   * error message after a failure. `aria-busy` holds the live region's announcement while a
+   * request is in flight, so a burst of edits is announced once, with its final result.
+   */
+  function setEstimateState(state: EstimateState): void {
+    if (!estimateRegion) return;
+    estimateRegion.dataset['estimateState'] = state;
+    if (state === 'loading') estimateResult?.setAttribute('aria-busy', 'true');
+    else estimateResult?.removeAttribute('aria-busy');
+    if (estimateError) estimateError.hidden = state !== 'error';
+    if (estimateHint) estimateHint.hidden = state !== 'idle';
+  }
+
+  function showEstimate(text: string, outcome: EstimateOutcome): void {
+    // An unchanged range isn't rewritten, so the live region doesn't announce the same price again.
+    if (estimateValue && estimateValue.textContent !== text) estimateValue.textContent = text;
+    setEstimateState(outcome);
+  }
+
+  const fetchEstimate = createEstimateFetcher(config.estimateUrl, showEstimate);
 
   // debounce()'s callback is declared void-returning; the promise fetchEstimate() produces is
-  // caught right here; nothing above is dropped.
+  // caught right here; nothing above is dropped. postJson() turns every network or HTTP failure
+  // into a result instead of rejecting, so the catch only guards the panel against staying in its
+  // loading state forever.
   const runEstimate = debounce(() => {
     const request = estimateRequest(readValues(form));
     if (!request) return;
-    fetchEstimate(request).catch(() => undefined);
+    setEstimateState('loading');
+    fetchEstimate(request).catch(() => {
+      showEstimate(ESTIMATE_PLACEHOLDER, 'error');
+    });
   }, ESTIMATE_DEBOUNCE_MS);
 
   // The name, phone, and email fields never affect price: filtering them out here (rather than
@@ -137,21 +169,24 @@ function initQuoteForm(form: HTMLFormElement): void {
   form.addEventListener('input', onFieldEvent);
   form.addEventListener('change', onFieldEvent);
 
-  form.querySelectorAll<HTMLButtonElement>('[data-next]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const missing = missingRequired(currentStep as 0 | 1 | 2, readValues(form));
-      const firstMissing = missing[0];
-      if (firstMissing !== undefined) {
-        // <fieldset> never participates in constraint validation (its own reportValidity() is a
-        // no-op); the control itself is what can show the browser's native validation message.
-        const control = form.elements.namedItem(firstMissing);
-        if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
-          control.reportValidity();
-        }
-        return;
+  /** Moves to the next step once the current one's required fields are filled in. */
+  function goNext(): void {
+    const missing = missingRequired(currentStep as 0 | 1 | 2, readValues(form));
+    const firstMissing = missing[0];
+    if (firstMissing !== undefined) {
+      // <fieldset> never participates in constraint validation (its own reportValidity() is a
+      // no-op); the control itself is what can show the browser's native validation message.
+      const control = form.elements.namedItem(firstMissing);
+      if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
+        control.reportValidity();
       }
-      showStep(Math.min(currentStep + 1, TOTAL_STEPS - 1), true);
-    });
+      return;
+    }
+    showStep(Math.min(currentStep + 1, TOTAL_STEPS - 1), true);
+  }
+
+  form.querySelectorAll<HTMLButtonElement>('[data-next]').forEach((button) => {
+    button.addEventListener('click', goNext);
   });
 
   form.querySelectorAll<HTMLButtonElement>('[data-back]').forEach((button) => {
@@ -160,8 +195,14 @@ function initQuoteForm(form: HTMLFormElement): void {
     });
   });
 
+  // Pressing Enter in a field submits the form implicitly, whichever step is showing. Before the
+  // last step that means "Next", never a premature submission of fields the visitor hasn't seen.
   form.addEventListener('submit', (event) => {
     event.preventDefault();
+    if (currentStep < TOTAL_STEPS - 1) {
+      goNext();
+      return;
+    }
     void submit();
   });
 
@@ -193,14 +234,11 @@ function initQuoteForm(form: HTMLFormElement): void {
     const result = await postJson(config.leadsUrl, body, { 'X-WP-Nonce': config.nonce });
 
     if (result.ok) {
+      const reference = leadReference(result.data);
       if (config.thankYouUrl) {
-        window.location.assign(config.thankYouUrl);
+        window.location.assign(thankYouHref(config.thankYouUrl, reference, window.location.href));
       } else {
-        form.hidden = true;
-        if (errorRegion) {
-          errorRegion.textContent = config.strings.successInline;
-          errorRegion.setAttribute('role', 'status');
-        }
+        showSuccess(reference);
       }
       return;
     }
@@ -211,8 +249,10 @@ function initQuoteForm(form: HTMLFormElement): void {
       Object.entries(result.fieldErrors).forEach(([field, message]) => {
         setFieldError(field, message);
       });
-      showStep(firstStepWithError(result.fieldErrors), true);
+      const step = firstStepWithError(result.fieldErrors);
+      showStep(step, false);
       setFormError(config.strings.genericError);
+      focusFirstInvalid(step);
       return;
     }
 
@@ -233,6 +273,35 @@ function initQuoteForm(form: HTMLFormElement): void {
     if (!submitButton) return;
     submitButton.disabled = false;
     submitButton.textContent = submitLabel;
+  }
+
+  /** Focuses the first control the server flagged in `step`, or that step's legend when none of its own controls carries an error (e.g. an `extras` error, which has no single control). */
+  function focusFirstInvalid(step: number): void {
+    const fieldset = fieldsets[step];
+    const invalid = fieldset?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (invalid) invalid.focus();
+    else fieldset?.querySelector('legend')?.focus();
+  }
+
+  /**
+   * The inline confirmation, for a form whose thank-you page doesn't exist: hides everything else
+   * the form holds (steps, progress, estimate, errors), reveals the success message with the lead's
+   * reference when the response carried one, and moves focus onto it so a screen reader reads it
+   * and keyboard focus isn't stranded on the now-hidden submit button.
+   */
+  function showSuccess(reference: string | null): void {
+    if (!successRegion) return;
+    Array.from(form.children).forEach((child) => {
+      if (child instanceof HTMLElement && child !== successRegion) child.hidden = true;
+    });
+    const referenceLine = successRegion.querySelector<HTMLElement>('[data-success-reference]');
+    const referenceValue = successRegion.querySelector<HTMLElement>('[data-success-reference-value]');
+    if (reference !== null && referenceLine && referenceValue) {
+      referenceValue.textContent = reference;
+      referenceLine.hidden = false;
+    }
+    successRegion.hidden = false;
+    successRegion.focus();
   }
 
   showStep(0, false);

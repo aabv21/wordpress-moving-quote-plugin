@@ -82,14 +82,22 @@ if wp post get 2 >/dev/null 2>&1; then
   wp post delete 2 --force >/dev/null
 fi
 
-create_page_if_missing() {
-  slug="$1"
-  title="$2"
-  content="$3"
-  existing=$(wp post list --post_type=page --name="$slug" --field=ID)
+# Creates a published post of the given type unless one with that slug already exists. An existing
+# one is left exactly as it is, even if its content differs from what this script would write: the
+# site owner may have edited it since.
+create_post_if_missing() {
+  post_type="$1"
+  slug="$2"
+  title="$3"
+  content="$4"
+  existing=$(wp post list --post_type="$post_type" --name="$slug" --field=ID)
   if [ -z "$existing" ]; then
-    wp post create --post_type=page --post_status=publish --post_title="$title" --post_name="$slug" --post_content="$content" >/dev/null
+    wp post create --post_type="$post_type" --post_status=publish --post_title="$title" --post_name="$slug" --post_content="$content" >/dev/null
   fi
+}
+
+create_page_if_missing() {
+  create_post_if_missing page "$@"
 }
 
 create_page_if_missing "home" "Home" '<!-- wp:heading --><h2>Moving made simple on Colombia'"'"'s Caribbean coast</h2><!-- /wp:heading -->
@@ -99,7 +107,18 @@ create_page_if_missing "home" "Home" '<!-- wp:heading --><h2>Moving made simple 
 create_page_if_missing "get-a-quote" "Get a Quote" '<!-- wp:paragraph --><p>Tell us about your move and see an estimate right away.</p><!-- /wp:paragraph -->
 <!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->'
 
-create_page_if_missing "thank-you" "Thank You" "<!-- wp:paragraph --><p>Thank you! We received your request. A member of our team will call you to confirm the details and the final price. We'll also email you a summary.</p><!-- /wp:paragraph -->"
+# [moving_quote_reference] shows the MQ-… reference the quote form passes along on its redirect,
+# and nothing when the page is opened directly.
+create_page_if_missing "thank-you" "Thank You" '<!-- wp:paragraph --><p>We received your moving request.</p><!-- /wp:paragraph -->
+<!-- wp:shortcode -->[moving_quote_reference]<!-- /wp:shortcode -->
+<!-- wp:heading --><h2 class="wp-block-heading">What happens next</h2><!-- /wp:heading -->
+<!-- wp:list {"ordered":true} --><ol class="wp-block-list"><!-- wp:list-item --><li>We email you a summary of your request and your estimate.</li><!-- /wp:list-item --><!-- wp:list-item --><li>A member of our team calls you to confirm the details.</li><!-- /wp:list-item --><!-- wp:list-item --><li>We confirm the final price after a visit or video call, then book your moving day.</li><!-- /wp:list-item --></ol><!-- /wp:list -->
+<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button --><div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/">Back to the home page</a></div><!-- /wp:button --></div><!-- /wp:buttons -->'
+
+# The theme's header navigation falls back to listing every page (the thank-you page included)
+# when no navigation menu exists, so the site gets its own: Home and Get a Quote.
+create_post_if_missing wp_navigation "primary-navigation" "Primary navigation" '<!-- wp:navigation-link {"label":"Home","url":"/","kind":"custom","isTopLevelLink":true} /-->
+<!-- wp:navigation-link {"label":"Get a Quote","url":"/get-a-quote/","kind":"custom","isTopLevelLink":true} /-->'
 
 home_id=$(wp post list --post_type=page --name=home --field=ID)
 wp option update show_on_front page
