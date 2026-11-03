@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Install;
 
 /**
- * The leads table definition, in the format `dbDelta()` expects.
+ * The leads table definition, in the format `dbDelta()` expects. A column added after the first
+ * release goes last: `dbDelta()` appends a new column to an existing table, so a fresh install
+ * and an upgraded one end up with the same column order.
  */
 final class Schema {
 	/** Builds the `CREATE TABLE` statement for the leads table, ready for `dbDelta()`. */
@@ -33,6 +35,7 @@ final class Schema {
 			next_attempt_at bigint(20) unsigned NOT NULL DEFAULT 0,
 			last_error varchar(500) NOT NULL DEFAULT '',
 			sent_at datetime NULL,
+			locale varchar(20) NOT NULL DEFAULT '',
 			PRIMARY KEY  (id),
 			UNIQUE KEY request_uuid (request_uuid),
 			KEY status_created (status,created_at),

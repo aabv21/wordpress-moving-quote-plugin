@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # Installs and configures WordPress for Chivabox Movers. Idempotent: safe to run again after the
 # stack is already set up. Requires `docker compose up -d --wait` to have run first.
+#
+# SITE_LOCALE (from .env, or the command line) picks the site language: en_US (the default) or
+# es_CO. es_CO downloads WordPress's own Spanish (Colombia) core language pack, so it needs network
+# access; the plugin's translations ship with the plugin and need none.
+# Example: SITE_LOCALE=es_CO ./setup.sh
 set -euo pipefail
 cd "$(dirname "$0")"
+
+# A SITE_LOCALE given on the command line wins over the one in .env, which is read next.
+site_locale="${SITE_LOCALE:-}"
 
 # Read the settings from .env, so the script works from a fresh shell.
 if [ ! -f .env ]; then
@@ -43,6 +51,53 @@ until wp eval "$db_probe" --skip-wordpress >/dev/null 2>&1; do
   sleep 2
 done
 
+site_locale="${site_locale:-${SITE_LOCALE:-en_US}}"
+
+# The site's own copy, in each supported language. Page slugs stay the same in both, so the quote
+# form's thank-you redirect and every link below keep working whichever language the site uses.
+case "$site_locale" in
+  en_US)
+    tagline="Moving across Colombia's Caribbean coast"
+    home_title="Home"
+    home_heading="Moving made simple on Colombia's Caribbean coast"
+    home_intro="Chivabox Movers moves homes and offices between Barranquilla, Cartagena, Santa Marta, and the rest of the coast. Get an instant estimate in under a minute."
+    home_button="Get a quote"
+    quote_title="Get a Quote"
+    quote_intro="Tell us about your move and see an estimate right away."
+    thanks_title="Thank You"
+    thanks_intro="We received your moving request."
+    thanks_heading="What happens next"
+    thanks_step_1="We email you a summary of your request and your estimate."
+    thanks_step_2="A member of our team calls you to confirm the details."
+    thanks_step_3="We confirm the final price after a visit or video call, then book your moving day."
+    thanks_button="Back to the home page"
+    nav_home="Home"
+    nav_quote="Get a Quote"
+    ;;
+  es_CO)
+    tagline="Mudanzas en la costa Caribe colombiana"
+    home_title="Inicio"
+    home_heading="Su mudanza, sin complicaciones, en la costa Caribe de Colombia"
+    home_intro="Chivabox Movers traslada hogares y oficinas entre Barranquilla, Cartagena, Santa Marta y el resto de la costa. Obtenga un precio estimado en menos de un minuto."
+    home_button="Cotizar mi mudanza"
+    quote_title="Cotice su mudanza"
+    quote_intro="Cuéntenos sobre su mudanza y vea un precio estimado al instante."
+    thanks_title="Gracias"
+    thanks_intro="Recibimos su solicitud de mudanza."
+    thanks_heading="Qué sigue"
+    thanks_step_1="Le enviamos por correo un resumen de su solicitud y el precio estimado."
+    thanks_step_2="Una persona de nuestro equipo se comunica con usted para confirmar los detalles."
+    thanks_step_3="Confirmamos el precio final después de una visita o una videollamada y agendamos el día de su mudanza."
+    thanks_button="Volver al inicio"
+    nav_home="Inicio"
+    nav_quote="Cotizar"
+    ;;
+  *)
+    echo "setup.sh: SITE_LOCALE must be en_US or es_CO, got ${site_locale}" >&2
+    exit 1
+    ;;
+esac
+
 for name in WP_URL WP_ADMIN_USER WP_ADMIN_PASSWORD WP_ADMIN_EMAIL LEAD_WEBHOOK_SECRET TEAM_EMAIL; do
   if [ -z "${!name:-}" ]; then
     echo "setup.sh: ${name} is not set; run node scripts/init-env.ts and fill in .env first" >&2
@@ -67,7 +122,16 @@ $WP_ADMIN_PASSWORD
 EOF
 fi
 
-wp option update blogdescription "Moving across Colombia's Caribbean coast"
+# The language comes first, so everything after it runs in the site's own language.
+if [ "$site_locale" != "en_US" ] && ! wp language core is-installed "$site_locale" >/dev/null 2>&1; then
+  wp language core install "$site_locale" >/dev/null
+fi
+current_locale=$(wp eval 'echo get_locale();')
+if [ "$current_locale" != "$site_locale" ]; then
+  wp site switch-language "$site_locale" >/dev/null
+fi
+
+wp option update blogdescription "$tagline"
 wp option update timezone_string "America/Bogota"
 wp option update permalink_structure "/%postname%/"
 wp rewrite flush --hard
@@ -100,25 +164,25 @@ create_page_if_missing() {
   create_post_if_missing page "$@"
 }
 
-create_page_if_missing "home" "Home" '<!-- wp:heading --><h2>Moving made simple on Colombia'"'"'s Caribbean coast</h2><!-- /wp:heading -->
-<!-- wp:paragraph --><p>Chivabox Movers moves homes and offices between Barranquilla, Cartagena, Santa Marta, and the rest of the coast. Get an instant estimate in under a minute.</p><!-- /wp:paragraph -->
-<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button --><div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/get-a-quote/">Get a quote</a></div><!-- /wp:button --></div><!-- /wp:buttons -->'
+create_page_if_missing "home" "$home_title" "<!-- wp:heading --><h2>${home_heading}</h2><!-- /wp:heading -->
+<!-- wp:paragraph --><p>${home_intro}</p><!-- /wp:paragraph -->
+<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/get-a-quote/\">${home_button}</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
 
-create_page_if_missing "get-a-quote" "Get a Quote" '<!-- wp:paragraph --><p>Tell us about your move and see an estimate right away.</p><!-- /wp:paragraph -->
-<!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->'
+create_page_if_missing "get-a-quote" "$quote_title" "<!-- wp:paragraph --><p>${quote_intro}</p><!-- /wp:paragraph -->
+<!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->"
 
 # [moving_quote_reference] shows the MQ-… reference the quote form passes along on its redirect,
 # and nothing when the page is opened directly.
-create_page_if_missing "thank-you" "Thank You" '<!-- wp:paragraph --><p>We received your moving request.</p><!-- /wp:paragraph -->
+create_page_if_missing "thank-you" "$thanks_title" "<!-- wp:paragraph --><p>${thanks_intro}</p><!-- /wp:paragraph -->
 <!-- wp:shortcode -->[moving_quote_reference]<!-- /wp:shortcode -->
-<!-- wp:heading --><h2 class="wp-block-heading">What happens next</h2><!-- /wp:heading -->
-<!-- wp:list {"ordered":true} --><ol class="wp-block-list"><!-- wp:list-item --><li>We email you a summary of your request and your estimate.</li><!-- /wp:list-item --><!-- wp:list-item --><li>A member of our team calls you to confirm the details.</li><!-- /wp:list-item --><!-- wp:list-item --><li>We confirm the final price after a visit or video call, then book your moving day.</li><!-- /wp:list-item --></ol><!-- /wp:list -->
-<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button --><div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/">Back to the home page</a></div><!-- /wp:button --></div><!-- /wp:buttons -->'
+<!-- wp:heading --><h2 class=\"wp-block-heading\">${thanks_heading}</h2><!-- /wp:heading -->
+<!-- wp:list {\"ordered\":true} --><ol class=\"wp-block-list\"><!-- wp:list-item --><li>${thanks_step_1}</li><!-- /wp:list-item --><!-- wp:list-item --><li>${thanks_step_2}</li><!-- /wp:list-item --><!-- wp:list-item --><li>${thanks_step_3}</li><!-- /wp:list-item --></ol><!-- /wp:list -->
+<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/\">${thanks_button}</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
 
 # The theme's header navigation falls back to listing every page (the thank-you page included)
 # when no navigation menu exists, so the site gets its own: Home and Get a Quote.
-create_post_if_missing wp_navigation "primary-navigation" "Primary navigation" '<!-- wp:navigation-link {"label":"Home","url":"/","kind":"custom","isTopLevelLink":true} /-->
-<!-- wp:navigation-link {"label":"Get a Quote","url":"/get-a-quote/","kind":"custom","isTopLevelLink":true} /-->'
+create_post_if_missing wp_navigation "primary-navigation" "Primary navigation" "<!-- wp:navigation-link {\"label\":\"${nav_home}\",\"url\":\"/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->
+<!-- wp:navigation-link {\"label\":\"${nav_quote}\",\"url\":\"/get-a-quote/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->"
 
 home_id=$(wp post list --post_type=page --name=home --field=ID)
 wp option update show_on_front page

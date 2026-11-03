@@ -13,7 +13,7 @@ final class LeadCsvTest extends TestCase {
 		$row = LeadCsv::row( LeadRecord::from_row( Fixtures::lead_row() ), new \DateTimeZone( 'America/Bogota' ) );
 
 		self::assertSame(
-			[ '2026-11-04 09:15', 'MQ-6F1C2A9E', 'new', 'José Peña', '570000000001', 'jose@example.com', '2026-11-20', 'apartment', '2', 'Barranquilla', 'Cartagena', '120', 'packing', '1330000', '1197000', '1463000', 'pending' ],
+			[ '2026-11-04 09:15', 'MQ-6F1C2A9E', 'new', 'José Peña', '570000000001', 'jose@example.com', '2026-11-20', 'apartment', '2', 'Barranquilla', 'Cartagena', '120', 'packing', '1330000', '1197000', '1463000', 'pending', 'en_US' ],
 			$row
 		);
 	}

@@ -24,9 +24,10 @@ final class LeadRepository {
 	 * inserted row, or null when `request_uuid` already exists — the one failure mode this method
 	 * treats as expected, since the unique index is what makes a duplicate submission safe to
 	 * retry. Any other insert failure raises `RuntimeException` instead of returning null, so a
-	 * caller never mistakes an unrelated database error for a duplicate.
+	 * caller never mistakes an unrelated database error for a duplicate. `$locale` is the site
+	 * language the lead was submitted under, stored so the n8n emails can answer in it.
 	 */
-	public function insert( LeadDraft $draft, Estimate $estimate, int $now, int $next_attempt_at ): ?LeadRecord {
+	public function insert( LeadDraft $draft, Estimate $estimate, int $now, int $next_attempt_at, string $locale = '' ): ?LeadRecord {
 		global $wpdb;
 
 		$extras = implode( ',', array_map( static fn ( $extra ): string => $extra->value, $draft->quote->extras ) );
@@ -57,8 +58,9 @@ final class LeadRepository {
 				'next_attempt_at'   => $next_attempt_at,
 				'last_error'        => '',
 				'sent_at'           => null,
+				'locale'            => $locale,
 			],
-			[ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%s' ]
+			[ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%s', '%s', '%s' ]
 		);
 		$wpdb->suppress_errors( $previous_suppress );
 

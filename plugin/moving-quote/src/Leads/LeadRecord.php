@@ -5,7 +5,8 @@ namespace Chivabox\MovingQuote\Leads;
 
 /**
  * A leads-table row, typed from the string values `$wpdb` returns. Every property is named after
- * its column.
+ * its column. `locale` is the site language the lead was submitted under (`determine_locale()`),
+ * or `''` for a row saved before that column existed.
  */
 final readonly class LeadRecord {
 	/** @param list<string> $extras */
@@ -32,7 +33,8 @@ final readonly class LeadRecord {
 		public int $attempts,
 		public int $next_attempt_at,
 		public string $last_error,
-		public ?string $sent_at
+		public ?string $sent_at,
+		public string $locale = ''
 	) {
 	}
 
@@ -63,7 +65,8 @@ final readonly class LeadRecord {
 			(int) $row['attempts'],
 			(int) $row['next_attempt_at'],
 			(string) $row['last_error'],
-			$row['sent_at']
+			$row['sent_at'],
+			(string) ( $row['locale'] ?? '' )
 		);
 	}
 

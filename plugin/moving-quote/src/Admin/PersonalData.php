@@ -108,7 +108,7 @@ final class PersonalData {
 				],
 				[
 					'name'  => __( 'Move type', 'moving-quote' ),
-					'value' => $lead->move_type,
+					'value' => LeadsListTable::move_type_label( $lead->move_type ),
 				],
 				[
 					'name'  => __( 'Rooms', 'moving-quote' ),
@@ -132,7 +132,7 @@ final class PersonalData {
 				],
 				[
 					'name'  => __( 'Extras', 'moving-quote' ),
-					'value' => implode( ', ', $lead->extras ),
+					'value' => implode( ', ', array_map( [ LeadsListTable::class, 'extra_label' ], $lead->extras ) ),
 				],
 				[
 					'name'  => __( 'Estimate amount (COP)', 'moving-quote' ),
@@ -145,6 +145,11 @@ final class PersonalData {
 				[
 					'name'  => __( 'Estimate high (COP)', 'moving-quote' ),
 					'value' => (string) $lead->estimate_high_cop,
+				],
+				[
+					/* translators: the site language the request was submitted in, e.g. es_CO */
+					'name'  => __( 'Language', 'moving-quote' ),
+					'value' => $lead->locale,
 				],
 			],
 		];

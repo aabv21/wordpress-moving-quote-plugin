@@ -1,13 +1,20 @@
+import { DEFAULT_LOCALE, normalizeLocale, type Locale } from './locale.ts';
+
 export type MoveType = 'apartment' | 'house' | 'office';
 export type Extra = 'packing' | 'furniture_assembly' | 'storage' | 'piano_fragile';
 
-/** The exact lead payload contract WordPress sends to n8n. */
+/**
+ * The exact lead payload contract WordPress sends to n8n, parsed. `locale` arrives as the
+ * WordPress locale the lead was submitted under (`es_CO`, `en_US`, …) and is kept here already
+ * normalized to the email language it selects.
+ */
 export interface Lead {
   request_uuid: string;
   reference: string;
   submitted_at: string;
   site_name: string;
   team_email: string;
+  locale: Locale;
   customer: {
     name: string;
     phone: string;
@@ -211,7 +218,19 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
   return { currency, amount, low, high };
 }
 
-const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'customer', 'move', 'estimate'] as const;
+const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'customer', 'move', 'estimate'] as const;
+
+/**
+ * The email language for the payload's `locale`. The field is optional: a lead signed by a plugin
+ * version that predates it can still be in WordPress's retry queue, so a missing one reads as the
+ * default language, as does an empty one (a row saved before the column existed) or any language
+ * the emails aren't written in. A present but non-string value is a contract violation (null).
+ */
+function parseLocale(value: unknown): Locale | null {
+  if (value === undefined) return DEFAULT_LOCALE;
+  if (typeof value !== 'string') return null;
+  return normalizeLocale(value);
+}
 
 /**
  * Parses and validates the exact contract body WordPress signs and sends, matching the PHP side's
@@ -220,7 +239,7 @@ const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'te
  */
 export function parseLead(value: unknown): Lead | null {
   if (!isRecord(value) || !hasOnlyKeys(value, LEAD_KEYS)) return null;
-  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, customer, move, estimate } = value;
+  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, customer, move, estimate } = value;
 
   if (typeof requestUuid !== 'string' || !UUID_V4_RE.test(requestUuid)) return null;
 
@@ -232,6 +251,9 @@ export function parseLead(value: unknown): Lead | null {
   // once a merchant clears Settings → General → Site Title; any string, including '', is valid.
   if (typeof siteName !== 'string') return null;
   if (typeof teamEmail !== 'string' || !isSimpleEmail(teamEmail)) return null;
+
+  const parsedLocale = parseLocale(locale);
+  if (!parsedLocale) return null;
 
   const parsedCustomer = parseCustomer(customer);
   if (!parsedCustomer) return null;
@@ -252,6 +274,7 @@ export function parseLead(value: unknown): Lead | null {
     submitted_at: submittedAt,
     site_name: siteName,
     team_email: teamEmail,
+    locale: parsedLocale,
     customer: parsedCustomer,
     move: parsedMove,
     estimate: parsedEstimate,

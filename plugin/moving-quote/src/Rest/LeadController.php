@@ -95,7 +95,9 @@ final class LeadController {
 
 	private static function insert( LeadRepository $repository, LeadDraft $draft, Estimate $estimate, int $now ): WP_REST_Response|WP_Error {
 		try {
-			$record = $repository->insert( $draft, $estimate, $now, $now + Outbox::LEASE_SECONDS );
+			// determine_locale() is the language this request renders in (the site language, or
+			// whatever a multilingual plugin filters it to), so the n8n emails can answer in it.
+			$record = $repository->insert( $draft, $estimate, $now, $now + Outbox::LEASE_SECONDS, determine_locale() );
 		} catch ( Throwable $e ) {
 			error_log( 'moving-quote: lead insert failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- no dedicated logging service exists; the message carries no PII.
 			return self::save_failed();

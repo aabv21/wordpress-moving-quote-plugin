@@ -1,0 +1,479 @@
+# Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
+msgid ""
+msgstr ""
+"Project-Id-Version: Moving Quote 1.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-11-03T06:23:07+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: moving-quote\n"
+
+#. Plugin Name of the plugin
+msgid "Moving Quote"
+msgstr ""
+
+#. Description of the plugin
+msgid "Three-step moving quote form with live estimates, a leads list, and signed delivery to n8n."
+msgstr ""
+
+#. Author of the plugin
+msgid "Andrés Buelvas"
+msgstr ""
+
+msgid "Received"
+msgstr ""
+
+msgid "Reference"
+msgstr ""
+
+msgid "Customer"
+msgstr ""
+
+msgctxt "leads table column: the move date, type, and rooms"
+msgid "Move"
+msgstr ""
+
+msgid "Route"
+msgstr ""
+
+msgid "Estimate"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Delivery"
+msgstr ""
+
+msgctxt "leads list view"
+msgid "All"
+msgstr ""
+
+#. translators: %d: number of rooms
+#, php-format
+msgid "%d room"
+msgid_plural "%d rooms"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: distance in kilometres, already formatted for the site language
+#, php-format
+msgid "%s km"
+msgstr ""
+
+msgctxt "button: save the selected lead status"
+msgid "Update"
+msgstr ""
+
+msgid "Delete this lead? This cannot be undone."
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+#. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
+#, php-format
+msgid "Status of lead %s"
+msgstr ""
+
+#. translators: 1: delivery status label (Pending, Sent, or Failed), 2: attempt count
+#, php-format
+msgid "%1$s (%2$d attempt)"
+msgid_plural "%1$s (%2$d attempts)"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Retry delivery"
+msgstr ""
+
+msgid "Apartment"
+msgstr ""
+
+msgid "House"
+msgstr ""
+
+msgid "Office"
+msgstr ""
+
+msgid "Packing"
+msgstr ""
+
+msgid "Furniture disassembly and assembly"
+msgstr ""
+
+msgid "Temporary storage"
+msgstr ""
+
+msgid "Piano or fragile items"
+msgstr ""
+
+msgctxt "lead status"
+msgid "New"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Contacted"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Quoted"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Won"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Lost"
+msgstr ""
+
+msgctxt "delivery status"
+msgid "Pending"
+msgstr ""
+
+msgctxt "delivery status"
+msgid "Sent"
+msgstr ""
+
+msgctxt "delivery status"
+msgid "Failed"
+msgstr ""
+
+msgid "Sorry, you are not allowed to access this page."
+msgstr ""
+
+msgid "Moving quotes"
+msgstr ""
+
+msgid "Export CSV"
+msgstr ""
+
+msgid "Lead status updated."
+msgstr ""
+
+msgid "The lead was queued for delivery."
+msgstr ""
+
+msgid "The lead was deleted."
+msgstr ""
+
+msgid "Missing or invalid lead id."
+msgstr ""
+
+msgid "Leads"
+msgstr ""
+
+msgid "Moving Quote Settings"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Moving quote leads"
+msgstr ""
+
+#. translators: the submission time is converted to America/Bogota
+msgid "Submitted (America/Bogota)"
+msgstr ""
+
+msgid "Name"
+msgstr ""
+
+msgid "Phone"
+msgstr ""
+
+msgid "Email"
+msgstr ""
+
+#. translators: the consent time is converted to America/Bogota
+msgid "Consent given (America/Bogota)"
+msgstr ""
+
+msgid "Move type"
+msgstr ""
+
+msgid "Rooms"
+msgstr ""
+
+msgid "Origin"
+msgstr ""
+
+msgid "Destination"
+msgstr ""
+
+msgid "Distance (km)"
+msgstr ""
+
+msgid "Move date"
+msgstr ""
+
+msgid "Extras"
+msgstr ""
+
+msgid "Estimate amount (COP)"
+msgstr ""
+
+msgid "Estimate low (COP)"
+msgstr ""
+
+msgid "Estimate high (COP)"
+msgstr ""
+
+#. translators: the site language the request was submitted in, e.g. es_CO
+msgid "Language"
+msgstr ""
+
+#. translators: %s: a comma-separated list of MQ-… lead references
+#, php-format
+msgid "The database record for %s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the \"New lead\" emails already sent to the team and the customer, and — for up to 7 days — in a failed delivery's stored n8n execution data. Remove those by hand if needed."
+msgstr ""
+
+msgid "Enter a whole amount in COP, such as 150,000."
+msgstr ""
+
+msgid "Enter a percentage from 0 to 50."
+msgstr ""
+
+msgid "City names must be 2–60 characters."
+msgstr ""
+
+msgid "The origin and destination cities must be different."
+msgstr ""
+
+msgid "This city pair already has a distance; remove the duplicate row."
+msgstr ""
+
+msgid "Enter a distance in km from 1 to 3,000."
+msgstr ""
+
+msgid "At least one route is required."
+msgstr ""
+
+msgid "Enter a valid http:// or https:// URL, or leave it blank."
+msgstr ""
+
+msgid "The webhook secret must be at least 32 characters."
+msgstr ""
+
+msgid "Enter a valid email address, or leave it blank."
+msgstr ""
+
+msgid "Rates"
+msgstr ""
+
+msgid "Cities and distances"
+msgstr ""
+
+msgid "Per room"
+msgstr ""
+
+msgid "Per km"
+msgstr ""
+
+msgid "Range percent"
+msgstr ""
+
+msgid "Missing distances for:"
+msgstr ""
+
+msgctxt "route origin city"
+msgid "From"
+msgstr ""
+
+msgctxt "route destination city"
+msgid "To"
+msgstr ""
+
+msgid "Remove"
+msgstr ""
+
+msgid "Webhook URL"
+msgstr ""
+
+msgid "Webhook secret"
+msgstr ""
+
+msgid "Leave blank to keep the current secret."
+msgstr ""
+
+msgid "Team email"
+msgstr ""
+
+msgid "Delivery is on"
+msgstr ""
+
+msgid "Delivery is off until the webhook URL, secret, and team email are set."
+msgstr ""
+
+#. translators: 1: number of stuck leads, 2: link to the Leads page
+#, php-format
+msgid "%1$d lead has not reached n8n yet. %2$s"
+msgid_plural "%1$d leads have not reached n8n yet. %2$s"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "View leads"
+msgstr ""
+
+#. translators: %d: number of rate-limited quote submissions in the current 24-hour window
+#, php-format
+msgid "%d quote submission was rate-limited in the current 24-hour window."
+msgid_plural "%d quote submissions were rate-limited in the current 24-hour window."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
+#, php-format
+msgid "Your reference number is %s. Keep it handy if you contact us about your move."
+msgstr ""
+
+msgid "Sending…"
+msgstr ""
+
+msgid "Something went wrong. Please check your connection and try again."
+msgstr ""
+
+msgid "Too many requests. Please try again later."
+msgstr ""
+
+msgid "Your session expired. Reload the page and try again."
+msgstr ""
+
+msgid "Please fix the highlighted fields."
+msgstr ""
+
+msgid "Chivabox moving quotes doesn't support Multisite."
+msgstr ""
+
+msgid "Plugin activation error"
+msgstr ""
+
+msgid "Every minute"
+msgstr ""
+
+msgid "Something went wrong. Please try again."
+msgstr ""
+
+#. translators: 1: minimum digits, 2: maximum digits
+#, php-format
+msgid "Enter a phone number with %1$d to %2$d digits."
+msgstr ""
+
+msgid "Enter an email address like name@example.com."
+msgstr ""
+
+msgid "This field is required."
+msgstr ""
+
+msgid "Please check this value."
+msgstr ""
+
+msgid "Choose a city from the list."
+msgstr ""
+
+msgid "We don’t have a price for this route yet. Please call us."
+msgstr ""
+
+msgid "Please enter at least 2 characters."
+msgstr ""
+
+msgid "Please use 100 characters or fewer."
+msgstr ""
+
+msgid "Choose today or a later date."
+msgstr ""
+
+msgid "Choose a date within the next 12 months."
+msgstr ""
+
+msgid "Please accept the privacy policy to continue."
+msgstr ""
+
+#. translators: 1: low estimate, 2: high estimate
+#, php-format
+msgid "COP %1$s – %2$s"
+msgstr ""
+
+msgid "Your move"
+msgstr ""
+
+msgid "Extra services"
+msgstr ""
+
+msgid "Your details"
+msgstr ""
+
+msgid "This form needs JavaScript to show a live estimate and submit your request. Please enable JavaScript, or call us for a quote."
+msgstr ""
+
+msgid "Leave this field empty"
+msgstr ""
+
+msgid "What are you moving?"
+msgstr ""
+
+msgid "How many rooms?"
+msgstr ""
+
+msgid "5+"
+msgstr ""
+
+msgid "Moving from"
+msgstr ""
+
+msgid "Choose a city"
+msgstr ""
+
+msgid "Moving to"
+msgstr ""
+
+msgid "Next"
+msgstr ""
+
+msgid "Choose any you need. Each one is added to your estimate."
+msgstr ""
+
+msgid "Back"
+msgstr ""
+
+msgid "Full name"
+msgstr ""
+
+#. translators: %s: privacy policy URL
+#, php-format
+msgid "I agree to the processing of my data under the <a href=\"%s\">privacy policy</a>."
+msgstr ""
+
+msgid "I agree to the processing of my data under the privacy policy."
+msgstr ""
+
+msgid "Send my request"
+msgstr ""
+
+msgid "Request received"
+msgstr ""
+
+msgid "Thank you! A member of our team will call you to confirm the details and the final price."
+msgstr ""
+
+#. translators: %s: a <strong> placeholder that quote-form.ts fills in with the lead's MQ-… reference
+#, php-format
+msgid "Your reference number is %s."
+msgstr ""
+
+msgid "Estimated price"
+msgstr ""
+
+msgid "We couldn’t calculate a price for this move right now. You can still send your request, and we’ll quote it for you."
+msgstr ""
+
+msgid "Choose what you are moving, the rooms, and both cities to see a price."
+msgstr ""
+
+msgid "This is an estimate. We confirm the final price after a visit or video call."
+msgstr ""

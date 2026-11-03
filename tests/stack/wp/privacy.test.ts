@@ -86,7 +86,10 @@ describe('personal data: export and erase', () => {
     expect(fields).toContainEqual({ name: 'Email', value: email });
     expect(fields).toContainEqual({ name: 'Name', value: 'Privacy Export Test' });
     expect(fields).toContainEqual({ name: 'Status', value: 'New' });
-    expect(fields).toContainEqual({ name: 'Extras', value: 'packing, storage' });
+    // Display labels, not the stored keys: the export is read by the person it describes.
+    expect(fields).toContainEqual({ name: 'Move type', value: 'Apartment' });
+    expect(fields).toContainEqual({ name: 'Extras', value: 'Packing, Temporary storage' });
+    expect(fields).toContainEqual({ name: 'Language', value: 'en_US' });
     expect(fields).toContainEqual({ name: 'Distance (km)', value: '120' });
     // packing (200,000) + storage (300,000) on top of the apartment/2-room/Barranquilla-Cartagena
     // base (1,130,000) gives 1,630,000, ±10% range_percent rounded to the nearest 1,000 COP.

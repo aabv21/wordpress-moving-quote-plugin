@@ -14,7 +14,8 @@ const input = (over: Record<string, unknown> = {}) => ({ body: parseBody(body) a
 
 describe('verify-request', () => {
   it('accepts a fresh token bound to this body', () => {
-    expect(run(input(), now)).toEqual({ ok: true, lead: parseBody(body) });
+    // parseLead() normalizes the body's WordPress locale (en_US) to the email language (en).
+    expect(run(input(), now)).toEqual({ ok: true, lead: { ...parseBody(body), locale: 'en' } });
   });
   it.each([
     ['missing exp', { exp: undefined }, 'missing_claims'],

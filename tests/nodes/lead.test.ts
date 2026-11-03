@@ -18,8 +18,31 @@ function withEstimate(overrides: Record<string, unknown>): unknown {
 }
 
 describe('parseLead', () => {
-  it('accepts the exact fixture contract body', () => {
-    expect(parseLead(valid)).toEqual(valid);
+  it('accepts the exact fixture contract body, normalizing its WordPress locale to the email language', () => {
+    expect(valid.locale).toBe('en_US');
+    expect(parseLead(valid)).toEqual({ ...valid, locale: 'en' });
+  });
+
+  it('reads a Spanish WordPress locale as es', () => {
+    expect(parseLead({ ...valid, locale: 'es_CO' })?.locale).toBe('es');
+    expect(parseLead({ ...valid, locale: 'es-CO' })?.locale).toBe('es');
+  });
+
+  it('falls back to en for an in-flight lead sent by a plugin version without the locale field', () => {
+    const withoutLocale: Record<string, unknown> = { ...valid };
+    delete withoutLocale.locale;
+    expect(parseLead(withoutLocale)?.locale).toBe('en');
+  });
+
+  it('falls back to en for a row saved before the locale column existed, or a language the emails are not written in', () => {
+    expect(parseLead({ ...valid, locale: '' })?.locale).toBe('en');
+    expect(parseLead({ ...valid, locale: 'pt_BR' })?.locale).toBe('en');
+  });
+
+  it('rejects a locale that is not a string', () => {
+    expect(parseLead({ ...valid, locale: 1 })).toBeNull();
+    expect(parseLead({ ...valid, locale: null })).toBeNull();
+    expect(parseLead({ ...valid, locale: ['es'] })).toBeNull();
   });
 
   it('rejects a non-object value', () => {

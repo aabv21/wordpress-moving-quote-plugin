@@ -8,7 +8,7 @@ use Chivabox\MovingQuote\Leads\LeadRecord;
 /** Builds the CSV export's header and rows from a lead record. */
 final class LeadCsv {
 	/** @var list<string> */
-	public const HEADER = [ 'received_at', 'reference', 'status', 'name', 'phone', 'email', 'move_date', 'move_type', 'rooms', 'origin', 'destination', 'distance_km', 'extras', 'estimate_cop', 'estimate_low_cop', 'estimate_high_cop', 'sync_status' ];
+	public const HEADER = [ 'received_at', 'reference', 'status', 'name', 'phone', 'email', 'move_date', 'move_type', 'rooms', 'origin', 'destination', 'distance_km', 'extras', 'estimate_cop', 'estimate_low_cop', 'estimate_high_cop', 'sync_status', 'locale' ];
 
 	/**
 	 * One CSV row for `$lead`. `received_at` is `created_at` (stored UTC) converted to `$tz` and
@@ -39,6 +39,7 @@ final class LeadCsv {
 			CsvEscaper::cell( $lead->estimate_low_cop ),
 			CsvEscaper::cell( $lead->estimate_high_cop ),
 			CsvEscaper::cell( $lead->sync_status->value ),
+			CsvEscaper::cell( $lead->locale ),
 		];
 	}
 }

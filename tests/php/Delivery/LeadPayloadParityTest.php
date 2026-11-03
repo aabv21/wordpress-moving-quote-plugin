@@ -48,6 +48,7 @@ final class LeadPayloadParityTest extends TestCase {
 				'next_attempt_at'   => '1793802900',
 				'last_error'        => '',
 				'sent_at'           => null,
+				'locale'            => 'en_US',
 			],
 			$overrides
 		);
@@ -141,6 +142,18 @@ final class LeadPayloadParityTest extends TestCase {
 			'empty-site-name',
 			self::row(),
 			'',
+		];
+
+		yield 'a lead submitted while the site language was Spanish' => [
+			'spanish-locale',
+			self::row( [ 'locale' => 'es_CO' ] ),
+			self::SITE_NAME,
+		];
+
+		yield 'a row saved before the locale column existed' => [
+			'empty-locale',
+			self::row( [ 'locale' => '' ] ),
+			self::SITE_NAME,
 		];
 	}
 

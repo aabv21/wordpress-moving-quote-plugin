@@ -19,6 +19,13 @@ final class LeadRecordTest extends TestCase {
 		self::assertSame( [ 'packing' ], $record->extras );
 		self::assertSame( 1330000, $record->estimate_cop );
 		self::assertNull( $record->sent_at );
+		self::assertSame( 'en_US', $record->locale );
+	}
+
+	public function test_a_row_read_before_the_locale_column_exists_has_an_empty_locale(): void {
+		$row = Fixtures::lead_row();
+		unset( $row['locale'] );
+		self::assertSame( '', LeadRecord::from_row( $row )->locale );
 	}
 
 	public function test_blank_extras_is_an_empty_list(): void {

@@ -21,10 +21,10 @@ function sha256Hex(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-function buildBody(): { text: string; requestUuid: string } {
+function buildBody(overrides: Record<string, unknown> = {}): { text: string; requestUuid: string } {
   const requestUuid = randomUUID();
   const reference = `MQ-${requestUuid.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
-  const body = { ...FIXTURE, request_uuid: requestUuid, reference };
+  const body = { ...FIXTURE, ...overrides, request_uuid: requestUuid, reference };
   return { text: JSON.stringify(body), requestUuid };
 }
 
@@ -86,5 +86,24 @@ describe.skipIf(skipForLiveGoogle)('process-lead reaches Google Sheets, read-onl
     expect(summary.mapLeadOutput?.teamKeys).toEqual(['to', 'subject', 'text']);
     expect(summary.mapLeadOutput?.customerKeys).toEqual(['to', 'reply_to', 'subject', 'html']);
     expect(summary.appendLeadRowErrorMessage).toMatch(/cvbCredGSheets01/);
+  });
+
+  // The Code-node sandbox's own Intl and Luxon must carry Spanish locale data for the customer
+  // email to group COP amounts and spell the date the Colombian way; a unit test can't prove that.
+  it("writes a Spanish lead's customer email in Spanish inside n8n's own sandbox", async () => {
+    const { text, requestUuid } = buildBody({ locale: 'es_CO' });
+    createdEventIds.add(requestUuid);
+    await postSignedLead(text, requestUuid);
+
+    const executionId = await findExecutionIdFor(PROCESS_LEAD_WORKFLOW_ID, requestUuid);
+    await waitForTerminalStatus(executionId, 20_000);
+    const output = (await summarizeProcessLeadExecution(executionId)).mapLeadOutput;
+
+    expect(output?.customerSubject).toBe('Su cotización de mudanza de Chivabox Movers');
+    expect(output?.customerHtml).toContain('COP 1.197.000 – 1.463.000');
+    expect(output?.customerHtml).toContain('viernes 20 de noviembre de 2026');
+    // The team email follows config.json's team_locale (en in CI, which copies config.example.json
+    // in place), never the lead's own language; tests/nodes/map-lead.test.ts pins each language.
+    expect(output?.teamSubject).toMatch(/^(New lead|Nueva solicitud) MQ-/);
   });
 });

@@ -242,8 +242,8 @@ final class SettingsPage {
 		<table class="widefat">
 			<thead>
 				<tr>
-					<th><?php esc_html_e( 'From', 'moving-quote' ); ?></th>
-					<th><?php esc_html_e( 'To', 'moving-quote' ); ?></th>
+					<th><?php echo esc_html_x( 'From', 'route origin city', 'moving-quote' ); ?></th>
+					<th><?php echo esc_html_x( 'To', 'route destination city', 'moving-quote' ); ?></th>
 					<th><?php esc_html_e( 'Distance (km)', 'moving-quote' ); ?></th>
 					<th><?php esc_html_e( 'Remove', 'moving-quote' ); ?></th>
 				</tr>

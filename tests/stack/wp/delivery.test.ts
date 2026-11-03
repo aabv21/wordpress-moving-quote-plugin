@@ -115,7 +115,9 @@ describe('signed delivery and the outbox', () => {
     const { createHash } = await import('node:crypto');
     expect(typedClaims.body_sha256).toBe(createHash('sha256').update(request.body).digest('hex'));
 
-    expect(Object.keys(body)).toEqual(['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'customer', 'move', 'estimate']);
+    expect(Object.keys(body)).toEqual(['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'customer', 'move', 'estimate']);
+    // determine_locale() at submit time: the stack's site language.
+    expect(body.locale).toBe('en_US');
 
     const row = await rowByUuid(requestUuid);
     expect(row.sync_status).toBe('sent');

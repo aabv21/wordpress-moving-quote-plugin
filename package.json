@@ -13,6 +13,7 @@
     "test": "vitest run",
     "build:assets": "node scripts/build-assets.ts",
     "build:workflows": "node scripts/build-workflows.ts",
+    "i18n": "node scripts/i18n.ts",
     "check": "node scripts/check-workflows.ts workflows",
     "db:migrate": "node scripts/db-migrate.ts",
     "setup": "node scripts/setup.ts",

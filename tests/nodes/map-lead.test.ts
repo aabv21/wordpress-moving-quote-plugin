@@ -1,10 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { run, SHEET_HEADERS } from '../../src/nodes/map-lead.ts';
-import type { Lead } from '../../src/nodes/lead.ts';
+import { MESSAGES, run, SHEET_HEADERS, TEAM_LOCALE_NOTE } from '../../src/nodes/map-lead.ts';
+import { parseLead, type Lead } from '../../src/nodes/lead.ts';
+import { LOCALES } from '../../src/nodes/locale.ts';
 
-const lead = JSON.parse(readFileSync('tests/fixtures/lead-payload.json', 'utf8')) as Lead;
-const config = { google: { leads_sheet_id: 'sheet-id', leads_tab: 'Moving leads' }, alerts: { error_email: 'ops@example.com' } };
+const parsed = parseLead(JSON.parse(readFileSync('tests/fixtures/lead-payload.json', 'utf8')));
+if (!parsed) throw new Error('the lead payload fixture must parse');
+const lead: Lead = parsed;
+const spanishLead: Lead = { ...lead, locale: 'es' };
+const config = { google: { leads_sheet_id: 'sheet-id', leads_tab: 'Moving leads' }, alerts: { error_email: 'ops@example.com' }, team_locale: 'en' };
+const spanishTeamConfig = { ...config, team_locale: 'es' };
 
 describe('map-lead', () => {
   it('maps the sheet row in header order', () => {
@@ -81,9 +86,10 @@ describe('map-lead', () => {
     expect(team.text.split('\n').filter((line) => line.startsWith('Phone:'))).toHaveLength(1);
   });
 
-  it('5 rooms shows as "5 or more"', () => {
-    const { team } = run({ lead: { ...lead, move: { ...lead.move, rooms: 5 } }, config });
-    expect(team.text).toContain('5 or more room(s)');
+  it('pluralizes rooms, and 5 reads as "5 or more"', () => {
+    expect(run({ lead, config }).team.text).toContain('Type: Apartment, 2 rooms');
+    expect(run({ lead: { ...lead, move: { ...lead.move, rooms: 1 } }, config }).team.text).toContain('Type: Apartment, 1 room\n');
+    expect(run({ lead: { ...lead, move: { ...lead.move, rooms: 5 } }, config }).team.text).toContain('5 or more rooms');
   });
 
   it('no extras shows as "None"', () => {
@@ -100,5 +106,118 @@ describe('map-lead', () => {
     const { row, team } = run({ lead: { ...lead, submitted_at: '2026-11-04T14:15:00+00:00' }, config });
     expect(row.received_at).toBe('2026-11-04 09:15');
     expect(team.text).toContain('Friday, November 20, 2026');
+  });
+
+  it('writes the customer email in English for an English lead', () => {
+    const { customer } = run({ lead, config: spanishTeamConfig });
+    expect(customer.subject).toBe('Your moving estimate from Chivabox Movers');
+    expect(customer.html).toContain('Hi José Peña,');
+  });
+
+  it('writes the customer email in Spanish for a Spanish lead, with Colombian number grouping and a Spanish date', () => {
+    const { customer } = run({ lead: spanishLead, config });
+    expect(customer.subject).toBe('Su cotización de mudanza de Chivabox Movers');
+    for (const s of [
+      'Hola, José Peña:',
+      'COP 1.197.000 – 1.463.000',
+      'De Barranquilla a Cartagena, el viernes 20 de noviembre de 2026',
+      'Este valor es un estimado. Confirmamos el precio final después de una visita o una videollamada.',
+      'se comunicará con usted',
+      'Referencia: MQ-6F1C2A9E',
+    ])
+      expect(customer.html).toContain(s);
+    expect(customer.html).not.toMatch(/\b(Hi|Your moving estimate|This is an estimate|Reference:)/);
+  });
+
+  it('still escapes customer text in the Spanish HTML email', () => {
+    const out = run({ lead: { ...spanishLead, customer: { ...spanishLead.customer, name: '<b>Ana & "Bo"</b>' } }, config });
+    expect(out.customer.html).toContain('Hola, &lt;b&gt;Ana &amp; &quot;Bo&quot;&lt;/b&gt;:');
+    expect(out.customer.html).not.toContain('<b>Ana');
+  });
+
+  it("writes the team alert in the configured team_locale, never the lead's own language", () => {
+    expect(run({ lead: spanishLead, config }).team.subject).toBe('New lead MQ-6F1C2A9E: Barranquilla to Cartagena on 2026-11-20');
+
+    const { team } = run({ lead, config: spanishTeamConfig });
+    expect(team.subject).toBe('Nueva solicitud MQ-6F1C2A9E: Barranquilla a Cartagena el 2026-11-20');
+    expect(team.text.split('\n')).toEqual([
+      'Nombre: José Peña',
+      'Teléfono: 570000000001',
+      'Correo: jose@example.com',
+      'Fecha de la mudanza: viernes 20 de noviembre de 2026',
+      'Ruta: Barranquilla a Cartagena (120 km)',
+      'Tipo: Apartamento, 2 habitaciones',
+      'Servicios adicionales: Embalaje',
+      'Estimado: COP 1.197.000 – 1.463.000',
+      'Referencia: MQ-6F1C2A9E',
+    ]);
+  });
+
+  it('pluralizes rooms and lists extras in Spanish too', () => {
+    const one = run({ lead: { ...lead, move: { ...lead.move, rooms: 1, extras: [] } }, config: spanishTeamConfig }).team.text;
+    expect(one).toContain('Tipo: Apartamento, 1 habitación\n');
+    expect(one).toContain('Servicios adicionales: Ninguno');
+    const five = run({ lead: { ...lead, move: { ...lead.move, rooms: 5, extras: ['storage', 'piano_fragile'] } }, config: spanishTeamConfig }).team.text;
+    expect(five).toContain('5 o más habitaciones');
+    expect(five).toContain('Servicios adicionales: Almacenamiento temporal, Piano u objetos frágiles');
+  });
+
+  it('keeps line breaks out of the Spanish team alert too', () => {
+    const name = 'Ana\nTeléfono: 570000000099';
+    const { team } = run({ lead: { ...lead, customer: { ...lead.customer, name } }, config: spanishTeamConfig });
+    expect(team.text.split('\n').filter((line) => line.startsWith('Teléfono:'))).toHaveLength(1);
+  });
+
+  it('writes the team alert in English when the config predates team_locale', () => {
+    const legacyConfig = { google: config.google, alerts: config.alerts };
+    expect(run({ lead, config: legacyConfig }).team.subject).toBe('New lead MQ-6F1C2A9E: Barranquilla to Cartagena on 2026-11-20');
+  });
+
+  it.each([['ES'], ['es_CO'], ['fr'], [1], [null]])('never blocks a lead on an invalid team_locale (%j): English team copy with a one-line note, the customer email untouched', (teamLocale) => {
+    const { team, customer } = run({ lead: spanishLead, config: { ...config, team_locale: teamLocale } });
+
+    expect(customer.subject).toBe('Su cotización de mudanza de Chivabox Movers');
+    expect(customer.html).toContain('Hola, José Peña:');
+
+    expect(team.subject).toBe('New lead MQ-6F1C2A9E: Barranquilla to Cartagena on 2026-11-20');
+    const lines = team.text.split('\n');
+    expect(lines[0]).toBe('Name: José Peña');
+    expect(lines.filter((line) => line.includes('team_locale'))).toEqual([TEAM_LOCALE_NOTE]);
+    expect(lines.at(-1)).toBe(TEAM_LOCALE_NOTE);
+  });
+
+  it('adds no note for a valid or missing team_locale', () => {
+    expect(run({ lead, config }).team.text).not.toContain('team_locale');
+    expect(run({ lead, config: spanishTeamConfig }).team.text).not.toContain('team_locale');
+    expect(run({ lead, config: { google: config.google, alerts: config.alerts } }).team.text).not.toContain('team_locale');
+  });
+
+  it('writes the customer email in English for a lead that carries no usable locale', () => {
+    const withoutLocale: Record<string, unknown> = { ...lead };
+    delete withoutLocale.locale;
+    const legacy = withoutLocale as unknown as Lead;
+    expect(run({ lead: legacy, config }).customer.subject).toBe('Your moving estimate from Chivabox Movers');
+    expect(run({ lead: { ...lead, locale: 'pt' as unknown as Lead['locale'] }, config }).customer.subject).toBe('Your moving estimate from Chivabox Movers');
+  });
+
+  it('keeps the sheet row in English whatever the languages, so the sheet stays one consistent dataset', () => {
+    const { row } = run({ lead: spanishLead, config: spanishTeamConfig });
+    expect(row.move_type).toBe('Apartment');
+    expect(row.extras).toBe('Packing');
+  });
+
+  it('has every message in both languages, none empty', () => {
+    const shape = (locale: (typeof LOCALES)[number]): string[] => Object.keys(MESSAGES[locale]).sort();
+    expect(shape('es')).toEqual(shape('en'));
+    for (const locale of LOCALES) {
+      const m = MESSAGES[locale];
+      for (const [key, value] of Object.entries(m)) {
+        if (typeof value === 'string') expect(value.trim(), `${locale}.${key}`).not.toBe('');
+        else if (typeof value === 'function') expect((value as (...args: string[]) => string)('A', 'B', 'C', 'D').trim(), `${locale}.${key}`).not.toBe('');
+        else for (const [sub, text] of Object.entries(value as Record<string, string>)) expect(text.trim(), `${locale}.${key}.${sub}`).not.toBe('');
+      }
+      expect(Object.keys(m.moveTypes).sort()).toEqual(['apartment', 'house', 'office']);
+      expect(Object.keys(m.extras).sort()).toEqual(['furniture_assembly', 'packing', 'piano_fragile', 'storage']);
+    }
   });
 });

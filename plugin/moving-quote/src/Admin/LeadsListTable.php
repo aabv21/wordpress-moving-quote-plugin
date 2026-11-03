@@ -60,7 +60,7 @@ final class LeadsListTable extends WP_List_Table {
 			'received_at' => __( 'Received', 'moving-quote' ),
 			'reference'   => __( 'Reference', 'moving-quote' ),
 			'customer'    => __( 'Customer', 'moving-quote' ),
-			'move'        => __( 'Move', 'moving-quote' ),
+			'move'        => _x( 'Move', 'leads table column: the move date, type, and rooms', 'moving-quote' ),
 			'route'       => __( 'Route', 'moving-quote' ),
 			'estimate'    => __( 'Estimate', 'moving-quote' ),
 			'status'      => __( 'Status', 'moving-quote' ),
@@ -82,7 +82,7 @@ final class LeadsListTable extends WP_List_Table {
 		$base    = admin_url( 'admin.php?page=' . Menu::SLUG );
 
 		$views        = [];
-		$views['all'] = self::view_link( $base, null === $current, __( 'All', 'moving-quote' ), $counts['all'] ?? 0 );
+		$views['all'] = self::view_link( $base, null === $current, _x( 'All', 'leads list view', 'moving-quote' ), $counts['all'] ?? 0 );
 		foreach ( LeadStatus::cases() as $case ) {
 			$url                   = add_query_arg( 'status', $case->value, $base );
 			$views[ $case->value ] = self::view_link( $url, $current === $case, self::status_label( $case ), $counts[ $case->value ] ?? 0 );
@@ -163,11 +163,17 @@ final class LeadsListTable extends WP_List_Table {
 
 	private function column_route( LeadRecord $lead ): string {
 		return sprintf(
-			'%s %s %s<br />%s km',
+			'%s %s %s<br />%s',
 			esc_html( $lead->origin_city ),
 			esc_html( "\u{2192}" ),
 			esc_html( $lead->destination_city ),
-			esc_html( (string) $lead->distance_km )
+			esc_html(
+				sprintf(
+					/* translators: %s: distance in kilometres, already formatted for the site language */
+					__( '%s km', 'moving-quote' ),
+					number_format_i18n( $lead->distance_km )
+				)
+			)
 		);
 	}
 
@@ -212,7 +218,7 @@ final class LeadsListTable extends WP_List_Table {
 			$lead->id,
 			wp_nonce_field( 'moving_quote_update_status_' . $lead->id, '_wpnonce', true, false ),
 			$options,
-			esc_html__( 'Update', 'moving-quote' ),
+			esc_html_x( 'Update', 'button: save the selected lead status', 'moving-quote' ),
 			esc_url( $delete_url ),
 			esc_attr( (string) wp_json_encode( __( 'Delete this lead? This cannot be undone.', 'moving-quote' ) ) ),
 			esc_html__( 'Delete', 'moving-quote' ),
@@ -229,8 +235,8 @@ final class LeadsListTable extends WP_List_Table {
 	/** The delivery column: the sync label, attempts, `last_error` visible as small text (also kept in a `title`), and a "Retry delivery" link on `failed` rows. */
 	private function column_delivery( LeadRecord $lead ): string {
 		$label = sprintf(
-			/* translators: 1: sync status label, 2: attempt count */
-			__( '%1$s (%2$d attempts)', 'moving-quote' ),
+			/* translators: 1: delivery status label (Pending, Sent, or Failed), 2: attempt count */
+			_n( '%1$s (%2$d attempt)', '%1$s (%2$d attempts)', $lead->attempts, 'moving-quote' ),
 			self::sync_label( $lead->sync_status ),
 			$lead->attempts
 		);
@@ -309,22 +315,35 @@ final class LeadsListTable extends WP_List_Table {
 		return $labels[ $move_type ] ?? $move_type;
 	}
 
+	/** The display label for a stored extra, or the raw value for one this plugin version doesn't know. */
+	public static function extra_label( string $extra ): string {
+		$labels = [
+			'packing'            => __( 'Packing', 'moving-quote' ),
+			'furniture_assembly' => __( 'Furniture disassembly and assembly', 'moving-quote' ),
+			'storage'            => __( 'Temporary storage', 'moving-quote' ),
+			'piano_fragile'      => __( 'Piano or fragile items', 'moving-quote' ),
+		];
+		return $labels[ $extra ] ?? $extra;
+	}
+
+	/** A lead's lifecycle status label. Context-tagged: "New" or "Won" agree in gender with "lead" in some languages. */
 	public static function status_label( LeadStatus $status ): string {
 		$labels = [
-			LeadStatus::New->value       => __( 'New', 'moving-quote' ),
-			LeadStatus::Contacted->value => __( 'Contacted', 'moving-quote' ),
-			LeadStatus::Quoted->value    => __( 'Quoted', 'moving-quote' ),
-			LeadStatus::Won->value       => __( 'Won', 'moving-quote' ),
-			LeadStatus::Lost->value      => __( 'Lost', 'moving-quote' ),
+			LeadStatus::New->value       => _x( 'New', 'lead status', 'moving-quote' ),
+			LeadStatus::Contacted->value => _x( 'Contacted', 'lead status', 'moving-quote' ),
+			LeadStatus::Quoted->value    => _x( 'Quoted', 'lead status', 'moving-quote' ),
+			LeadStatus::Won->value       => _x( 'Won', 'lead status', 'moving-quote' ),
+			LeadStatus::Lost->value      => _x( 'Lost', 'lead status', 'moving-quote' ),
 		];
 		return $labels[ $status->value ];
 	}
 
+	/** A lead's delivery status label. Context-tagged: "Sent" or "Failed" alone don't say what was sent. */
 	public static function sync_label( SyncStatus $status ): string {
 		$labels = [
-			SyncStatus::Pending->value => __( 'Pending', 'moving-quote' ),
-			SyncStatus::Sent->value    => __( 'Sent', 'moving-quote' ),
-			SyncStatus::Failed->value  => __( 'Failed', 'moving-quote' ),
+			SyncStatus::Pending->value => _x( 'Pending', 'delivery status', 'moving-quote' ),
+			SyncStatus::Sent->value    => _x( 'Sent', 'delivery status', 'moving-quote' ),
+			SyncStatus::Failed->value  => _x( 'Failed', 'delivery status', 'moving-quote' ),
 		];
 		return $labels[ $status->value ];
 	}

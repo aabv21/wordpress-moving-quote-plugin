@@ -2,3 +2,6 @@
 
 plugin/moving-quote/assets/*.js linguist-generated
 plugin/moving-quote/vendor/** linguist-generated
+plugin/moving-quote/languages/*.mo binary linguist-generated
+plugin/moving-quote/languages/*.l10n.php linguist-generated
+plugin/moving-quote/languages/*.pot linguist-generated

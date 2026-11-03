@@ -1,0 +1,102 @@
+{
+  "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+  "landingPage": "/get-a-quote/",
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "latest"
+  },
+  "login": true,
+  "steps": [
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "git:directory",
+        "url": "https://github.com/aabv21/wordpress-moving-quote-plugin",
+        "ref": "main",
+        "refType": "branch",
+        "path": "plugin/moving-quote"
+      },
+      "options": {
+        "activate": true,
+        "targetFolderName": "moving-quote"
+      }
+    },
+    {
+      "step": "setSiteLanguage",
+      "language": "es_CO"
+    },
+    {
+      "step": "setSiteOptions",
+      "options": {
+        "blogname": "Chivabox Movers",
+        "blogdescription": "Mudanzas en la costa Caribe colombiana",
+        "timezone_string": "America/Bogota",
+        "permalink_structure": "/%postname%/"
+      }
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Inicio",
+        "--post_name=home",
+        "--post_content=<!-- wp:heading --><h2>Su mudanza, sin complicaciones, en la costa Caribe de Colombia</h2><!-- /wp:heading --><!-- wp:paragraph --><p>Chivabox Movers traslada hogares y oficinas entre Barranquilla, Cartagena, Santa Marta y el resto de la costa. Obtenga un precio estimado en menos de un minuto.</p><!-- /wp:paragraph --><!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/get-a-quote/\">Cotizar mi mudanza</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Cotice su mudanza",
+        "--post_name=get-a-quote",
+        "--post_content=<!-- wp:paragraph --><p>Cuéntenos sobre su mudanza y vea un precio estimado al instante.</p><!-- /wp:paragraph --><!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Gracias",
+        "--post_name=thank-you",
+        "--post_content=<!-- wp:paragraph --><p>Recibimos su solicitud de mudanza.</p><!-- /wp:paragraph --><!-- wp:shortcode -->[moving_quote_reference]<!-- /wp:shortcode --><!-- wp:heading --><h2 class=\"wp-block-heading\">Qué sigue</h2><!-- /wp:heading --><!-- wp:list {\"ordered\":true} --><ol class=\"wp-block-list\"><!-- wp:list-item --><li>Le enviamos por correo un resumen de su solicitud y el precio estimado.</li><!-- /wp:list-item --><!-- wp:list-item --><li>Una persona de nuestro equipo se comunica con usted para confirmar los detalles.</li><!-- /wp:list-item --><!-- wp:list-item --><li>Confirmamos el precio final después de una visita o una videollamada y agendamos el día de su mudanza.</li><!-- /wp:list-item --></ol><!-- /wp:list --><!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/\">Volver al inicio</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=wp_navigation",
+        "--post_status=publish",
+        "--post_title=Primary navigation",
+        "--post_name=primary-navigation",
+        "--post_content=<!-- wp:navigation-link {\"label\":\"Inicio\",\"url\":\"/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /--><!-- wp:navigation-link {\"label\":\"Cotizar\",\"url\":\"/get-a-quote/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": ["wp", "option", "update", "show_on_front", "page"]
+    },
+    {
+      "step": "wp-cli",
+      "command": ["wp", "eval", "update_option( 'page_on_front', (int) get_page_by_path( 'home' )->ID );"]
+    },
+    {
+      "step": "wp-cli",
+      "command": ["wp", "rewrite", "flush", "--hard"]
+    }
+  ]
+}

@@ -245,7 +245,7 @@ describe('admin: leads list, status, export, retry', () => {
     const buffer = Buffer.from(await res.arrayBuffer());
     expect(buffer.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
     const body = stripBom(buffer.toString('utf8'));
-    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status')).toBe(true);
+    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status,locale')).toBe(true);
     expect(body).toContain('"\'=HYPERLINK(""http://example.com"",""x"")"');
 
     const contactedHref = exportHref.includes('?') ? `${exportHref}&status=contacted` : `${exportHref}?status=contacted`;

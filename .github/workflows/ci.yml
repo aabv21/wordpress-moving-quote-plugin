@@ -112,6 +112,11 @@ jobs:
       - run: node scripts/init-env.ts
       - run: cp config/config.example.json config/config.json
       - run: docker compose up -d --wait db wordpress wpcli postgres n8n
+      # Regenerates the .pot with the stack's own pinned WP-CLI (no network: it reads only the
+      # plugin's PHP), and rebuilds the .mo and .l10n.php from each committed .po; fails when any
+      # of them differs from what's committed, ignoring only the .pot's POT-Creation-Date.
+      - name: Translation files match the plugin's strings
+        run: pnpm run i18n -- --check
       - run: ./setup.sh
       - run: pnpm run setup
       - run: pnpm run test:stack

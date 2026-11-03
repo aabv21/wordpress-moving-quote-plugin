@@ -38,6 +38,7 @@ final class Fixtures {
 			'next_attempt_at'   => '1793802900',
 			'last_error'        => '',
 			'sent_at'           => null,
+			'locale'            => 'en_US',
 		];
 	}
 }

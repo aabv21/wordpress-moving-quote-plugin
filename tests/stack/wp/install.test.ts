@@ -30,7 +30,11 @@ const CONTRACT_COLUMNS = [
   'next_attempt_at',
   'last_error',
   'sent_at',
+  'locale',
 ] as const;
+
+/** `Install\Installer::DB_VERSION`: bumped to '2' when the `locale` column was added. */
+const DB_VERSION = '2';
 
 /**
  * Settings keys this test compares between the stored option and `Defaults::settings()`. Excludes
@@ -104,7 +108,7 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
     // argument alone (now unused by the check) never triggers it.
     await wp(['eval', 'delete_option( "moving_quote_db_version" ); delete_option( "moving_quote_settings" );']);
     await wp(['eval', '\\Chivabox\\MovingQuote\\Install\\Installer::activate( true );']);
-    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe('1\n');
+    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);
   });
 
   it('seeds moving_quote_settings with the pricing defaults', async () => {
@@ -114,12 +118,36 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
   });
 
   it('sets the db version and schedules the outbox cron every minute', async () => {
-    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe('1\n');
+    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);
     await expect(cronHookScheduled()).resolves.toBe(true);
 
     const schedules = await wpJson<{ name: string; interval: number }[]>(['cron', 'schedule', 'list']);
     const everyMinute = schedules.find((schedule) => 'moving_quote_every_minute' === schedule.name);
     expect(everyMinute?.interval).toBe(60);
+  });
+
+  it('an upgrade from schema version 1 adds the locale column without touching existing rows', async () => {
+    const leadsTable = await table();
+    const uuid = '22222222-2222-4222-8222-222222222222';
+    // A version-1 table: no locale column, and a row saved under it.
+    await sqlWp(`ALTER TABLE ${leadsTable} DROP COLUMN locale`);
+    await sqlWp(
+      `INSERT INTO ${leadsTable}
+        (request_uuid, created_at, move_type, rooms, origin_city, destination_city, distance_km, move_date, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop)
+       VALUES
+        ('${uuid}', '2026-11-01 00:00:00', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', 'Upgrade Customer', '5700000000', 'upgrade@example.com', '2026-11-01 00:00:00', 1130000, 1017000, 1243000)`,
+    );
+    await wp(['option', 'update', 'moving_quote_db_version', '1']);
+
+    // The next request's plugins_loaded runs maybe_upgrade(), which reruns dbDelta.
+    await wp(['option', 'get', 'siteurl']);
+
+    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);
+    const columns = await sqlWp(`SHOW COLUMNS FROM ${leadsTable}`);
+    expect(columns.map((row) => row.Field)).toEqual([...CONTRACT_COLUMNS]);
+    const rows = await sqlWp(`SELECT customer_name, locale FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
+    expect(rows).toEqual([{ customer_name: 'Upgrade Customer', locale: '' }]);
+    await sqlWp(`DELETE FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
   });
 
   it('an in-place upgrade (no re-activation) also seeds the settings and the cron', async () => {
@@ -137,7 +165,7 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
     // actually exercises plugins_loaded's maybe_upgrade() repair path.
     await wp(['option', 'get', 'siteurl']);
 
-    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe('1\n');
+    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);
     await expect(cronHookScheduled()).resolves.toBe(true);
 
     const stored = await wpJson<Record<string, unknown>>(['option', 'get', 'moving_quote_settings']);

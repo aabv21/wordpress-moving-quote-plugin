@@ -46,6 +46,10 @@ export interface MapLeadOutputShape {
   rowKeys: string[];
   teamKeys: string[];
   customerKeys: string[];
+  /** The two emails' rendered copy, for checking the language each one came out in (test leads only: example.com addresses, invented names). */
+  teamSubject: string | null;
+  customerSubject: string | null;
+  customerHtml: string | null;
 }
 
 export interface ProcessLeadExecutionSummary {
@@ -75,6 +79,9 @@ process.stdin.on('end', () => {
       rowKeys: Object.keys(output.row ?? {}),
       teamKeys: Object.keys(output.team ?? {}),
       customerKeys: Object.keys(output.customer ?? {}),
+      teamSubject: output.team?.subject ?? null,
+      customerSubject: output.customer?.subject ?? null,
+      customerHtml: output.customer?.html ?? null,
     };
   }
   const appendRuns = runData['Append lead row'];

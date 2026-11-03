@@ -22,6 +22,7 @@ final class LeadPayload {
 			'submitted_at' => $submitted_at,
 			'site_name'    => $site_name,
 			'team_email'   => $team_email,
+			'locale'       => $lead->locale,
 			'customer'     => [
 				'name'  => $lead->customer_name,
 				'phone' => $lead->phone,

@@ -16,3 +16,14 @@ describe('parseLead accepts every fixture PHP actually emits', () => {
     expect(parseLead(body)).not.toBeNull();
   });
 });
+
+describe('parseLead reads the locale PHP actually emits', () => {
+  it.each([
+    ['spanish-locale.json', 'es'],
+    ['empty-locale.json', 'en'],
+    ['every-extra.json', 'en'],
+  ] as const)('%s reads as %s', (name, locale) => {
+    const body: unknown = JSON.parse(readFileSync(`${FIXTURES_DIR}/${name}`, 'utf8'));
+    expect(parseLead(body)?.locale).toBe(locale);
+  });
+});
