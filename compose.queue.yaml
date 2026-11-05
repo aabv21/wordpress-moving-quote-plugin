@@ -7,7 +7,7 @@ services:
   # NOTE: Redis is reachable only on the Compose network (no published port, no password); add
   # QUEUE_BULL_REDIS_PASSWORD before running this in production.
   redis:
-    image: redis:8.8.4-alpine@sha256:ab669f1420eaa05360a417b24f3bd210c9272e2c79a4bb35d3e50b4bfd50dbee
+    image: redis:8.10.3-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
