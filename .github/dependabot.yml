@@ -64,6 +64,11 @@ updates:
       # come through; minor/major bumps to n8nio/n8n are reviewed and pinned by hand.
       - dependency-name: n8nio/n8n
         update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      # NOTE: a Postgres major version can't start on a data directory from the previous major
+      # without pg_upgrade, so a major bump would break every existing local volume. Minor and
+      # patch updates still come through; a major upgrade is planned by hand with a dump/restore.
+      - dependency-name: postgres
+        update-types: ['version-update:semver-major']
       # NOTE: the stack targets MySQL 8.4 LTS; a minor or major bump would move off that LTS line.
       # Patch updates still come through; a MySQL version bump is reviewed and pinned by hand.
       - dependency-name: mysql
