@@ -330,6 +330,13 @@ The root `composer.json`'s `config.policy` uses Composer 2.11's `policy.*` keys,
 
 **Playground** runs through `pnpm dlx @wp-playground/cli@3.1.61`, not `npx`, so the same release-age gate and trust policy apply.
 
+## Branches and pull requests
+
+- `main` holds released code and is the default branch; `develop` is the integration branch. Both take changes only through a pull request with CI green, and repository rulesets block direct pushes, force pushes, and deletion.
+- Work on a short-lived branch from `develop` (`feat/…`, `fix/…`, `docs/…`, `chore/…`) and open the pull request into `develop`, titled in Conventional Commits form. It's squash-merged, so the title becomes the commit.
+- A release is a pull request from `develop` into `main`, merged with a merge commit, then tagged `vX.Y.Z` with a GitHub release.
+- Dependabot opens its pull requests against `develop`.
+
 ## Definition of done
 
 - `pnpm run typecheck && pnpm run lint && pnpm test` all pass locally — run this full gate before every commit that touches TypeScript. Also run `pnpm run build:assets -- --check` (and commit a fresh `pnpm run build:assets` if it fails) before every commit that touches `src/frontend/**`, and `pnpm run build:workflows -- --check && pnpm run check` before every commit that touches `workflows/`, `src/nodes/**`, or `scripts/lib/manifest.ts`.
