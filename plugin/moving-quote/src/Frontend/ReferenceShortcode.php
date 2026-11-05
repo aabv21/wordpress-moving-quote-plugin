@@ -6,12 +6,8 @@ namespace Chivabox\MovingQuote\Frontend;
 use Chivabox\MovingQuote\Leads\LeadRecord;
 
 /**
- * The `[moving_quote_reference]` shortcode, for the thank-you page: shows the lead's `MQ-…`
- * reference that the quote form appends to its redirect as `?reference=…`, and renders nothing
- * when the query string has none (a visitor opening the page directly, or a filled honeypot, which
- * is answered without a reference). The value is echoed back only when it has the exact shape
- * `LeadRecord::reference_for()` builds, and it is never looked up: the page confirms what the
- * visitor's own browser just received, and can't be used to probe which references exist.
+ * Echoes `?reference=` only in the exact `LeadRecord::reference_for()` shape, and never looks it
+ * up, so the page can't probe which references exist. Renders nothing without one.
  */
 final class ReferenceShortcode {
 	public const TAG       = 'moving_quote_reference';
@@ -29,14 +25,13 @@ final class ReferenceShortcode {
 		}
 		$raw       = wp_unslash( $value );
 		$reference = sanitize_text_field( $raw );
-		// The exact query value or nothing: a value sanitizing had to change (markup stripped, a
-		// newline dropped) was never a reference, even if what's left would match the pattern.
+		// A value sanitizing changed was never a reference, even if the rest would match.
 		if ( $reference !== $raw || ! LeadRecord::is_reference( $reference ) ) {
 			return '';
 		}
 
-		// The thank-you page doesn't load the quote form's stylesheet, so the one rule the reference
-		// needs travels inline: without it, a narrow screen breaks "MQ-" from its digits.
+		// Inline: this page doesn't load the form's stylesheet, and a narrow screen would break
+		// "MQ-" from its digits.
 		return sprintf(
 			'<p class="moving-quote-reference">%s</p>',
 			sprintf(

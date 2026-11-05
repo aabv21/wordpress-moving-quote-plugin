@@ -141,9 +141,7 @@ final class LeadValidatorTest extends TestCase {
 	}
 
 	/**
-	 * `DistanceTable::distance_km()` looks up its routes by exact string, while a city is accepted
-	 * case-insensitively — "cartagena" must normalize to the configured "Cartagena" so the route
-	 * lookup (and the resulting price) is identical regardless of how the visitor capitalized it.
+	 * Routes are looked up by exact string, so "cartagena" must normalize to "Cartagena".
 	 */
 	public function test_city_name_is_normalized_to_its_canonical_spelling_so_pricing_matches(): void {
 		$distances = DistanceTable::from_settings( Defaults::settings() );

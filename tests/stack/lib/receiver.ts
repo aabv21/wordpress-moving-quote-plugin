@@ -6,10 +6,10 @@ export interface ReceivedRequest {
 }
 
 export interface Receiver {
-  /** `http://host.docker.internal:<port>/lead` — reachable from the stack's own containers, which all declare that host via `extra_hosts`. */
+  /** `http://host.docker.internal:<port>/lead`. */
   url: string;
   requests: ReceivedRequest[];
-  /** Sets the status, body, and extra headers the next received request (and every one after it, until changed again) gets answered with. */
+  /** Applies to every later request until changed. */
   reply(status: number, body: string, headers?: Record<string, string>): void;
   close(): Promise<void>;
 }
@@ -35,9 +35,8 @@ function readBody(req: IncomingMessage): Promise<string> {
 }
 
 /**
- * A tiny HTTP server standing in for n8n's webhook, listening on `0.0.0.0` on an ephemeral port so
- * the WordPress, wpcli, and cron containers (every one declares `host.docker.internal` through
- * `extra_hosts`) can reach it, on Linux CI runners too.
+ * Listens on `0.0.0.0` so every container reaches it through `host.docker.internal` (declared in
+ * `extra_hosts`), on Linux CI too.
  */
 export async function startReceiver(): Promise<Receiver> {
   const requests: ReceivedRequest[] = [];

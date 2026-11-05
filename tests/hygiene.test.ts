@@ -3,14 +3,11 @@ import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
 import { expect, test } from 'vitest';
 
-// Plan, task, and ruling references mean nothing to a reader of this repo: each comment, test, doc,
-// and sticky note states its own reason instead. Finding-style IDs (e.g. "C1", "I4") are deliberately
-// not matched here: they collide with legitimate text this repo actually has (C0 control-character
-// references, among others), so that check isn't included.
+// Every comment, test, doc, and sticky note states its own reason instead of pointing at a plan.
+// Finding-style IDs ("C1") aren't matched: they collide with real text such as "C0 controls".
 const REFERENCE = /Ruling P\d|Task \d|\btask-\d{2}\b|\bthe brief\b|global constraints|\bowner session\b|\bintegration pass\b/;
 
-// Lockfiles and generated files carry no authored prose of their own, so a match inside one would
-// only ever be an accident of their content, never something worth fixing by hand.
+// Lockfiles and generated files carry no authored prose.
 const EXCLUDED_FILES = new Set(['pnpm-lock.yaml', 'tests/hygiene.test.ts', 'plugin/moving-quote/assets/quote-form.js']);
 const EXCLUDED_PREFIXES = ['plugin/moving-quote/vendor/'];
 

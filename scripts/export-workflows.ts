@@ -28,9 +28,7 @@ function writeWorkflow(path: string, wf: WorkflowJson): void {
 export async function exportWorkflows(): Promise<void> {
   loadDotEnv();
 
-  // EXPORT_DIR is a scratch subdirectory this function owns entirely (never the `.n8n-import/`
-  // mount root itself, which is a live bind mount other tooling also writes to), so recreating it
-  // from scratch here is safe.
+  // Safe to recreate: this function owns EXPORT_DIR, never the live `.n8n-import/` mount root.
   rmSync(EXPORT_DIR, { recursive: true, force: true });
   mkdirSync(EXPORT_DIR, { recursive: true });
   try {

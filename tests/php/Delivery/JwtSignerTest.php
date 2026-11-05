@@ -8,9 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 final class JwtSignerTest extends TestCase {
 	/**
-	 * The vector was computed independently with Node's crypto module. It also pins the encoding
-	 * (unpadded base64url, no `+`/`/`/`=`) and the header-first ordering, so no separate assertion
-	 * for either is needed.
+	 * Computed independently with Node's crypto; it also pins unpadded base64url and header order.
 	 */
 	public function test_signs_the_reference_vector(): void {
 		$token = JwtSigner::hs256(

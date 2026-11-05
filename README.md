@@ -153,7 +153,7 @@ To run the same thing locally against the plugin files on disk, with no checkout
 pnpm dlx @wp-playground/cli@3.1.61 server --php=8.3 --port=9400 --mount=./plugin/moving-quote:/wordpress/wp-content/plugins/moving-quote --blueprint=playground/blueprint.local.json
 ```
 
-Verified locally: the estimate endpoint, the three-step form, and the thank-you redirect all work; a submission shows up in Moving quotes → Leads with Delivery "Pending". See `AGENTS.md` for how the blueprint files differ and what else was verified.
+Verified locally: the estimate endpoint, the three-step form, and the thank-you redirect all work; a submission shows up in Moving quotes → Leads with Delivery "Pending". See `AGENTS.md` for how the blueprint files differ, and `docs/testing.md` for what else was verified.
 
 The same site in Spanish: [open the Spanish blueprint](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.es.json) (`playground/blueprint.es.json`, also once the repository is public). It sets the site language to `es_CO` and creates the pages with Spanish copy.
 

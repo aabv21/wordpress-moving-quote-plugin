@@ -5,7 +5,6 @@ namespace Chivabox\MovingQuote\Delivery;
 
 use Chivabox\MovingQuote\Leads\SyncStatus;
 
-/** The result of one delivery attempt, ready to be stored on the lead row. */
 final readonly class SyncUpdate {
 	public function __construct(
 		public SyncStatus $status,

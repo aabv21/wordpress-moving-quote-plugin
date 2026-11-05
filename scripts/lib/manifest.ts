@@ -3,7 +3,7 @@ export interface WorkflowEntry {
   name: string;
   file: string;
   publish: boolean;
-  /** The webhook path n8n publishes this workflow's trigger at, if any. Used to poll it live after a publish. */
+  /** Polled after a publish to prove it took effect. */
   webhookPath?: string;
 }
 
@@ -28,7 +28,6 @@ export const ERROR_WORKFLOW_ID = 'cvbErrorHandler1';
 // eslint-disable-next-line security/detect-object-injection -- key is always one of this entry's own fixed `env` names
 const readEnv = (env: Readonly<Record<string, string>>, key: string): string => env[key] ?? '';
 
-// The published workflows, each keyed by its fixed ID.
 export const WORKFLOWS: readonly WorkflowEntry[] = [
   {
     id: 'cvbLeadIntake001',
@@ -85,12 +84,8 @@ export const CREDENTIALS: readonly CredentialEntry[] = [
     name: 'Gmail',
     type: 'gmailOAuth2',
     env: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
-    // n8n's own GmailOAuth2Api.credentials.js (n8n-nodes-base, checked against the pinned
-    // 2.45.6 image) defaults to six scopes, including gmail.modify and the full mail.google.com
-    // access — far more than this workflow needs. process-lead's two emails and error-handler's
-    // alert only ever send; customScopes + enabledScopes narrow the OAuth consent (and the token
-    // it issues) to gmail.send alone, the least-privilege scope for a credential this repo never
-    // reads a mailbox with.
+    // n8n 2.45.6's GmailOAuth2Api defaults to six scopes, gmail.modify and full mail.google.com
+    // included. Every workflow here only sends, so the consent and token narrow to gmail.send.
     data: (env) => ({
       clientId: readEnv(env, 'GOOGLE_OAUTH_CLIENT_ID'),
       clientSecret: readEnv(env, 'GOOGLE_OAUTH_CLIENT_SECRET'),
@@ -100,7 +95,6 @@ export const CREDENTIALS: readonly CredentialEntry[] = [
   },
 ];
 
-// Every Code node across workflows/, each generated from its own src/nodes/*.ts source.
 export const CODE_NODES: readonly CodeNodeEntry[] = [
   {
     file: 'lead-intake.json',
@@ -116,7 +110,7 @@ export const CODE_NODES: readonly CodeNodeEntry[] = [
   },
 ];
 
-/** Every manifest credential that reads its OAuth client from `GOOGLE_OAUTH_CLIENT_ID` — the two Google ones, by construction rather than a separately maintained id list. */
+/** Derived from `GOOGLE_OAUTH_CLIENT_ID`, not a hand-maintained id list. */
 export function googleCredentialIds(credentials: readonly CredentialEntry[]): string[] {
   return credentials.filter((c) => c.env.includes('GOOGLE_OAUTH_CLIENT_ID')).map((c) => c.id);
 }

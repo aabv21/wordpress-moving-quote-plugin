@@ -1,8 +1,7 @@
 import type { WorkflowJson } from './workflow-types.ts';
 
-// Fields n8n sets on every export that are never meaningful diff material: pinned test data,
-// server-assigned bookkeeping, and the exporting instance's own identity. Importing and exporting
-// the same workflows twice in a row must produce no diff.
+// Instance-specific fields stripped from every export, so a second import/export round trip
+// produces no diff.
 const VOLATILE_FIELDS = [
   'pinData',
   'versionId',

@@ -3,10 +3,6 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Admin;
 
-/**
- * Registers the plugin's admin menu: the top-level "Moving quotes" page (the leads list) and its
- * "Settings" submenu.
- */
 final class Menu {
 	public const CAPABILITY    = 'manage_options';
 	public const SLUG          = 'moving-quote';

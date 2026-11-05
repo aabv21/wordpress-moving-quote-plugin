@@ -25,9 +25,7 @@ it('check mode reports drift without writing, then a build clears it', async () 
 it('skips entries whose workflow file does not exist yet', async () =>
   expect((await buildWorkflows({ check: true, workflowsDir: 'tests/fixtures/does-not-exist', entries: [entry] })).skipped).toEqual(['clean.json']));
 it('generated code still exports run when Object.defineProperty is frozen, like the real n8n Task Runner sandbox', async () => {
-  // @n8n/task-runner's createVmExecutableCode runs Code-node JS after `Object.defineProperty = ()
-  // => ({})`. esbuild's own export plumbing calls that function, so without
-  // hardenAgainstFrozenDefineProperty, __node.run silently comes back undefined there.
+  // See hardenAgainstFrozenDefineProperty in scripts/build-workflows.ts.
   const js = await buildCodeNode(entry);
   expect(runJsCode(js, { n: 2 })).toEqual([{ json: { n: 4 } }]);
 });

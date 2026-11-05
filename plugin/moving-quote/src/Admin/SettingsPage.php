@@ -7,9 +7,8 @@ use Chivabox\MovingQuote\Pricing\DistanceTable;
 use Chivabox\MovingQuote\Settings\{Options, SettingsSanitizer};
 
 /**
- * The plugin's settings page: rates, cities and distances, and delivery. Registers the setting on
- * `admin_init` only, so a WP-CLI write (`wp option update`/`wp option patch`) never runs through
- * the form sanitizer, and renders the form with `settings_fields()`'s nonce.
+ * Registers the setting on `admin_init` only, so a WP-CLI `wp option update`/`patch` never runs
+ * through the form sanitizer.
  *
  * @phpstan-import-type SettingsShape from \Chivabox\MovingQuote\Settings\Defaults
  */
@@ -35,10 +34,8 @@ final class SettingsPage {
 	}
 
 	/**
-	 * Applies the WordPress-level sanitizer appropriate to each field — never a blanket
-	 * `sanitize_text_field()`, which would strip `%xx` sequences and tags from the webhook URL and
-	 * secret — then hands the result to the pure sanitizer and surfaces one notice per error.
-	 * `options.php` already calls `wp_unslash()` on the posted value before this callback runs.
+	 * Per-field sanitizers, never a blanket `sanitize_text_field()`, which would strip `%xx` and
+	 * tags from the URL and secret. `options.php` has already unslashed the value.
 	 *
 	 * @return SettingsShape
 	 */
@@ -89,14 +86,11 @@ final class SettingsPage {
 			'extras'         => self::wp_sanitize_text_map( $input['extras'] ?? null ),
 			'range_percent'  => self::wp_sanitize_text( $input['range_percent'] ?? null ),
 			'routes'         => self::wp_sanitize_routes( $input['routes'] ?? null ),
-			// trim() only, not esc_url_raw(): esc_url_raw() silently turns a disallowed scheme (e.g.
-			// javascript:) into '', which the pure sanitizer would then treat as an accepted blank
-			// instead of reporting invalid_url and keeping the current URL. esc_url_raw() runs after,
-			// in sanitize(), only on a value the pure sanitizer already accepted.
+			// trim() only: esc_url_raw() turns a disallowed scheme into '', which would pass as a
+			// blank instead of invalid_url. sanitize() runs esc_url_raw() after validation.
 			'webhook_url'    => is_string( $input['webhook_url'] ?? null ) ? trim( $input['webhook_url'] ) : '',
 			'webhook_secret' => is_string( $input['webhook_secret'] ?? null ) ? trim( $input['webhook_secret'] ) : '',
-			// trim() only: sanitize_email() silently turns an invalid address into '', which the
-			// pure sanitizer would then treat as an accepted blank instead of reporting invalid_email.
+			// trim() only: sanitize_email() turns an invalid address into '', a blank, not invalid_email.
 			'team_email'     => is_string( $input['team_email'] ?? null ) ? trim( $input['team_email'] ) : '',
 		];
 	}

@@ -11,9 +11,7 @@ function defaultRandomHex(): string {
 }
 
 /**
- * Fills only the empty values whose names end in `_PASSWORD`, `_SECRET`, or `_KEY`, skipping
- * names that start with `GOOGLE_` (those come from the owner's own OAuth client, never generated).
- * Comments, blank lines, and every other value are kept as-is, in order.
+ * Skips `GOOGLE_*`: those come from the owner's OAuth client, never generated.
  */
 export function fillSecrets(example: string, randomHex: () => string = defaultRandomHex): string {
   return example
@@ -31,12 +29,8 @@ export function fillSecrets(example: string, randomHex: () => string = defaultRa
 }
 
 /**
- * Writes `.env` text atomically at mode 0600. `.env` holds `N8N_ENCRYPTION_KEY`; a write that's
- * interrupted partway through must never leave a truncated file, which would lose every stored
- * n8n credential. Writes to a tmp file first, then renames it over the target in one step. The
- * tmp file is chmod'd 0600 explicitly, because a crashed prior run can leave it behind at
- * whatever looser mode it was created with, and `writeFileSync`'s own `{ mode }` option only
- * applies when the file doesn't already exist.
+ * Atomic, because a truncated `.env` would lose `N8N_ENCRYPTION_KEY` and every n8n credential. The
+ * explicit chmod covers a tmp file a crashed run left behind: `{ mode }` applies only on create.
  */
 export function writeEnvFile(path: string, text: string): void {
   const tmpPath = `${path}.tmp`;
@@ -49,24 +43,12 @@ export function writeEnvFile(path: string, text: string): void {
 }
 
 /**
- * Creates `path` at mode 0700 if it doesn't exist yet, and leaves it (and whatever it already
- * holds) alone otherwise — never removed or recreated. No credential data crosses this directory:
- * `setup-credentials.ts` streams credentials into the `n8n` container over stdin and reads the
- * existing-credentials export back over stdout, entirely inside the container's own `/tmp`. The
- * directory serves only `pnpm run export` (`export-workflows.ts` writes its output under
- * `.n8n-import/export`, recreating that one subdirectory itself with `mkdirSync`, which defaults
- * to 0755); without this function, Docker Compose would instead create the bind-mounted
- * `.n8n-import/` itself on first `up`, owned by `root` on Linux, before `export-workflows.ts`
- * ever gets to create its own subdirectory under it.
+ * Creates `path` at 0700 if missing and never touches an existing one. Otherwise Compose would
+ * create the bind mount on first `up`, root-owned on Linux. Only `pnpm run export` uses it; no
+ * credential data crosses it.
  *
- * NOTE: mode 0700 only lets the n8n container's own `node` user (uid 1000) write into this
- * directory when the host's own uid running this script is also 1000 — true for the first user
- * account on most single-user Linux installs, but not guaranteed. A host uid that doesn't match
- * still leaves the directory root-owned from the n8n container's point of view (bind mounts carry
- * the host's uid numbers through as-is, with no remapping), reproducing the same problem this
- * function exists to avoid. Docker Desktop's own Linux VM sidesteps this entirely: every
- * bind-mounted file appears owned by whatever uid the container process runs as, not the macOS
- * or Windows host's own uid, so this ceiling is Linux-host-only.
+ * NOTE: on a Linux host, n8n's `node` user (uid 1000) can write here only when the host uid is
+ * also 1000, since bind mounts don't remap uids. Docker Desktop is unaffected.
  */
 export function ensureN8nImportDir(path: string): void {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- path is the caller-provided .n8n-import path, not user input

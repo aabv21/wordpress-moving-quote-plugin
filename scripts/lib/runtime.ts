@@ -12,11 +12,8 @@ export interface PsqlOptions {
 }
 
 /**
- * The `compose()` arguments that run psql inside the `postgres` container over its local socket,
- * reading the script from stdin. Each variable in `forwardEnv` is passed as a bare `-e NAME`, so
- * Docker copies its value from this process's environment (`.env`, once `loadDotEnv` has run):
- * the value never appears in an argument list, and a changed `.env` takes effect without
- * recreating the container. psql stops at the first error and prints tuples only, unaligned.
+ * Each `forwardEnv` variable goes as a bare `-e NAME`, so Docker copies the value from this
+ * process: it never reaches an argument list, and a changed `.env` needs no container rebuild.
  */
 export function psqlArgs({ role, database, forwardEnv, singleTransaction }: PsqlOptions): string[] {
   const transaction = singleTransaction ? ' --single-transaction' : '';
@@ -34,7 +31,7 @@ function hasOutput(err: unknown): err is { stdout: string; stderr: string } {
   return typeof err === 'object' && err !== null && typeof (err as { stdout?: unknown }).stdout === 'string';
 }
 
-/** Runs `sql` through psql with `options`. A psql failure resolves with `ok: false` and its output, instead of throwing. */
+/** A psql failure resolves with `ok: false` instead of throwing. */
 export async function runPsql(options: PsqlOptions, sql: string): Promise<PsqlResult> {
   try {
     const { stdout, stderr } = await compose(psqlArgs(options), { input: sql });
@@ -52,7 +49,7 @@ export function secretValues(env: Readonly<Record<string, string | undefined>>):
     .map(([, value]) => value ?? '');
 }
 
-/** `text` with every occurrence of each secret replaced, for output that may echo a statement. */
+/** For output that may echo a statement. */
 export function redact(text: string, secrets: readonly string[]): string {
   return secrets.filter((secret) => secret !== '').reduce((out, secret) => out.replaceAll(secret, '[redacted]'), text);
 }

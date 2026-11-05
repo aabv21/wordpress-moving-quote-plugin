@@ -4,15 +4,14 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Delivery;
 
 /**
- * Sends one signed lead delivery over HTTP. Uses `wp_remote_post()`, not `wp_safe_remote_post()`,
- * because the admin sets the destination URL themselves, and it is a private Docker hostname that
- * the safe variant's SSRF protections would otherwise block.
+ * `wp_remote_post()`, not `wp_safe_remote_post()`: the admin sets the URL, and its private Docker
+ * hostname would trip the safe variant's SSRF guard.
  */
 final class WebhookClient {
 	private const TIMEOUT_SECONDS      = 5;
 	private const ERROR_EXCERPT_LENGTH = 200;
 
-	/** Sends the signed request. Returns null on an acknowledged 2xx, otherwise the error text. */
+	/** Null on an acknowledged 2xx, otherwise the error text. */
 	public static function send( string $url, string $jwt, string $body ): ?string {
 		$response = wp_remote_post(
 			$url,
@@ -32,8 +31,7 @@ final class WebhookClient {
 			return $response->get_error_message();
 		}
 
-		// wp_remote_retrieve_response_code() is typed int|string (empty string on a malformed
-		// response); is_wp_error() above already ruled out the one case that leaves it unset.
+		// Typed int|string; is_wp_error() above ruled out the empty-string case.
 		$status        = (int) wp_remote_retrieve_response_code( $response );
 		$response_body = wp_remote_retrieve_body( $response );
 
@@ -48,7 +46,7 @@ final class WebhookClient {
 		return "Unexpected response (HTTP {$status}): " . self::excerpt( $response_body );
 	}
 
-	/** Strips tags first, so an HTML error page (a load balancer's own 502, for example) doesn't fill `last_error` with markup. */
+	/** Strips tags, so an HTML error page (a load balancer's 502) doesn't fill `last_error` with markup. */
 	private static function excerpt( string $body ): string {
 		return mb_substr( trim( wp_strip_all_tags( $body ) ), 0, self::ERROR_EXCERPT_LENGTH );
 	}

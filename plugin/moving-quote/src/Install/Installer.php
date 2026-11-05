@@ -5,10 +5,6 @@ namespace Chivabox\MovingQuote\Install;
 
 use Chivabox\MovingQuote\Settings\Defaults;
 
-/**
- * The plugin's install lifecycle: table creation, default settings, the outbox cron schedule,
- * and the version-based upgrade path.
- */
 final class Installer {
 	/** Bumped on every schema change: '2' added the `locale` column. */
 	public const DB_VERSION    = '2';
@@ -18,16 +14,11 @@ final class Installer {
 	private const DB_VERSION_OPTION = 'moving_quote_db_version';
 
 	/**
-	 * Runs on plugin activation: creates the table, seeds defaults, and schedules the cron hook.
-	 * Refuses on a Multisite install — checked with `is_multisite()`, not just the `$network_wide`
-	 * argument `register_activation_hook()`'s callback receives on a "Network Activate": that
-	 * argument is false for a plain, per-site activation on a Multisite install too, which this
-	 * plugin has never been verified against (shared tables, `switch_to_blog()`, …) and which
-	 * would also give every site's own admin (not just the network admin) an SSRF read-back
-	 * through a lead's `last_error`, by pointing their own site's webhook URL at an internal
-	 * address and reading the response text back from a failed delivery attempt.
+	 * Refuses on any Multisite install, checked with `is_multisite()`: `$network_wide` is false for
+	 * a per-site activation there too. Multisite is unverified, and would give every site admin an
+	 * SSRF read-back through `last_error` by aiming the webhook at an internal address.
 	 */
-	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $network_wide must stay in the signature: register_activation_hook() always calls back with it, and is_multisite() alone (not this argument) is now what the refusal checks.
+	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- register_activation_hook() always passes $network_wide; the refusal checks is_multisite() instead.
 	public static function activate( bool $network_wide = false ): void {
 		if ( is_multisite() ) {
 			wp_die(
@@ -42,17 +33,14 @@ final class Installer {
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );
 	}
 
-	/** Runs on plugin deactivation: only unschedules the cron hook. The table and options stay. */
+	/** The table and options stay. */
 	public static function deactivate(): void {
 		wp_clear_scheduled_hook( self::CRON_HOOK );
 	}
 
 	/**
-	 * Runs on every `plugins_loaded`: reruns `dbDelta()` when the stored schema version is stale.
-	 * A site that was active before this version shipped, or was upgraded in place without a
-	 * re-activation, never ran `activate()`, so this also seeds the settings and the cron
-	 * schedule — both idempotent, so this is safe to run alongside an `activate()` that already
-	 * ran them.
+	 * Also seeds settings and the cron schedule (both idempotent): a site upgraded in place never
+	 * ran `activate()`.
 	 */
 	public static function maybe_upgrade(): void {
 		if ( self::DB_VERSION === get_option( self::DB_VERSION_OPTION ) ) {
@@ -65,10 +53,8 @@ final class Installer {
 	}
 
 	/**
-	 * Adds the "Every minute" schedule the outbox cron hook runs on. `wp_get_schedules()` can run
-	 * this filter as early as plugin activation, well before `init`, so the display string is
-	 * translated only once it's safe to load a text domain; otherwise untranslated English is
-	 * fine for a label nothing but the admin's own cron list reads.
+	 * This filter can run before `init`, so the label is translated only once that's safe;
+	 * otherwise English is fine for a label only cron lists show.
 	 *
 	 * @param array<string, array{interval: int, display: string}> $schedules
 	 * @return array<string, array{interval: int, display: string}>
@@ -88,7 +74,7 @@ final class Installer {
 		dbDelta( Schema::sql( $table, $wpdb->get_charset_collate() ) );
 	}
 
-	/** Seeds the default settings (never overwriting an existing value) and schedules the outbox cron hook (unless it's already scheduled). Both calls are no-ops when already done. */
+	/** Both steps are no-ops when already done; an existing setting is never overwritten. */
 	private static function ensure_settings_and_schedule(): void {
 		add_option( 'moving_quote_settings', Defaults::settings(), '', true );
 

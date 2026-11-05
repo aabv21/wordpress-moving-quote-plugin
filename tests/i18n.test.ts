@@ -11,12 +11,12 @@ function tags(text: string): string[] {
   return [...text.matchAll(/<\/?[a-z]+/g)].map((match) => match[0]);
 }
 
-/** The source text a translated form must match: `msgid` for the singular form, `msgid_plural` for every other. */
+/** `msgid` for the singular form, `msgid_plural` for every other. */
 function sourceFor(entry: PoEntry, form: number): string {
   return form === 0 || entry.msgidPlural === null ? entry.msgid : entry.msgidPlural;
 }
 
-/** A PHP single-quoted string literal's body, the way `wp i18n make-php` writes each translation into `.l10n.php`. */
+/** As `wp i18n make-php` writes each translation into `.l10n.php`. */
 function phpSingleQuoted(text: string): string {
   return text.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
 }

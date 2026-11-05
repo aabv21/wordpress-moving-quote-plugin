@@ -3,8 +3,7 @@ import { spawn } from 'node:child_process';
 import { afterEach, expect, it, vi } from 'vitest';
 import { compose } from '../../scripts/lib/compose.ts';
 
-// compose(args, { input }) spawns instead of using execFile, so these tests mock
-// node:child_process.spawn instead of talking to a real docker compose process.
+// compose(args, { input }) spawns, so these tests mock spawn instead of running docker.
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
   return { ...actual, spawn: vi.fn() };

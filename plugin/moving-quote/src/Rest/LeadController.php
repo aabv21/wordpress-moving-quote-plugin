@@ -16,21 +16,15 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * The public lead endpoint: validates, dedupes by the browser-minted submission ID, saves the
- * lead, and answers per the REST contract.
- *
- * The `submit` rate limit is counted only once a lead is about to be inserted — after the
- * honeypot, validation, and the duplicate lookup all pass — so a customer correcting a typo, or
- * double-tapping Submit, never burns through the limit on an attempt that was never going to save
- * anything.
+ * The `submit` rate limit counts only a lead about to be inserted (after the honeypot, validation,
+ * and duplicate lookup), so a corrected typo or a double tap never spends the budget.
  */
 final class LeadController {
 	private const NAMESPACE = 'moving-quote/v1';
 	private const ROUTE     = '/leads';
 
 	public static function register(): void {
-		// No args schema: every field is validated by LeadValidator, so a restrictive schema here
-		// would make core reject a bad request with its own 400 before the contract's 422 ever runs.
+		// No args schema: core would answer its own 400 before the contract's 422.
 		register_rest_route(
 			self::NAMESPACE,
 			self::ROUTE,
@@ -43,9 +37,8 @@ final class LeadController {
 	}
 
 	/**
-	 * Core's own `rest_cookie_check_errors` already rejects a stale or forged `X-WP-Nonce` with
-	 * 403 `rest_cookie_invalid_nonce` before this ever runs. This callback only has to cover the
-	 * one case core lets through: no nonce header at all.
+	 * Core rejects a stale or forged `X-WP-Nonce` first (403 `rest_cookie_invalid_nonce`); this
+	 * covers the case core lets through, a missing header.
 	 */
 	public static function check_nonce( WP_REST_Request $request ): bool|WP_Error {
 		if ( null === $request->get_header( 'X-WP-Nonce' ) ) {
@@ -62,9 +55,7 @@ final class LeadController {
 		$input = self::json_object( $request );
 
 		if ( '' !== ( $input['website'] ?? '' ) ) {
-			// A filled honeypot field means a bot filled every field blindly. Answer as if the
-			// submission succeeded, but save nothing and spend nothing: a real customer never sees
-			// this field, so nothing here should affect their own rate-limit budget or logs.
+			// A bot filled the honeypot: answer success, but save and count nothing.
 			return new WP_REST_Response( [ 'ok' => true ], 201 );
 		}
 
@@ -95,8 +86,7 @@ final class LeadController {
 
 	private static function insert( LeadRepository $repository, LeadDraft $draft, Estimate $estimate, int $now ): WP_REST_Response|WP_Error {
 		try {
-			// determine_locale() is the language this request renders in (the site language, or
-			// whatever a multilingual plugin filters it to), so the n8n emails can answer in it.
+			// The request's render language, including a multilingual plugin's filter.
 			$record = $repository->insert( $draft, $estimate, $now, $now + Outbox::LEASE_SECONDS, determine_locale() );
 		} catch ( Throwable $e ) {
 			error_log( 'moving-quote: lead insert failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- no dedicated logging service exists; the message carries no PII.
@@ -104,17 +94,13 @@ final class LeadController {
 		}
 
 		if ( null === $record ) {
-			// LeadRepository::insert() returns null only once it has confirmed request_uuid now
-			// exists: another request for the same UUID raced ahead of this one and already won, so
-			// look up that row and answer with its data instead of a duplicate row or a lost lead.
-			// That other request's own insert() call is the one that triggers delivery; this one must
-			// not, or the same lead would be attempted twice for one winning insert.
+			// Another request for the same UUID won the insert race: answer with its row, and leave
+			// delivery to that request so the lead isn't attempted twice.
 			$winner = $repository->find_by_uuid( $draft->submission_id );
 			if ( null !== $winner ) {
 				return self::saved( $winner );
 			}
-			// Unreachable under LeadRepository's documented contract; kept as a safety net in case
-			// that contract ever changes without this call site being updated to match.
+			// Unreachable under insert()'s contract; a safety net if that contract changes.
 			return self::save_failed();
 		}
 
@@ -124,9 +110,8 @@ final class LeadController {
 	}
 
 	/**
-	 * The inline delivery attempt for a lead that was just inserted. The response is 201 regardless
-	 * of the outcome, so the customer never sees an error the outbox's own retries will resolve on
-	 * their own; this can still delay that 201 by up to `WebhookClient`'s 5 s timeout.
+	 * The response is 201 whatever the outcome, since the outbox retries a failure; this can still
+	 * delay it by up to `WebhookClient`'s 5 s timeout.
 	 */
 	private static function attempt_delivery( LeadRecord $record ): void {
 		if ( ! Options::delivery_enabled() ) {
@@ -188,10 +173,7 @@ final class LeadController {
 	}
 
 	/**
-	 * The parsed JSON request body as a string-keyed array. The stub types get_json_params() as
-	 * always returning array, but a top-level JSON scalar (e.g. a bare string or number) is valid
-	 * JSON and decodes to that scalar at runtime, not an array; this guards against that case
-	 * instead of trusting the stub over the real behavior.
+	 * The stub types get_json_params() as array, but a top-level JSON scalar decodes to that scalar.
 	 *
 	 * @return array<string, mixed>
 	 */

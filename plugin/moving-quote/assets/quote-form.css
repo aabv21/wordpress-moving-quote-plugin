@@ -1,10 +1,7 @@
 /*
- * The [moving_quote] form. Every color, radius, and spacing value comes from the --mq-* tokens on
- * .moving-quote; nothing below hard-codes its own. The form draws its own light surface, so every
- * text and control color is checked against a background this file controls, whatever the theme
- * paints around it (a dark theme included). Type is inherited from the theme: family and weight
- * as-is, size scaled within a readable range. Selectors are scoped under .moving-quote so a theme's
- * own element styles (button, input, p) never outrank them.
+ * Every color, radius, and spacing value is a --mq-* token on .moving-quote. The form draws its
+ * own light surface, so contrast holds whatever the theme paints around it. Selectors are scoped
+ * under .moving-quote so a theme's element styles never outrank them.
  */
 
 .moving-quote {
@@ -515,10 +512,7 @@
   opacity: 0.6;
 }
 
-/*
- * Sending: the submit button is disabled while the request is in flight and reads "Sending…".
- * It keeps full opacity (it is busy, not unavailable) and gains a spinner drawn in CSS.
- */
+/* Sending: full opacity (busy, not unavailable), plus a CSS spinner. */
 .moving-quote .moving-quote__button--cta:disabled {
   cursor: progress;
   opacity: 1;

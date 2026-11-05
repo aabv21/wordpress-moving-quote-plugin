@@ -8,24 +8,19 @@ use Chivabox\MovingQuote\Pricing\Estimate;
 use ValueError;
 
 /**
- * Reads and writes the leads table directly: no caching wrapper applies to a table this small,
- * and every row either feeds the admin list or the delivery outbox, both of which always want the
- * latest state.
+ * Reads and writes the leads table directly, uncached: the admin list and the outbox always need
+ * the latest state.
  */
 final class LeadRepository {
-	/** The prefixed leads table name. */
 	public function table(): string {
 		global $wpdb;
 		return $wpdb->prefix . 'moving_quote_leads';
 	}
 
 	/**
-	 * Inserts a new lead row from a validated draft and its server-computed estimate. Returns the
-	 * inserted row, or null when `request_uuid` already exists — the one failure mode this method
-	 * treats as expected, since the unique index is what makes a duplicate submission safe to
-	 * retry. Any other insert failure raises `RuntimeException` instead of returning null, so a
-	 * caller never mistakes an unrelated database error for a duplicate. `$locale` is the site
-	 * language the lead was submitted under, stored so the n8n emails can answer in it.
+	 * Returns the inserted row, or null when `request_uuid` already exists (the unique index makes a
+	 * duplicate submission safe to retry). Any other failure throws `RuntimeException`, so a
+	 * database error is never mistaken for a duplicate.
 	 */
 	public function insert( LeadDraft $draft, Estimate $estimate, int $now, int $next_attempt_at, string $locale = '' ): ?LeadRecord {
 		global $wpdb;
@@ -73,9 +68,8 @@ final class LeadRepository {
 			return null;
 		}
 
-		// NOTE: $wpdb->last_error carries no PII only because the current schema has no unique or
-		// check constraint on phone or email; a future one that did could echo the rejected value
-		// back in the driver's own error text, so revisit this the moment such a constraint exists.
+		// NOTE: $wpdb->last_error carries no PII only while no unique or check constraint covers
+		// phone or email; such a constraint could echo the rejected value, so revisit this then.
 		// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- internal message, never rendered as HTML; logged without PII by the caller.
 		throw new \RuntimeException( 'Lead insert failed: ' . $wpdb->last_error );
 	}
@@ -97,10 +91,8 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Every lead whose `email` matches `$email` exactly, newest first. The one lookup the
-	 * WordPress personal-data exporter keys on. Skips a row `LeadRecord::from_row()` can't parse,
-	 * the same way `page()` and `chunk_after()` do, instead of letting one bad row fatal the whole
-	 * export request.
+	 * Every lead with this exact `email`, newest first, for the personal-data exporter. Skips an
+	 * unparseable row, like `page()` and `chunk_after()`.
 	 *
 	 * @return list<LeadRecord>
 	 */
@@ -118,12 +110,9 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Every `request_uuid` belonging to a lead whose `email` matches `$email` exactly, newest
-	 * first — regardless of whether its `status` parses. The WordPress personal-data eraser's own
-	 * pre-delete lookup: it names which leads are about to lose their one database copy while
-	 * copies elsewhere (the delivered sheet row, the two sent emails, a failed n8n execution)
-	 * stay out of reach, so the eraser can warn by reference even for a row `find_by_email()`
-	 * itself would skip.
+	 * Every `request_uuid` for this exact `email`, newest first, whether or not its `status`
+	 * parses. The eraser reads these before deleting, to name the copies it can't reach (the
+	 * sheet row, the sent emails, a failed n8n execution).
 	 *
 	 * @return list<string>
 	 */
@@ -138,10 +127,8 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Permanently deletes every lead row whose `email` matches `$email` exactly, in one statement.
-	 * The WordPress personal-data eraser's own lookup: unlike `find_by_email()`, this never has to
-	 * parse a row to delete it, so a row with an unparseable `status` (which `find_by_email()`
-	 * would skip) is still erased. Returns the number of rows deleted.
+	 * Deletes every row with this exact `email` in one statement and returns the count. It never
+	 * parses a row, so one with an unparseable `status` is still erased.
 	 */
 	public function delete_by_email( string $email ): int {
 		global $wpdb;
@@ -152,7 +139,6 @@ final class LeadRepository {
 		return false === $deleted ? 0 : $deleted;
 	}
 
-	/** `get_row(..., ARRAY_A)` returns a column-name-keyed row, or null when nothing matched. */
 	private static function typed_row( mixed $row ): ?LeadRecord {
 		if ( ! is_array( $row ) ) {
 			return null;
@@ -162,10 +148,9 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Pending rows due for delivery (`next_attempt_at <= $now`), oldest first, up to `$limit`. The
-	 * raw rows are returned as-is, not converted through `LeadRecord::from_row()`: a row an unknown
-	 * future `status` value would make that conversion throw on must still reach the caller, so it
-	 * can record the failure and move on to the next row instead of losing the whole batch.
+	 * Pending rows with `next_attempt_at <= $now`, oldest first. Returned raw, not as `LeadRecord`,
+	 * so a row with an unknown `status` still reaches the caller, which records the failure and
+	 * moves on instead of losing the batch.
 	 *
 	 * @return list<array<string, string|null>>
 	 */
@@ -189,13 +174,11 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Claims a due row for delivery: an UPDATE guarded by `id`, the row's current `next_attempt_at`,
-	 * and `sync_status = 'pending'`. Returns true only when exactly one row changed.
+	 * Claims a due row: an UPDATE guarded by `id`, the current `next_attempt_at`, and
+	 * `sync_status = 'pending'`. True only when exactly one row changed.
 	 *
-	 * Callers must keep `$expected_next_attempt_at < $lease_until` (true whenever the caller got
-	 * `$expected_next_attempt_at` from `due()`, which only returns rows with `next_attempt_at <=
-	 * now`): a same-value UPDATE reports 0 rows changed even when the WHERE clause matched, so a
-	 * coinciding expected value and lease would read as a failed claim.
+	 * Callers must keep `$expected_next_attempt_at < $lease_until` (always true for a row from
+	 * `due()`): a same-value UPDATE reports 0 rows changed, which would read as a failed claim.
 	 */
 	public function claim( int $id, int $expected_next_attempt_at, int $lease_until ): bool {
 		global $wpdb;
@@ -216,10 +199,9 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Stores the result of a delivery attempt. The `where` also requires `sync_status = 'pending'`,
-	 * so a worker holding a stale lease can never overwrite a row a faster, overlapping run already
-	 * marked `sent`. A write that matches nothing (the guard failed) is silently skipped: the row
-	 * keeps its existing lease, so cron retries it on its own next pass.
+	 * Stores a delivery attempt's result, only while `sync_status = 'pending'`, so a stale-lease
+	 * worker never overwrites a row another run marked `sent`. A write that matches nothing is
+	 * skipped; the row keeps its lease and cron retries it.
 	 */
 	public function apply_sync( int $id, SyncUpdate $update ): void {
 		global $wpdb;
@@ -243,8 +225,7 @@ final class LeadRepository {
 	}
 
 	/**
-	 * One page of leads, optionally filtered to one status, newest first (`created_at` DESC, `id`
-	 * DESC as the tiebreak for two rows sharing a second). `$page` is 1-based.
+	 * Newest first (`created_at` DESC, then `id` DESC). `$page` is 1-based.
 	 *
 	 * @return list<LeadRecord>
 	 */
@@ -283,8 +264,7 @@ final class LeadRepository {
 	}
 
 	/**
-	 * The row count for every `LeadStatus`, including a status with zero rows, plus the total under
-	 * `all`. One `GROUP BY` query, so adding a view never costs another round trip.
+	 * The count for every `LeadStatus` (zero included) plus `all`, from one `GROUP BY` query.
 	 *
 	 * @return array<string, int>
 	 */
@@ -313,7 +293,7 @@ final class LeadRepository {
 		return $counts;
 	}
 
-	/** Sets a lead's lifecycle `status`. Returns true when a row with `$id` exists (even if the value didn't change). */
+	/** True when a row with `$id` exists, even if the value didn't change. */
 	public function update_status( int $id, LeadStatus $status ): bool {
 		global $wpdb;
 
@@ -333,9 +313,7 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Requeues a `failed` lead for delivery: back to `pending`, attempts reset to 0, due
-	 * immediately (`next_attempt_at = $now`). Only a `failed` row matches the guard, so retrying a
-	 * lead that's already `pending` or `sent` is a no-op that changes nothing.
+	 * Moves a `failed` lead back to `pending`, 0 attempts, due now. Any other row is a no-op.
 	 */
 	public function requeue( int $id, int $now ): bool {
 		global $wpdb;
@@ -357,19 +335,12 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Leads with `id > $after_id`, optionally filtered to one status, ascending by id, up to
-	 * `$limit`. The CSV export's paging cursor: unlike `page()`'s `created_at` ordering (which can
-	 * repeat or reorder as new rows arrive mid-export), an ascending, strictly-increasing id can
-	 * only ever move forward, so a batch never re-reads or skips a row even if the table changes
-	 * while the export is streaming.
+	 * Leads with `id > $after_id`, ascending by id: the CSV export's cursor. Unlike `page()`'s
+	 * `created_at` order, an id cursor never re-reads or skips a row added mid-export.
 	 *
-	 * Returns the raw batch's own row count and last id alongside the parsed records: `records` can
-	 * be shorter than `raw_count` when one or more rows in the batch were unparseable and skipped,
-	 * and the caller must drive its "is there another batch?" loop from `raw_count`, not
-	 * `count( records )` — otherwise a batch that happened to contain a bad row looks like the last,
-	 * short page of results and the export stops early, silently dropping every good row after it.
-	 * `last_raw_id` (not necessarily a parsed record's own id) is what the caller's cursor must
-	 * advance to, so a skipped row at the end of a batch is never re-fetched on the next call.
+	 * `records` can be shorter than `raw_count` when unparseable rows were skipped. Callers loop on
+	 * `raw_count`, not `count( records )`, or a batch with a bad row ends the export early, and
+	 * advance the cursor to `last_raw_id`, so a skipped last row is never re-fetched.
 	 *
 	 * @return array{records: list<LeadRecord>, raw_count: int, last_raw_id: int}
 	 */
@@ -413,10 +384,8 @@ final class LeadRepository {
 	}
 
 	/**
-	 * How many leads look stuck: every `failed` row, plus every `pending` row whose `created_at`
-	 * (stored UTC) is older than `$stale_before` (a Unix timestamp). A lead the team has already
-	 * closed out (`won` or `lost`) no longer counts, even if its own delivery never finished —
-	 * resolving the lead resolves the notice too.
+	 * Every `failed` row plus every `pending` row created (UTC) before `$stale_before`, excluding
+	 * leads already `won` or `lost`: closing the lead resolves the notice too.
 	 */
 	public function count_stuck( int $stale_before ): int {
 		global $wpdb;
@@ -437,7 +406,7 @@ final class LeadRepository {
 		return (int) $count;
 	}
 
-	/** Permanently deletes one lead row. A missing id is a no-op. */
+	/** A missing id is a no-op. */
 	public function delete( int $id ): void {
 		global $wpdb;
 
@@ -445,11 +414,8 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Converts every row to a `LeadRecord`, skipping any row `LeadRecord::from_row()` can't parse
-	 * (most likely an unknown `status` value written by a different plugin version) instead of
-	 * letting that one row fatal the whole admin Leads page or CSV export, the same way
-	 * `Delivery\Outbox::process_due()` already skips a poison row rather than losing the rest of
-	 * its batch behind it.
+	 * Skips a row `LeadRecord::from_row()` can't parse (most likely a `status` from another plugin
+	 * version), so one bad row never fatals the Leads page or the CSV export.
 	 *
 	 * @param list<array<string, string|null>> $rows
 	 * @return list<LeadRecord>

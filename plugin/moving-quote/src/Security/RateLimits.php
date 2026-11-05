@@ -4,10 +4,8 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Security;
 
 /**
- * The `estimate` and `submit` rate-limit bucket settings, filterable through
- * `moving_quote_rate_limits` so a site that needs a different budget (a busier launch, a stricter
- * anti-abuse posture) can change it without editing the plugin. Keeps today's values as the
- * defaults when the filter isn't used.
+ * Filterable through `moving_quote_rate_limits`, so a site can change a budget without editing
+ * the plugin.
  */
 final class RateLimits {
 	private const DEFAULT_ESTIMATE_LIMIT    = 120;

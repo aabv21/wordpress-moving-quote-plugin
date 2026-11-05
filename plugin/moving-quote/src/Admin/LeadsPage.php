@@ -6,9 +6,8 @@ namespace Chivabox\MovingQuote\Admin;
 use Chivabox\MovingQuote\Leads\{LeadRepository, LeadStatus};
 
 /**
- * The Leads admin page: the list table, status updates, CSV export, and retrying a failed
- * delivery. Every handler checks `manage_options` before its nonce, so a user who can't reach the
- * page at all never gets a different error from a handler than from the page itself.
+ * Every handler checks `manage_options` before its nonce, so a user who can't reach the page gets
+ * the same error from a handler as from the page.
  */
 final class LeadsPage {
 	private const EXPORT_CHUNK = 500;
@@ -21,7 +20,6 @@ final class LeadsPage {
 		add_action( 'admin_post_moving_quote_delete_lead', [ self::class, 'handle_delete' ] );
 	}
 
-	/** Renders the list table and an "Export CSV" button that keeps the current status filter. */
 	public static function render(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'moving-quote' ), 403 );
@@ -50,16 +48,10 @@ final class LeadsPage {
 			<a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'moving-quote' ); ?></a>
 			<?php
 			/*
-			 * No wrapping <form method="get"> here on purpose: this table has no bulk actions and no
-			 * search box, and WP_List_Table::display() already prints every row's own
-			 * <form method="post" action="admin-post.php"> (see LeadsListTable::column_status()). HTML
-			 * doesn't allow nested forms -- the parser drops a nested <form>'s own start tag, folding
-			 * its controls into whichever form is still open, so a wrapping GET form here would
-			 * silently fold the first row's status controls into itself, and that lead would never
-			 * actually change status. Every pagination control is a plain link carrying its own query
-			 * args (including `status`), except the "Current Page" number box, which has no form of
-			 * its own to submit via Enter -- an accepted, minor loss next to a status update that
-			 * silently never takes effect.
+			 * No wrapping <form method="get">: every row prints its own POST form, and HTML drops a
+			 * nested form's start tag, so the first row's status controls would fold into the wrapper
+			 * and never take effect. Cost: the "Current Page" box can't submit on Enter; every other
+			 * pagination control is a plain link.
 			 */
 			?>
 			<?php $table->views(); ?>
@@ -68,7 +60,6 @@ final class LeadsPage {
 		<?php
 	}
 
-	/** A core notice, shown once right after a redirect from one of this page's own handlers. */
 	private static function render_notice(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only, and the notice text itself carries no state change; the handler that redirected here already checked its own nonce.
 		$notice = self::string_field( $_GET, self::NOTICE_ARG );
@@ -84,7 +75,6 @@ final class LeadsPage {
 		printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( $text ) );
 	}
 
-	/** Updates one lead's lifecycle status, posted from the list table's per-row form. */
 	public static function handle_update_status(): void {
 		$id = self::require_id();
 		check_admin_referer( 'moving_quote_update_status_' . $id );
@@ -101,7 +91,6 @@ final class LeadsPage {
 		self::redirect_to_list( 'status_updated' );
 	}
 
-	/** Requeues a `failed` lead: back to `pending`, due immediately. A lead that isn't `failed` is left untouched. */
 	public static function handle_retry(): void {
 		$id = self::require_id();
 		check_admin_referer( 'moving_quote_retry_delivery_' . $id );
@@ -111,7 +100,7 @@ final class LeadsPage {
 		self::redirect_to_list( 'retry_queued' );
 	}
 
-	/** Permanently deletes one lead row, checked the same way every other handler here is: `manage_options` first (inside `require_id()`), then this row's own nonce. */
+	/** `manage_options` is checked inside `require_id()`, then this row's own nonce. */
 	public static function handle_delete(): void {
 		$id = self::require_id();
 		check_admin_referer( 'moving_quote_delete_lead_' . $id );
@@ -154,11 +143,7 @@ final class LeadsPage {
 			foreach ( $chunk['records'] as $lead ) {
 				fputcsv( $out, LeadCsv::row( $lead, $tz ), ',', '"', '' );
 			}
-			// Advance past the whole raw batch, including a trailing unparseable row that never
-			// became a record: driving the loop from raw_count (not count($chunk['records'])) is
-			// what keeps a batch with one bad row from looking like the last, short page and
-			// stopping the export early; advancing the cursor by last_raw_id is what keeps that
-			// same bad row from being re-fetched, and re-skipped, on every subsequent call.
+			// Loop on raw_count and advance to last_raw_id; see LeadRepository::chunk_after().
 			$after_id = $chunk['last_raw_id'];
 		}
 
@@ -166,7 +151,7 @@ final class LeadsPage {
 		exit;
 	}
 
-	/** The `id` request field, as a positive int. Dies with 403 for a disallowed user, or 400 for a missing or non-numeric id. */
+	/** Dies with 403 for a disallowed user, or 400 for a missing or non-numeric id. */
 	private static function require_id(): int {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'moving-quote' ), 403 );
@@ -191,8 +176,7 @@ final class LeadsPage {
 	}
 
 	/**
-	 * A string field from a superglobal array, sanitized with `sanitize_text_field()` after
-	 * `wp_unslash()`. Anything but a plain string (missing, an array, …) reads as `''`.
+	 * Anything but a plain string reads as `''`.
 	 *
 	 * @param array<string, mixed> $source
 	 */

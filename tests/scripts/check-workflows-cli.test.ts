@@ -1,12 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { expect, it } from 'vitest';
 
-// Runs the real CLI entry point (not just checkWorkflow directly), so this covers main()'s own
-// wiring: the real, empty CODE_NODES manifest, not a fixture-scoped one. Every fixture using the
-// "Double value" Code node therefore also reports "has no source in the manifest" here, on top of
-// whatever defect each fixture is named for — there is no manifest entry for a node named "Double
-// value" in any real workflow, only in the checkWorkflow() unit tests, which pass their own
-// fixture-scoped codeNodes list per call.
+// Runs the real CLI with the real manifest, so every fixture using the "Double value" Code node
+// also reports "has no source in the manifest": only the unit tests pass a fixture manifest.
 function run(dir: string): { stdout: string; status: number } {
   try {
     const stdout = execFileSync('node', ['scripts/check-workflows.ts', dir], { encoding: 'utf8' });
@@ -33,9 +29,7 @@ it('exits 1 over the fixture directory, with one line per actual violation', () 
     'tests/fixtures/workflows/volatile.json: meta.instanceId present',
     'tests/fixtures/workflows/volatile.json: code node Double value has no source in the manifest',
   ]);
-  // stale-code.json is byte-identical to clean.json: its jsCode already starts with "// Why
-  // Code:", so this check rule never sees it as stale. Only `build:workflows -- --check` (which
-  // compares jsCode against a fresh build of the manifest's source) can tell the two apart.
+  // stale-code.json equals clean.json here; only `build:workflows -- --check` sees it as stale.
   expect(lines('stale-code')).toEqual(['tests/fixtures/workflows/stale-code.json: code node Double value has no source in the manifest']);
 });
 it('passes clean and exits 0 over an empty workflows/ directory', () => {

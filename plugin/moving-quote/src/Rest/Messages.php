@@ -6,11 +6,8 @@ namespace Chivabox\MovingQuote\Rest;
 use Chivabox\MovingQuote\Leads\LeadValidator;
 use Chivabox\MovingQuote\Pricing\Estimate;
 
-/** Translatable, customer-facing text for the REST endpoints. */
 final class Messages {
 	/**
-	 * The display text for every field in `$errors` (field name to error code), keyed the same way.
-	 *
 	 * @param array<string, string> $errors
 	 * @return array<string, string>
 	 */
@@ -23,9 +20,7 @@ final class Messages {
 	}
 
 	/**
-	 * The display text for a field-validation error code. A malformed phone or email gets its own
-	 * message naming what a valid value looks like, since "invalid" alone gives the visitor no way
-	 * to fix it; every other field shares the generic text.
+	 * Phone and email name a valid value, since "invalid" alone gives no way to fix it.
 	 */
 	public static function field( string $code, string $field = '' ): string {
 		if ( 'invalid' === $code && 'phone' === $field ) {
@@ -55,7 +50,7 @@ final class Messages {
 		return $messages[ $code ] ?? $code;
 	}
 
-	/** The estimate range, formatted for display: `COP 1,017,000 – 1,243,000`. */
+	/** `COP 1,017,000 – 1,243,000`. */
 	public static function display( Estimate $estimate ): string {
 		return sprintf(
 			/* translators: 1: low estimate, 2: high estimate */

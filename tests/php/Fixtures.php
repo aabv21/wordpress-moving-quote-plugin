@@ -4,12 +4,11 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Tests;
 
 /**
- * Shared fixture data for tests that need a fully-formed lead row, as `$wpdb` would return it:
- * every value a string, exactly as MySQL hands it back.
+ * Rows as `$wpdb` returns them: every value a string.
  */
 final class Fixtures {
 	/**
-	 * One leads-table row, matching the lead payload fixture (same customer, move, and estimate).
+	 * Matches `tests/fixtures/lead-payload.json`.
 	 *
 	 * @return array<string, string|null>
 	 */

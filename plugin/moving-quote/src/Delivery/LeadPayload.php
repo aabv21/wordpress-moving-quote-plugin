@@ -7,11 +7,10 @@ use Chivabox\MovingQuote\Leads\LeadRecord;
 use DateTimeImmutable;
 use DateTimeZone;
 
-/** Builds the signed lead payload WordPress sends to n8n, and the JWT claims that bind it. */
 final class LeadPayload {
 	public const TTL_SECONDS = 300;
 
-	/** The exact JSON body WordPress sends to n8n, encoded once and reused for both the request and its signature. */
+	/** Encoded once and reused for both the request and its signature. */
 	public static function body( LeadRecord $lead, string $site_name, string $team_email, DateTimeZone $tz ): string {
 		$created_at   = new DateTimeImmutable( $lead->created_at, new DateTimeZone( 'UTC' ) );
 		$submitted_at = $created_at->setTimezone( $tz )->format( DATE_ATOM );

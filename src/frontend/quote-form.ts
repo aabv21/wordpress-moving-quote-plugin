@@ -22,26 +22,23 @@ interface QuoteFormConfig {
   };
 }
 
-/** The estimate panel's state: nothing to price yet, a request in flight, a price shown, or a failure shown. */
 type EstimateState = 'idle' | 'loading' | EstimateOutcome;
 
 const TOTAL_STEPS = 3;
 const ESTIMATE_DEBOUNCE_MS = 300;
 
-/** Reads and parses a form's `data-config` attribute. */
 function readConfig(form: HTMLFormElement): QuoteFormConfig {
   const raw = form.dataset['config'];
   if (raw === undefined) throw new Error('moving-quote: missing data-config');
   return JSON.parse(raw) as QuoteFormConfig;
 }
 
-/** A named field's current string value, or '' when the form has no such field (or it's a file input, which this form never uses). */
+/** '' when the field is missing (or a file input, which this form never uses). */
 function fieldValue(data: FormData, name: string): string {
   const value = data.get(name);
   return typeof value === 'string' ? value : '';
 }
 
-/** The current value of every field this form collects, read straight off the DOM. */
 function readValues(form: HTMLFormElement): FormValues {
   const data = new FormData(form);
   const extras = data.getAll('extras').filter((value): value is string => typeof value === 'string');
@@ -59,7 +56,6 @@ function readValues(form: HTMLFormElement): FormValues {
   };
 }
 
-/** Wires one `[moving_quote]` form: step navigation, the live estimate, and the submit flow. */
 function initQuoteForm(form: HTMLFormElement): void {
   const config = readConfig(form);
   const submissionId = uuidV4();
@@ -121,10 +117,8 @@ function initQuoteForm(form: HTMLFormElement): void {
   }
 
   /**
-   * Sets the panel's `data-estimate-state` (which the stylesheet keys its loading and error looks
-   * on) and shows only the text that state needs: the hint before anything can be priced, the
-   * error message after a failure. `aria-busy` holds the live region's announcement while a
-   * request is in flight, so a burst of edits is announced once, with its final result.
+   * `aria-busy` holds the live region's announcement while loading, so a burst of edits is
+   * announced once, with its final result.
    */
   function setEstimateState(state: EstimateState): void {
     if (!estimateRegion) return;
@@ -143,10 +137,7 @@ function initQuoteForm(form: HTMLFormElement): void {
 
   const fetchEstimate = createEstimateFetcher(config.estimateUrl, showEstimate);
 
-  // debounce()'s callback is declared void-returning; the promise fetchEstimate() produces is
-  // caught right here; nothing above is dropped. postJson() turns every network or HTTP failure
-  // into a result instead of rejecting, so the catch only guards the panel against staying in its
-  // loading state forever.
+  // postJson() never rejects, so this catch only keeps the panel from staying in its loading state.
   const runEstimate = debounce(() => {
     const request = estimateRequest(readValues(form));
     if (!request) return;
@@ -156,9 +147,7 @@ function initQuoteForm(form: HTMLFormElement): void {
     });
   }, ESTIMATE_DEBOUNCE_MS);
 
-  // The name, phone, and email fields never affect price: filtering them out here (rather than
-  // in fetchEstimate itself) means a keystroke in any of them never even debounces a call that
-  // would just return early, let alone spend a request against the estimate rate limit.
+  // Filtered before debouncing, so a keystroke in name, phone, or email never schedules a call.
   function onFieldEvent(event: Event): void {
     const target = event.target;
     const fieldName = target instanceof HTMLElement ? target.getAttribute('name') : null;
@@ -169,13 +158,11 @@ function initQuoteForm(form: HTMLFormElement): void {
   form.addEventListener('input', onFieldEvent);
   form.addEventListener('change', onFieldEvent);
 
-  /** Moves to the next step once the current one's required fields are filled in. */
   function goNext(): void {
     const missing = missingRequired(currentStep as 0 | 1 | 2, readValues(form));
     const firstMissing = missing[0];
     if (firstMissing !== undefined) {
-      // <fieldset> never participates in constraint validation (its own reportValidity() is a
-      // no-op); the control itself is what can show the browser's native validation message.
+      // A <fieldset>'s reportValidity() is a no-op; only the control shows the native message.
       const control = form.elements.namedItem(firstMissing);
       if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
         control.reportValidity();
@@ -195,8 +182,7 @@ function initQuoteForm(form: HTMLFormElement): void {
     });
   });
 
-  // Pressing Enter in a field submits the form implicitly, whichever step is showing. Before the
-  // last step that means "Next", never a premature submission of fields the visitor hasn't seen.
+  // Enter submits implicitly; before the last step it means "Next", not a premature submit.
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     if (currentStep < TOTAL_STEPS - 1) {
@@ -275,7 +261,7 @@ function initQuoteForm(form: HTMLFormElement): void {
     submitButton.textContent = submitLabel;
   }
 
-  /** Focuses the first control the server flagged in `step`, or that step's legend when none of its own controls carries an error (e.g. an `extras` error, which has no single control). */
+  /** Falls back to the step's legend when no single control carries the error (e.g. `extras`). */
   function focusFirstInvalid(step: number): void {
     const fieldset = fieldsets[step];
     const invalid = fieldset?.querySelector<HTMLElement>('[aria-invalid="true"]');
@@ -284,10 +270,8 @@ function initQuoteForm(form: HTMLFormElement): void {
   }
 
   /**
-   * The inline confirmation, for a form whose thank-you page doesn't exist: hides everything else
-   * the form holds (steps, progress, estimate, errors), reveals the success message with the lead's
-   * reference when the response carried one, and moves focus onto it so a screen reader reads it
-   * and keyboard focus isn't stranded on the now-hidden submit button.
+   * For a missing thank-you page. Moves focus onto the message, so a screen reader reads it and
+   * focus isn't stranded on the hidden submit button.
    */
   function showSuccess(reference: string | null): void {
     if (!successRegion) return;

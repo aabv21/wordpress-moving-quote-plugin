@@ -1,17 +1,12 @@
 const HEX = Array.from({ length: 256 }, (_, n) => n.toString(16).padStart(2, '0'));
 
-/**
- * 16 random bytes from the Web Crypto API. The cast only satisfies the DOM typing, which accepts a
- * view over a non-shared `ArrayBuffer`; a plain `new Uint8Array(16)` is one.
- */
+/** The cast only satisfies the DOM typing; a plain `new Uint8Array(16)` is non-shared. */
 function randomBytes(bytes: Uint8Array): Uint8Array {
   return crypto.getRandomValues(bytes as Uint8Array<ArrayBuffer>);
 }
 
 /**
- * A UUID v4, lowercased. `fill` supplies the 16 random-ish bytes (defaulting to
- * `crypto.getRandomValues`, which works outside secure contexts too, unlike `crypto.randomUUID`)
- * and only the version and variant bits are then forced to the UUID v4 pattern.
+ * `crypto.getRandomValues` works outside secure contexts, unlike `crypto.randomUUID`.
  */
 export function uuidV4(fill: (bytes: Uint8Array) => Uint8Array = randomBytes): string {
   const bytes = fill(new Uint8Array(16));

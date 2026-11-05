@@ -4,14 +4,10 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Security;
 
 /**
- * A fixed-window rate limiter keyed by client IP, stored in transients under a hashed key so the
- * IP itself never appears in the database.
+ * Fixed-window limits in transients under a hashed key, so no IP reaches the database.
  *
- * Without a persistent object cache, a transient is just a row in `wp_options`: a concurrent
- * burst of requests can all read the same stale count before any of them writes the incremented
- * value back, undercounting the hits. `hit()` closes that window with a MySQL named lock on the
- * same hashed bucket key, so only one request at a time runs the read-check-write sequence for a
- * given bucket.
+ * Without an object cache a transient is a `wp_options` row, so a concurrent burst could all read
+ * the same stale count. `hit()` holds a MySQL named lock on the bucket key for its read-check-write.
  */
 final class RateLimiter {
 	private const TRANSIENT_PREFIX            = 'moving_quote_rl_';
@@ -22,13 +18,10 @@ final class RateLimiter {
 	public const RATE_LIMITED_COUNT_WINDOW    = DAY_IN_SECONDS;
 
 	/**
-	 * Counts one hit against `$bucket` for the current client. Returns 0 when the request is
-	 * allowed (and counted), otherwise the number of seconds until the window resets (and the hit
-	 * is not counted again).
+	 * Returns 0 when allowed (and counted), otherwise the seconds until the window resets.
 	 *
-	 * Fails closed: if the named lock can't be acquired within the timeout — another request is
-	 * already updating this exact bucket, or the lock call itself errors — this answers as if the
-	 * limit were hit, with a short wait, rather than risk an uncounted hit slipping through.
+	 * Fails closed: if the lock times out or errors, answers as rate-limited with a short wait
+	 * rather than let an uncounted hit through.
 	 */
 	public function hit( string $bucket, int $limit, int $window_seconds ): int {
 		$key = $this->transient_key( $bucket );
@@ -75,7 +68,6 @@ final class RateLimiter {
 		return 0;
 	}
 
-	/** True once `GET_LOCK()` reports success (`1`); false on a timeout (`0`) or an error (`NULL`). */
 	private static function acquire_lock( string $key ): bool {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a session-scoped advisory lock, not a data query; no caching wrapper applies.
@@ -93,25 +85,14 @@ final class RateLimiter {
 	}
 
 	/**
-	 * Counts one `submit` request that was rejected for being rate-limited. Holds only a count and
-	 * a reset time in a single transient (`RATE_LIMITED_COUNT_TRANSIENT`) — never an IP address or
-	 * any other per-visitor data — so `StuckDeliveryNotice` can tell the site owner how many
-	 * submissions were rate-limited without identifying any of them.
+	 * Counts one rate-limited `submit` for `StuckDeliveryNotice`: a count and a reset time only,
+	 * never an IP or other per-visitor data.
 	 *
-	 * The window is fixed, not rolling: it starts at the first 429 after the transient expired or
-	 * was empty, and runs for a flat `RATE_LIMITED_COUNT_WINDOW` (24 h) from that moment, during
-	 * which every further 429 only increments `count` without moving `reset`. A burst at hour 23
-	 * of one window and another at hour 1 of the next are both counted, but never summed into one
-	 * "last 24 hours" figure the way a true rolling window would.
+	 * The 24 h window is fixed, not rolling: it starts at the first 429 and later 429s never move
+	 * `reset`, so bursts in two consecutive windows are never summed.
 	 *
-	 * This read-modify-write is guarded by the same MySQL named lock `hit()` uses, keyed on this
-	 * counter's own transient name, for the same reason: without it, a concurrent burst of 429s
-	 * can all read the same stale count before any of them writes the incremented value back,
-	 * undercounting how many submissions were actually rate-limited. Fails closed like `hit()`:
-	 * if the lock can't be acquired, this one 429 simply isn't counted, rather than risk a lost
-	 * update silently dropping it from the next read instead. A missed count here only understates
-	 * a dashboard notice, never the rate limit itself — `hit()`'s own lock is what keeps the limit
-	 * correct.
+	 * Guarded by the same named lock as `hit()`. If the lock fails, this 429 goes uncounted: that
+	 * only understates the notice, never the limit itself.
 	 */
 	public static function record_rate_limited_submission(): void {
 		if ( ! self::acquire_lock( self::RATE_LIMITED_COUNT_TRANSIENT ) ) {
@@ -147,7 +128,7 @@ final class RateLimiter {
 		}
 	}
 
-	/** How many `submit` requests were rejected as rate-limited in the current fixed 24-hour window (see `record_rate_limited_submission()`). */
+	/** In the current fixed window; see `record_rate_limited_submission()`. */
 	public static function rate_limited_submission_count(): int {
 		$data = get_transient( self::RATE_LIMITED_COUNT_TRANSIENT );
 		if ( ! is_array( $data ) || ! isset( $data['count'] ) || ! is_int( $data['count'] ) ) {
@@ -156,7 +137,7 @@ final class RateLimiter {
 		return $data['count'];
 	}
 
-	/** The current request's client IP, filterable for use behind a trusted proxy. */
+	/** Filterable through `moving_quote_client_ip` for a site behind a trusted proxy. */
 	public function client_ip(): string {
 		$remote_addr = $_SERVER['REMOTE_ADDR'] ?? null;
 		$ip          = is_string( $remote_addr ) ? sanitize_text_field( wp_unslash( $remote_addr ) ) : '';
@@ -171,29 +152,22 @@ final class RateLimiter {
 	}
 
 	/**
-	 * Normalizes `$ip` for rate-limit bucketing: an IPv4 address (including an IPv4-mapped IPv6
-	 * address, `::ffff:a.b.c.d`) is returned unchanged; any other IPv6 address has its last 64
-	 * bits zeroed, so every address inside the same /64 shares one bucket instead of each one
-	 * minting its own fresh budget — a single visitor's ISP-assigned prefix commonly spans a /64,
-	 * handing out a fresh address (and so a fresh, unlimited budget) on every request otherwise.
-	 * A value that doesn't parse as either (e.g. already empty, or a hostname some future caller
-	 * passed in) is returned unchanged, same as today.
+	 * Zeroes the last 64 bits of an IPv6 address, so one visitor's /64 (commonly one ISP
+	 * assignment) shares a bucket instead of minting a fresh budget per address. IPv4, IPv4-mapped
+	 * IPv6, and anything unparseable are returned unchanged.
 	 */
 	public static function normalize_ip( string $ip ): string {
 		$binary = inet_pton( $ip );
 		if ( false === $binary || 16 !== strlen( $binary ) ) {
-			// Not a parseable IPv6 address (includes every IPv4 address, which inet_pton() packs
-			// into 4 bytes, not 16): nothing to collapse.
+			// IPv4 packs into 4 bytes, not 16.
 			return $ip;
 		}
 
 		if ( false !== filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
-			return $ip; // unreachable in practice (inet_pton() already returned 4 bytes above for IPv4), kept as a defensive no-op.
+			return $ip; // Unreachable (IPv4 returned above); a defensive no-op.
 		}
 
-		// An IPv4-mapped IPv6 address (::ffff:a.b.c.d) carries a real IPv4 client behind it; collapsing
-		// its last 64 bits would be meaningless (the mapped address has no /64 of its own), so it's
-		// left exactly as given, same as a plain IPv4 address.
+		// ::ffff:a.b.c.d is an IPv4 client with no /64 of its own.
 		if ( str_starts_with( $binary, "\0\0\0\0\0\0\0\0\0\0\xff\xff" ) ) {
 			return $ip;
 		}

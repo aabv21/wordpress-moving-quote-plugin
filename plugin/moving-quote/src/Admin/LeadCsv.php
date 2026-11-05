@@ -5,16 +5,13 @@ namespace Chivabox\MovingQuote\Admin;
 
 use Chivabox\MovingQuote\Leads\LeadRecord;
 
-/** Builds the CSV export's header and rows from a lead record. */
 final class LeadCsv {
 	/** @var list<string> */
 	public const HEADER = [ 'received_at', 'reference', 'status', 'name', 'phone', 'email', 'move_date', 'move_type', 'rooms', 'origin', 'destination', 'distance_km', 'extras', 'estimate_cop', 'estimate_low_cop', 'estimate_high_cop', 'sync_status', 'locale' ];
 
 	/**
-	 * One CSV row for `$lead`. `received_at` is `created_at` (stored UTC) converted to `$tz` and
-	 * formatted `Y-m-d H:i`. Every other field keeps its raw stored value — `move_type` and the
-	 * comma-joined `extras` are the raw keys, not their display labels — so the export matches
-	 * exactly what the database holds. Every cell passes through `CsvEscaper`.
+	 * `received_at` is `created_at` (UTC) in `$tz`. Every other field is the raw stored value, not
+	 * its label, so the export matches the database whatever the admin's language.
 	 *
 	 * @return list<string>
 	 */

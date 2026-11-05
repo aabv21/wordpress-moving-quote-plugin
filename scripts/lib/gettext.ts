@@ -1,23 +1,20 @@
-/** One message from a `.po` or `.pot` file. The header (empty `msgid`, no context) is never one of these. */
+/** The header (empty `msgid`, no context) is never one of these. */
 export interface PoEntry {
   msgctxt: string | null;
   msgid: string;
   msgidPlural: string | null;
   /** `msgstr`, or `msgstr[0]`, `msgstr[1]`, … for a plural entry, in index order. */
   msgstr: string[];
-  /** The `#,` flags, e.g. `fuzzy`, `php-format`. */
   flags: string[];
 }
 
 export interface PoFile {
-  /** The header entry's `Name: value` lines. */
   headers: Record<string, string>;
-  /** Whether the header entry itself is flagged fuzzy (some tools mark a whole new catalog that way). */
+  /** Some tools mark a whole new catalog fuzzy this way. */
   headerFuzzy: boolean;
   entries: PoEntry[];
 }
 
-/** Undoes a `.po` string literal's C-style escapes. */
 function unescape(literal: string): string {
   return literal.replace(/\\(.)/g, (_match, char: string) => {
     switch (char) {
@@ -33,7 +30,6 @@ function unescape(literal: string): string {
   });
 }
 
-/** The quoted literal on a keyword or continuation line, unescaped. */
 function quoted(line: string): string {
   const match = /"(.*)"\s*$/.exec(line);
   if (!match) throw new Error(`not a quoted .po line: ${line}`);
@@ -54,10 +50,8 @@ function emptyDraft(): Draft {
 }
 
 /**
- * Parses a `.po` or `.pot` file: the header into `headers`, every other entry into `entries`.
- * Obsolete (`#~`) entries are dropped, the way gettext's own tools ignore them. Supports only what
- * WP-CLI and a hand-written catalog produce: `msgctxt`, `msgid`, `msgid_plural`, `msgstr` and
- * `msgstr[n]`, each optionally continued over several quoted lines.
+ * Drops obsolete (`#~`) entries, as gettext does. Supports only what WP-CLI and a hand-written
+ * catalog produce: `msgctxt`, `msgid`, `msgid_plural`, `msgstr`, `msgstr[n]`, with continuations.
  */
 export function parsePo(text: string): PoFile {
   const drafts: Draft[] = [];
@@ -146,15 +140,14 @@ export function parsePo(text: string): PoFile {
   return { headers, headerFuzzy: headerDraft?.flags.includes('fuzzy') ?? false, entries };
 }
 
-/** An entry's identity within a catalog: gettext treats the same `msgid` under two contexts as two messages. */
+/** Gettext treats one `msgid` under two contexts as two messages. */
 export function entryKey(entry: Pick<PoEntry, 'msgctxt' | 'msgid'>): string {
   return entry.msgctxt === null ? entry.msgid : `${entry.msgctxt}\u0004${entry.msgid}`;
 }
 
 /**
- * The printf placeholders in `text`, normalized so a translation may reorder them: each becomes
- * `<position>$<type>`, with an unnumbered one taking the next position in order, and the list is
- * sorted. `%%` (a literal percent sign) is not a placeholder.
+ * Normalized to sorted `<position>$<type>` entries, so a translation may reorder them. An
+ * unnumbered one takes the next position.
  */
 export function placeholders(text: string): string[] {
   const found: string[] = [];
@@ -176,10 +169,7 @@ export function placeholders(text: string): string[] {
   return found.sort();
 }
 
-/**
- * `pot` without its `POT-Creation-Date` header line, which `wp i18n make-pot` stamps with the
- * current time on every run. Everything else it writes is stable for the same sources.
- */
+/** make-pot stamps `POT-Creation-Date` with the current time; everything else is stable. */
 export function withoutCreationDate(pot: string): string {
   return pot
     .split('\n')

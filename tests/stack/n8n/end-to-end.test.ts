@@ -5,9 +5,7 @@ import { waitForWebhookAuthProtected } from '../../../scripts/lib/health.ts';
 import { createPendingRowParker, deleteCreatedLeads, validLead } from '../lib/leads.ts';
 import { googleCredentialsConfigured, required, resetRateLimits, rest, restNonce, sqlApp, sqlWp, table, wp } from '../lib/stack.ts';
 
-// Every case here submits a real lead through the whole chain, which process-lead picks up
-// fire-and-forget. Once the owner wires in a real Google credential, that would append a test
-// lead to the real sheet and email the real team — so this whole file skips instead.
+// Every case reaches process-lead, so the file skips once real Google credentials exist.
 const skipForLiveGoogle = await googleCredentialsConfigured();
 if (skipForLiveGoogle) {
   console.log('skipping end-to-end delivery tests: a Google credential is configured in n8n (would reach the real sheet and inbox)');
@@ -32,7 +30,6 @@ async function rowByUuid(requestUuid: string): Promise<LeadRow> {
   return row as unknown as LeadRow;
 }
 
-/** Forces a lead row due, bypassing whatever lease or backoff it currently holds. */
 async function forceDue(requestUuid: string): Promise<void> {
   await sqlWp(`UPDATE ${await table()} SET next_attempt_at = 0 WHERE request_uuid = '${requestUuid}'`);
 }
@@ -43,7 +40,7 @@ async function runOutboxCron(): Promise<void> {
 
 const { parkPendingRows, restoreParkedRows } = createPendingRowParker();
 
-/** Every `request_uuid` this file's cases have delivered through the real n8n instance, so `afterAll` can delete each one's `processed_events` row by `event_id` — a real delivery, not WordPress's own table, which `deleteCreatedLeads()` already sweeps. */
+/** For deleting each one's `processed_events` row in `afterAll`. */
 const deliveredRequestUuids = new Set<string>();
 
 async function deleteProcessedEvents(): Promise<void> {
@@ -58,8 +55,7 @@ describe.skipIf(skipForLiveGoogle)('end-to-end delivery through the real n8n ins
 
   beforeAll(async () => {
     nonce = await restNonce();
-    // A row left pending by an earlier suite (or an earlier case here) must never become due and
-    // reach n8n while this file asserts something exact about its own lead's attempts/status.
+    // No other pending row may reach n8n while this file asserts exact attempts.
     await parkPendingRows();
   });
 
@@ -106,12 +102,9 @@ describe.skipIf(skipForLiveGoogle)('end-to-end delivery through the real n8n ins
         expect(afterStop.attempts).toBe('1');
         expect(afterStop.last_error).toMatch(/cURL error (6|7)/);
       } finally {
-        // Restore first, unconditionally, so a failure above never leaves n8n stopped for the
-        // rest of the suite; the liveness assertion itself runs after this block, not inside it,
-        // so it can never mask whatever the try block itself already failed on.
+        // Restore unconditionally; the liveness assertion runs after, so it can't mask a failure above.
         await execFileAsync('docker', ['compose', 'start', 'n8n']);
-        // The route only answers (401, unauthenticated) once n8n is actually healthy and the
-        // trigger is registered again; polling this is cheaper and more exact than a fixed sleep.
+        // 401 means healthy with the trigger registered: more exact than a fixed sleep.
         live = await waitForWebhookAuthProtected(required('N8N_URL'), 'moving-quote/leads', 90_000);
       }
       expect(live).toBe(true);
@@ -137,8 +130,7 @@ describe.skipIf(skipForLiveGoogle)('end-to-end delivery through the real n8n ins
     const wrongSecret = 'f'.repeat(64);
 
     try {
-      // Piped through STDIN, never as an argument: the same pattern setup.sh itself uses for this
-      // option, so the secret never touches the command line or this test's own output.
+      // Over STDIN, like setup.sh, so the secret never reaches a command line or output.
       await wp(['option', 'patch', 'update', OPTION_NAME, 'webhook_secret'], wrongSecret);
 
       const lead = validLead();

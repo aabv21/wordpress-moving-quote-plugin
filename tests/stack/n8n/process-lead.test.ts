@@ -5,9 +5,7 @@ import { signHs256 } from '../lib/jwt.ts';
 import { findExecutionIdFor, summarizeProcessLeadExecution, waitForTerminalStatus } from '../lib/execution-data.ts';
 import { googleCredentialsConfigured, required, sqlApp } from '../lib/stack.ts';
 
-// Decoding a real process-lead execution means sending a real lead through the whole chain, which
-// would reach the owner's real Google account once it's wired in — appending a test row to the
-// real sheet and emailing the real team. Skip instead of risking that.
+// Every case reaches process-lead, so the file skips once real Google credentials exist.
 const skipForLiveGoogle = await googleCredentialsConfigured();
 if (skipForLiveGoogle) {
   console.log('skipping process-lead decode check: a Google credential is configured in n8n (would reach the real sheet and inbox)');
@@ -50,10 +48,7 @@ describe.skipIf(skipForLiveGoogle)('process-lead reaches Google Sheets, read-onl
     createdEventIds.clear();
   });
 
-  // Without real Google credentials, "Append lead row" fails every time, so this proves the chain
-  // actually reached Sheets (and failed on the missing credential, not somewhere upstream) instead
-  // of only proving the execution exists. Once the owner wires Google in, this file skips instead
-  // of writing a test row into the real sheet.
+  // Failing on the missing credential proves the chain reached Sheets, not just that it ran.
   it('decodes the latest process-lead execution: Map lead ran with the right shapes, and the chain failed at Append lead row', async () => {
     const { text, requestUuid } = buildBody();
     createdEventIds.add(requestUuid);
@@ -88,8 +83,7 @@ describe.skipIf(skipForLiveGoogle)('process-lead reaches Google Sheets, read-onl
     expect(summary.appendLeadRowErrorMessage).toMatch(/cvbCredGSheets01/);
   });
 
-  // The Code-node sandbox's own Intl and Luxon must carry Spanish locale data for the customer
-  // email to group COP amounts and spell the date the Colombian way; a unit test can't prove that.
+  // Only the real sandbox can prove its Intl and Luxon carry Spanish locale data.
   it("writes a Spanish lead's customer email in Spanish inside n8n's own sandbox", async () => {
     const { text, requestUuid } = buildBody({ locale: 'es_CO' });
     createdEventIds.add(requestUuid);
@@ -102,8 +96,7 @@ describe.skipIf(skipForLiveGoogle)('process-lead reaches Google Sheets, read-onl
     expect(output?.customerSubject).toBe('Su cotización de mudanza de Chivabox Movers');
     expect(output?.customerHtml).toContain('COP 1.197.000 – 1.463.000');
     expect(output?.customerHtml).toContain('viernes 20 de noviembre de 2026');
-    // The team email follows config.json's team_locale (en in CI, which copies config.example.json
-    // in place), never the lead's own language; tests/nodes/map-lead.test.ts pins each language.
+    // team_locale is en in CI (config.example.json), whatever the lead's language.
     expect(output?.teamSubject).toMatch(/^(New lead|Nueva solicitud) MQ-/);
   });
 });

@@ -6,9 +6,7 @@ namespace Chivabox\MovingQuote\Settings;
 use Chivabox\MovingQuote\Leads\LeadValidator;
 
 /**
- * Validates and normalizes the settings form's posted strings into the typed settings shape,
- * without calling any WordPress function. A field that fails validation keeps its value from the
- * current settings, and every failure is reported with a stable error code.
+ * Pure. A field that fails validation keeps its current value and reports a stable error code.
  *
  * @phpstan-import-type SettingsShape from Defaults
  * @phpstan-import-type RouteSetting from Defaults
@@ -173,7 +171,7 @@ final class SettingsSanitizer {
 		return [ $amount, null ];
 	}
 
-	/** Strips Colombian-style thousands separators (`.`, `,`, space) from a matching amount string, or returns null when it doesn't match. */
+	/** Strips Colombian-style thousands separators (`.`, `,`, space); null when the shape doesn't match. */
 	private static function amount_digits( mixed $input ): ?string {
 		if ( ! is_string( $input ) && ! is_int( $input ) ) {
 			return null;
@@ -284,7 +282,6 @@ final class SettingsSanitizer {
 		return [ $rows, $errors ];
 	}
 
-	/** A case-insensitive, direction-independent key identifying a city pair. */
 	private static function pair_key( string $from, string $to ): string {
 		$names = [ mb_strtolower( $from ), mb_strtolower( $to ) ];
 		sort( $names );
@@ -321,10 +318,8 @@ final class SettingsSanitizer {
 	}
 
 	/**
-	 * Beyond `FILTER_VALIDATE_EMAIL`, also requires the same simple-address shape
-	 * `Leads\LeadValidator::is_simple_email()` enforces on a submitted lead's own email — no
-	 * forbidden character anywhere in the value — so a saved team address always passes n8n's
-	 * `isSimpleEmail()` too, instead of silently failing delivery once a lead actually sends.
+	 * Uses `LeadValidator::is_simple_email()`, so a saved team address never fails n8n's
+	 * `isSimpleEmail()` later and silently blocks delivery.
 	 *
 	 * @return array{string, string|null}
 	 */

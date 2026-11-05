@@ -16,16 +16,11 @@ interface QuoteFormConfig {
   strings: Record<string, string>;
 }
 
-/** Reverses the HTML entities `esc_attr()` encodes an attribute value with. */
 function decodeHtmlEntities(text: string): string {
   return text.replaceAll('&quot;', '"').replaceAll('&#039;', "'").replaceAll('&amp;', '&').replaceAll('&lt;', '<').replaceAll('&gt;', '>');
 }
 
-/**
- * Decodes the `data-config` attribute (`esc_attr( wp_json_encode( … ) )`) and parses it as JSON.
- * This repo has no HTML parser dependency, so the attribute itself is pulled out of the raw
- * markup by regex.
- */
+/** By regex: this repo has no HTML parser dependency. */
 function readConfig(html: string): QuoteFormConfig {
   const match = /data-config="([^"]*)"/.exec(html);
   if (!match?.[1]) throw new Error('data-config attribute not found');
@@ -37,7 +32,7 @@ const SELECT_PATTERNS = {
   destination: /<select[^>]*\bname="destination"[^>]*>([\s\S]*?)<\/select>/,
 } as const;
 
-/** Every value attribute of a select's non-placeholder `<option>`s (the ones with a non-empty `value`). */
+/** Skips the empty-value placeholder. */
 function selectOptionValues(html: string, selectName: keyof typeof SELECT_PATTERNS): string[] {
   const select = SELECT_PATTERNS[selectName].exec(html)?.[1];
   if (select === undefined) throw new Error(`select[name=${selectName}] not found`);
@@ -53,10 +48,7 @@ describe('the quote page', () => {
   let adminCookies: string;
   let restoreDelivery: () => Promise<void>;
 
-  // Registered first, so its afterAll (below) is the last one to run (afterAll hooks run in
-  // reverse registration order): every other restore in this file must settle before this one
-  // puts the real webhook_url back, including the city-name test's own settings restore, whose
-  // captured "before" snapshot holds the '' this sets.
+  // Registered first so its afterAll runs last, after the city-name test restores a snapshot holding ''.
   beforeAll(async () => {
     restoreDelivery = await disableDelivery();
   });
@@ -73,8 +65,7 @@ describe('the quote page', () => {
   });
 
   afterAll(async () => {
-    // Every lead this suite inserts is a real delivery attempt once delivery is configured, and
-    // cron keeps retrying a pending one for hours; none of them must outlive this file.
+    // Cron would retry a leftover pending lead for hours.
     await deleteCreatedLeads();
   });
 
@@ -166,9 +157,7 @@ describe('the quote page', () => {
       const res = await fetch(site(QUOTE_PAGE_PATH));
       const html = await res.text();
 
-      // Both selects are still independently found with one extra city each: nothing from the
-      // tricky city name broke out of its attribute and corrupted the surrounding markup (merging
-      // selects, injecting a real <b> tag, or truncating the list).
+      // Nothing from the tricky name broke out of its attribute.
       const originOptions = selectOptionValues(html, 'origin');
       const destinationOptions = selectOptionValues(html, 'destination');
       expect(originOptions).toHaveLength(8);
@@ -182,11 +171,7 @@ describe('the quote page', () => {
   });
 });
 
-/**
- * Renders `[moving_quote_reference]` the way the thank-you page does, with `value` as the
- * `reference` query argument. The value travels base64-encoded, so no quote or angle bracket in it
- * can change the PHP that sets it.
- */
+/** Base64-encoded, so no quote or bracket in `value` can change the PHP that sets it. */
 function renderReference(value: string): Promise<string> {
   const encoded = Buffer.from(value, 'utf8').toString('base64');
   return wp(['eval', `$_GET['reference'] = base64_decode( '${encoded}' ); echo do_shortcode( '[moving_quote_reference]' );`]);

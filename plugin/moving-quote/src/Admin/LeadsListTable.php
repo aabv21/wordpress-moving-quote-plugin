@@ -10,9 +10,7 @@ use DateTimeZone;
 use WP_List_Table;
 
 /**
- * Renders the leads table: columns, status views with live counts, and paging. The caller
- * (`LeadsPage`) already required `wp-admin/includes/class-wp-list-table.php` before this class is
- * used, since that file isn't autoloaded by WordPress core.
+ * `LeadsPage` requires `wp-admin/includes/class-wp-list-table.php` first: core doesn't autoload it.
  */
 final class LeadsListTable extends WP_List_Table {
 	public const PER_PAGE = 20;
@@ -30,7 +28,7 @@ final class LeadsListTable extends WP_List_Table {
 		$this->repository = new LeadRepository();
 	}
 
-	/** The `status` query arg, or null for "All" (also null for a value `LeadStatus` doesn't recognize). */
+	/** Null for "All", and for a value `LeadStatus` doesn't recognize. */
 	public static function current_status(): ?LeadStatus {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a read-only filter, not a state change; no nonce to check.
 		$value = $_GET['status'] ?? null;
@@ -46,7 +44,6 @@ final class LeadsListTable extends WP_List_Table {
 		}
 	}
 
-	/** The current 1-based page number from the `paged` query arg, at least 1. */
 	public static function current_page(): int {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a read-only filter, not a state change; no nonce to check.
 		$value = $_GET['paged'] ?? null;
@@ -69,10 +66,7 @@ final class LeadsListTable extends WP_List_Table {
 	}
 
 	/**
-	 * The status views ("All", "New", "Contacted", …), each with its own live count and a link
-	 * that keeps the view on page 1. Keyed `'all'` for the unfiltered view, by `LeadStatus::value`
-	 * for the rest — `null` would collapse to `''` as an array key, so the unfiltered case is kept
-	 * as its own explicit entry instead of sharing the loop below.
+	 * Keyed `'all'` for the unfiltered view, since a `null` key would collapse to `''`.
 	 *
 	 * @return array<string, string>
 	 */
@@ -119,8 +113,7 @@ final class LeadsListTable extends WP_List_Table {
 	}
 
 	/**
-	 * Every real column has its own `column_$name` method, dispatched by `single_row_columns()`
-	 * below; this only runs for a column this table never declares.
+	 * Runs only for an undeclared column; real ones dispatch through `single_row_columns()`.
 	 *
 	 * @param object|array<string, mixed> $item
 	 */
@@ -181,7 +174,6 @@ final class LeadsListTable extends WP_List_Table {
 		return esc_html( Messages::display( new \Chivabox\MovingQuote\Pricing\Estimate( $lead->estimate_cop, $lead->estimate_low_cop, $lead->estimate_high_cop, $lead->distance_km ) ) );
 	}
 
-	/** The status column: a per-row form with a select and an "Update" button, submitting straight to `admin-post.php`, plus a "Delete" link below it. */
 	private function column_status( LeadRecord $lead ): string {
 		$options = '';
 		foreach ( LeadStatus::cases() as $case ) {
@@ -232,7 +224,6 @@ final class LeadsListTable extends WP_List_Table {
 		);
 	}
 
-	/** The delivery column: the sync label, attempts, `last_error` visible as small text (also kept in a `title`), and a "Retry delivery" link on `failed` rows. */
 	private function column_delivery( LeadRecord $lead ): string {
 		$label = sprintf(
 			/* translators: 1: delivery status label (Pending, Sent, or Failed), 2: attempt count */
@@ -265,13 +256,9 @@ final class LeadsListTable extends WP_List_Table {
 	}
 
 	/**
-	 * Dispatches to this table's own `column_$name` methods, which WP_List_Table's generic
-	 * dispatch can't call directly: they're typed to take a `LeadRecord`, not the `object|array`
-	 * the base class declares. Each cell keeps the markup core's own dispatch gives it: a
-	 * `data-colname` label, and for the primary column (core's default, the first one: Received) a
-	 * `<th scope="row">` row header with the `column-primary` class and the "Show more details"
-	 * toggle. Core's narrow-screen stylesheet keys on exactly that markup, so the list collapses into
-	 * one line per lead that expands into labelled rows, instead of a stack of unlabelled values.
+	 * Core's dispatch can't call the `column_$name` methods, which take a `LeadRecord`. Each cell
+	 * keeps core's markup (`data-colname`; a `<th scope="row">` with the toggle for the primary
+	 * column), which core's narrow-screen stylesheet needs to collapse rows into labelled lines.
 	 *
 	 * @param object|array<string, mixed> $item
 	 */
@@ -291,9 +278,8 @@ final class LeadsListTable extends WP_List_Table {
 				// Core's own toggle button: the same markup and text WP_List_Table gives every primary column.
 				$value .= $this->handle_row_actions( $item, $column_name, $primary );
 			}
-			// Each column_$name() method above already escapes every dynamic value it includes
-			// (esc_html/esc_attr/esc_url); wp_kses_post() would strip the column's own <form>,
-			// <select>, and hidden <input> markup, which aren't in its allowed post-content tag list.
+			// Each column_$name() method escapes its own values; wp_kses_post() would strip the
+			// status column's <form>, <select>, and <input> tags.
 			printf(
 				'<%1$s class="%2$s" data-colname="%3$s">%4$s</%5$s>',
 				$is_primary ? 'th scope="row"' : 'td',
@@ -305,7 +291,7 @@ final class LeadsListTable extends WP_List_Table {
 		}
 	}
 
-	/** The display label for a stored move type, or the raw value for one this plugin version doesn't know. */
+	/** The raw value for a move type this plugin version doesn't know. */
 	public static function move_type_label( string $move_type ): string {
 		$labels = [
 			'apartment' => __( 'Apartment', 'moving-quote' ),
@@ -315,7 +301,7 @@ final class LeadsListTable extends WP_List_Table {
 		return $labels[ $move_type ] ?? $move_type;
 	}
 
-	/** The display label for a stored extra, or the raw value for one this plugin version doesn't know. */
+	/** The raw value for an extra this plugin version doesn't know. */
 	public static function extra_label( string $extra ): string {
 		$labels = [
 			'packing'            => __( 'Packing', 'moving-quote' ),
@@ -326,7 +312,7 @@ final class LeadsListTable extends WP_List_Table {
 		return $labels[ $extra ] ?? $extra;
 	}
 
-	/** A lead's lifecycle status label. Context-tagged: "New" or "Won" agree in gender with "lead" in some languages. */
+	/** Context-tagged: "New" or "Won" agree in gender with "lead" in some languages. */
 	public static function status_label( LeadStatus $status ): string {
 		$labels = [
 			LeadStatus::New->value       => _x( 'New', 'lead status', 'moving-quote' ),
@@ -338,7 +324,7 @@ final class LeadsListTable extends WP_List_Table {
 		return $labels[ $status->value ];
 	}
 
-	/** A lead's delivery status label. Context-tagged: "Sent" or "Failed" alone don't say what was sent. */
+	/** Context-tagged: "Sent" or "Failed" alone don't say what was sent. */
 	public static function sync_label( SyncStatus $status ): string {
 		$labels = [
 			SyncStatus::Pending->value => _x( 'Pending', 'delivery status', 'moving-quote' ),

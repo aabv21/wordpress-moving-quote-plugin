@@ -11,9 +11,7 @@ const LEAD_INTAKE_WORKFLOW_ID = 'cvbLeadIntake001';
 
 const execFileAsync = promisify(execFile);
 
-// A case whose post gets `accepted` hands the lead to `process-lead` fire-and-forget. Once Google
-// is wired in, that would append a test row to the real sheet and email the real team on every
-// run of this file — so those specific cases skip instead, the same way end-to-end.test.ts does.
+// An `accepted` case reaches process-lead, so those cases skip once real Google credentials exist.
 const skipForLiveGoogle = await googleCredentialsConfigured();
 if (skipForLiveGoogle) {
   console.log('skipping accepted-lead cases in intake.test.ts: a Google credential is configured in n8n (would reach the real sheet and inbox)');
@@ -29,14 +27,14 @@ function sha256Hex(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-/** A fresh, otherwise-valid lead body: its own `request_uuid` (a fresh v4 UUID by default) and the matching `reference`, everything else straight from the fixture. */
+/** The fixture with a fresh `request_uuid` and its matching `reference`. */
 function buildBody(requestUuid: string = randomUUID()): { text: string; requestUuid: string } {
   const reference = `MQ-${requestUuid.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
   const body = { ...FIXTURE, request_uuid: requestUuid, reference };
   return { text: JSON.stringify(body), requestUuid };
 }
 
-/** Signs `bodyText` into the exact claim shape WordPress sends: `jti` = its own `request_uuid` unless overridden, `iat`/`exp` a fresh 300 s window, `body_sha256` bound to `bodyText` unless overridden. */
+/** WordPress's exact claim shape, with optional overrides. */
 function signBody(bodyText: string, requestUuid: string, secret: string, overrides: Record<string, unknown> = {}): string {
   const now = Math.floor(Date.now() / 1000);
   const claims = { jti: requestUuid, iat: now, exp: now + TOKEN_LIFETIME_SECONDS, body_sha256: sha256Hex(bodyText), ...overrides };
@@ -45,7 +43,7 @@ function signBody(bodyText: string, requestUuid: string, secret: string, overrid
 
 interface PostResult {
   status: number;
-  /** Parsed JSON for a response the workflow itself sent; the raw text for the Webhook node's own plain-text 401/403 (no execution ever started). */
+  /** Raw text for the Webhook node's plain-text 401/403, where no execution started. */
   json: unknown;
 }
 
@@ -68,17 +66,15 @@ async function processedCount(requestUuid: string): Promise<number> {
 }
 
 /**
- * IDs of every currently running `n8n-worker` container, discovered through the queue-mode
- * override file directly (so this works whether or not the stack was brought up with it on the
- * command line). Empty when queue mode isn't active — the override declares the service, but
- * `--scale n8n-worker=0` or a regular-mode `up` leaves none running.
+ * Read through the queue-mode override directly, so it works however the stack was started.
+ * Empty outside queue mode.
  */
 async function runningWorkerContainerIds(): Promise<string[]> {
   const { stdout } = await execFileAsync('docker', ['compose', '-f', 'compose.yaml', '-f', 'compose.queue.yaml', 'ps', '-q', 'n8n-worker']);
   return stdout.split('\n').map((line) => line.trim()).filter((line) => line !== '');
 }
 
-/** Whether `/files/config/config.json` currently exists inside the given container's own view of the bind mount (not the host's). `target` is a service name for `docker compose exec`, or a container id for a scaled replica `docker exec` reaches directly. */
+/** In the container's own view of the bind mount. `target` is a service name, or a replica's container id. */
 async function configVisibleInContainer(target: string, byContainerId: boolean): Promise<boolean> {
   try {
     if (byContainerId) await execFileAsync('docker', ['exec', target, 'test', '-e', '/files/config/config.json']);
@@ -90,11 +86,8 @@ async function configVisibleInContainer(target: string, byContainerId: boolean):
 }
 
 /**
- * Polls every container that runs executions — `n8n`, plus every running `n8n-worker` replica —
- * until all of them agree on `expected`, or throws once `deadlineMs` elapses. In queue mode,
- * executions run on the workers, not on `n8n` itself, so the missing-config case would otherwise
- * race: `n8n` could see the renamed file disappear well before a worker's own view catches up,
- * and a lead sent in that gap would still find the file on the worker that picks it up.
+ * Waits for `n8n` and every worker to agree: in queue mode a worker runs the execution, and could
+ * still see the file after `n8n` no longer does.
  */
 async function waitForConfigVisibility(expected: boolean, deadlineMs: number): Promise<void> {
   const deadline = Date.now() + deadlineMs;
@@ -124,11 +117,8 @@ async function readExecutionState(executionId: number): Promise<ExecutionState> 
 }
 
 /**
- * Polls (read-only) until `execution_entity`'s `deletedAt` for this execution is set and backdated
- * past the hard-delete buffer (n8n's 1 h default), proving the run is a successful one n8n has
- * already marked for its next hard-delete purge — or until `deadlineMs` elapses, throwing with the
- * last state seen. Never writes to n8n's own tables: that purge is n8n's own job, run on its own
- * schedule (every 15 min by default), and this file never shortcuts it.
+ * Read-only: waits for `deletedAt` to be backdated past the 1 h hard-delete buffer, proving n8n
+ * marked the run for its next purge. Never writes to n8n's tables.
  */
 async function waitForSoftDelete(executionId: number, deadlineMs: number): Promise<ExecutionState> {
   const deadline = Date.now() + deadlineMs;
@@ -171,15 +161,8 @@ describe('lead intake webhook', () => {
     expect(await processedCount(requestUuid)).toBe(1);
   });
 
-  // NOTE: n8n 2.45.6 stores the raw `Authorization` header verbatim in `execution_data` for every
-  // outcome of this workflow, with no redaction. An accepted/duplicate/401/422-rejected run all
-  // succeed at the workflow level, so `saveDataSuccessExecution: 'none'` applies and
-  // `deleteInFlightExecution()` soft-deletes the row — with pruning on, that only backdates
-  // `deletedAt` by the hard-delete buffer (1 h by default); `status` itself stays `running`. The
-  // token is gone at the next hard-delete cycle (n8n's own pruner, every 15 min by default)
-  // rather than at `EXECUTIONS_DATA_MAX_AGE`. This case asserts exactly that, read-only — never
-  // deleting an n8n row itself, which is n8n's own job on its own schedule — see AGENTS.md for
-  // the full mechanism and what bounds the risk in between.
+  // n8n 2.45.6 stores the token unredacted; a successful run is soft-deleted and purged at the next
+  // hard-delete cycle. See "Token retention, precisely" in docs/architecture.md.
   it.skipIf(skipForLiveGoogle)('a successful run is soft-deleted for the next hard-delete cycle, not kept until EXECUTIONS_DATA_MAX_AGE', async () => {
     const { text, requestUuid } = buildBody();
     createdEventIds.add(requestUuid);
@@ -209,16 +192,12 @@ describe('lead intake webhook', () => {
     expect(await processedCount(requestUuid)).toBe(1);
   });
 
-  // "Read config" (Read/Write Files from Disk) throws its own `No file(s)…` when `fileSelector`
-  // matches nothing, failing the run before "Record request" ever runs — not a timeout or an
-  // empty-output edge case, but that node's documented behavior for a selector with no match.
+  // "Read config" throws `No file(s)…` on no match, failing the run before "Record request".
   it('a missing config.json fails loudly instead of answering an empty 200, and the run is kept for diagnosis', async () => {
     expect(existsSync(CONFIG_PATH)).toBe(true);
     renameSync(CONFIG_PATH, CONFIG_RENAMED_PATH);
     try {
-      // A host-side rename of a bind-mounted file can trail its container-side view under rapid
-      // repeated access to the same path; poll the container's own view instead of assuming a
-      // fixed settle time.
+      // A container's view of a host rename can lag, so poll it instead of a fixed sleep.
       await waitForConfigVisibility(false, CONFIG_WAIT_DEADLINE_MS);
 
       const { text, requestUuid } = buildBody();

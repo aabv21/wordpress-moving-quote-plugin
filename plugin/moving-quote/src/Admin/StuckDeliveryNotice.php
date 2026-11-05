@@ -7,10 +7,8 @@ use Chivabox\MovingQuote\Leads\LeadRepository;
 use Chivabox\MovingQuote\Security\RateLimiter;
 
 /**
- * Warns the site owner when delivery to n8n is stuck: a lead that has already given up (`failed`),
- * or one that's been `pending` long enough that something is probably wrong rather than merely
- * waiting its turn. Shown only on the Dashboard and the Leads page, and only to a `manage_options`
- * user — the one audience who can act on it.
+ * Shown only on the Dashboard and the Leads page, to `manage_options` users: the one audience who
+ * can act on it.
  */
 final class StuckDeliveryNotice {
 	private const STUCK_AFTER_SECONDS = HOUR_IN_SECONDS;

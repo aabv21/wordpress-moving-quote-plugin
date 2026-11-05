@@ -25,12 +25,10 @@ it('narrows the Gmail credential to the send-only scope, never the default Gmail
   const gmailData = byId.get('cvbCredGmail0001') as Record<string, unknown>;
   expect(gmailData['customScopes']).toBe(true);
   expect(gmailData['enabledScopes']).toBe('https://www.googleapis.com/auth/gmail.send');
-  // Never the broader default scopes (gmail.modify, the full mail.google.com access, …)
-  // GmailOAuth2Api.credentials.js falls back to when customScopes is unset.
+  // Never n8n's broader defaults (gmail.modify, full mail.google.com).
   expect(gmailData['enabledScopes']).not.toMatch(/gmail\.modify|mail\.google\.com/);
 
-  // The Sheets credential is unaffected: it's a different Google service with its own (unlisted
-  // here, left at n8n's own default) scope, not narrowed by this change.
+  // Sheets keeps n8n's default scope.
   const sheetsData = byId.get('cvbCredGSheets01') as Record<string, unknown>;
   expect(sheetsData['customScopes']).toBeUndefined();
   expect(sheetsData['enabledScopes']).toBeUndefined();

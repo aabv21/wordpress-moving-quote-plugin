@@ -16,8 +16,7 @@ describe('latestOnly', () => {
     const first = wrapped('first');
     const second = wrapped('second');
 
-    // The first call's underlying promise resolves after the second call has already started,
-    // simulating a slow response that arrives after a newer request was already issued.
+    // The first call resolves after the second has started, like a slow response.
     resolvers[1]?.();
     resolvers[0]?.();
 

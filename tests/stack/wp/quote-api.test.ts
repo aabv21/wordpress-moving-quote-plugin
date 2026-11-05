@@ -33,10 +33,7 @@ async function countLeadRows(): Promise<number> {
 }
 
 /**
- * The hashed suffix `RateLimiter` computes for the test runner's own client IP, read back from
- * the `submit` bucket's transient row after one real request has created it. The hash depends
- * only on the IP and `wp_salt('nonce')`, not the bucket name, so this same suffix also names the
- * `estimate` bucket's transient for the same client.
+ * The hash depends only on the IP and `wp_salt('nonce')`, so the same suffix names both buckets.
  */
 async function submitBucketHash(): Promise<string> {
   const rows = await sqlWp("SELECT option_name FROM wp_options WHERE option_name LIKE '_transient_moving_quote_rl_submit_%'");
@@ -49,10 +46,7 @@ describe('quote and lead REST API', () => {
   let nonce: string;
   let restoreDelivery: () => Promise<void>;
 
-  // Registered first, so its afterAll (below) is the last one to run (afterAll hooks run in
-  // reverse registration order): every other restore in this file must settle before this one
-  // puts the real webhook_url back, including the per_km test's own settings restore, whose
-  // captured "before" snapshot holds the '' this sets.
+  // Registered first so its afterAll runs last, after the per_km test restores a snapshot holding ''.
   beforeAll(async () => {
     restoreDelivery = await disableDelivery();
   });
@@ -69,8 +63,7 @@ describe('quote and lead REST API', () => {
   });
 
   afterAll(async () => {
-    // Every lead this suite inserts is a real delivery attempt once delivery is configured, and
-    // cron keeps retrying a pending one for hours; none of them must outlive this file.
+    // Cron would retry a leftover pending lead for hours.
     await deleteCreatedLeads();
   });
 
@@ -278,16 +271,13 @@ describe('quote and lead REST API', () => {
         const res = await rest(LEADS_PATH, lead, { nonce });
         expect(res.status).toBeLessThan(300);
       }
-      // All five above were the same submission_id, so only the first inserted; the other four
-      // were duplicates and must not have consumed the limit either.
+      // The four duplicates above must not have consumed the limit.
       const res = await rest(LEADS_PATH, validLead(), { nonce });
       expect(res.status).toBe(201);
     });
 
     it('a genuine concurrent burst never lets more than the limit through', async () => {
-      // Six requests fired at once race each other for the same transient row. Without the named
-      // lock, a burst like this can all read the same pre-increment count and all pass; with it,
-      // each waits its turn for the tiny read-check-write section, so at most five succeed.
+      // Without the named lock, a concurrent burst could all read the same count and pass.
       const statuses = await Promise.all(Array.from({ length: 6 }, () => rest(LEADS_PATH, validLead(), { nonce }).then((res) => res.status)));
       const succeeded = statuses.filter((status) => 201 === status);
       const limited = statuses.filter((status) => 429 === status);
@@ -296,15 +286,13 @@ describe('quote and lead REST API', () => {
     });
 
     it('fails closed when the rate limiter cannot acquire its lock', async () => {
-      // Seed the submit bucket's transient with one real request, so its hashed key (derived only
-      // from this client's IP) can be read back and reused as the MySQL named-lock key.
+      // One real request creates the bucket, so its key can be reused as the lock name.
       const seeded = await rest(LEADS_PATH, validLead(), { nonce });
       expect(seeded.status).toBe(201);
       const hash = await submitBucketHash();
       const lockKey = `moving_quote_rl_submit_${hash}`;
 
-      // Hold that exact lock from a second, independent MySQL connection for longer than the
-      // limiter's own 2 s timeout, simulating another request already updating this bucket.
+      // Held from another connection past the limiter's 2 s timeout.
       const holderScript = `
 <?php
 global $wpdb;
@@ -332,8 +320,7 @@ $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $args[0] ) );
       const body = blocked.json as WpErrorBody;
       expect(body.code).toBe('moving_quote_rate_limited');
       expect(blocked.headers.get('Retry-After')).toBe('2');
-      // The failed-lock wait (2 s) is itself proof this went through the fail-closed branch and
-      // not the ordinary over-limit branch, which returns instantly.
+      // The 2 s wait proves the fail-closed branch; the over-limit branch returns instantly.
       expect(elapsedMs).toBeGreaterThanOrEqual(1900);
 
       const after = await countLeadRows();
@@ -341,8 +328,7 @@ $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $args[0] ) );
     });
 
     it("MySQL's GET_LOCK returns the string '1' on success, which the rate limiter's lock check must keep accepting", async () => {
-      // RateLimiter::acquire_lock() counts only '1' (MySQL) and '1=1' (Playground's SQLite
-      // translator) as granted; this pins the real MySQL value.
+      // Pins MySQL's '1'; Playground's SQLite translator answers '1=1'.
       const script = `
 <?php
 global $wpdb;

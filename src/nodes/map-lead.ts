@@ -1,7 +1,7 @@
 import type { Extra, Lead, MoveType } from './lead.ts';
 import { normalizeLocale, teamLocaleOrDefault, type Locale } from './locale.ts';
 
-/** The `Moving leads` sheet's header row, exact order. */
+/** The `Moving leads` sheet's header row, in its exact order. */
 export const SHEET_HEADERS = [
   'received_at',
   'reference',
@@ -20,7 +20,7 @@ export const SHEET_HEADERS = [
   'estimate_high_cop',
 ] as const;
 
-/** The sheet's own labels: always English, whatever language a lead or the team reads, so the sheet stays one consistent dataset. */
+/** Always English, so the sheet stays one consistent dataset. */
 const SHEET_MOVE_TYPE_LABELS: Record<MoveType, string> = {
   apartment: 'Apartment',
   house: 'House',
@@ -35,13 +35,10 @@ const SHEET_EXTRA_LABELS: Record<Extra, string> = {
 };
 
 /**
- * Every piece of email copy, in both languages. A function takes values that are already escaped
- * (HTML) or already passed through `oneLine()` (plain text) by its caller; none escapes on its own.
+ * Callers pass values already escaped (HTML) or `oneLine()`'d (text); no entry escapes on its own.
  */
 interface Messages {
-  /** The `Intl.NumberFormat` locale for COP amounts and distances: `1,197,000` or `1.197.000`. */
   numberLocale: string;
-  /** Luxon's locale and format for the long move date. */
   dateLocale: string;
   dateFormat: string;
   moveTypes: Record<MoveType, string>;
@@ -116,17 +113,14 @@ export const MESSAGES: Record<Locale, Messages> = {
   },
 };
 
-/** A whole number with the language's own grouping: `1,197,000` or `1.197.000`. */
 function formatNumber(n: number, m: Messages): string {
   return new Intl.NumberFormat(m.numberLocale).format(n);
 }
 
-/** `COP 1,197,000` style, grouped the way `m`'s language writes numbers. */
 function formatCop(n: number, m: Messages): string {
   return `COP ${formatNumber(n, m)}`;
 }
 
-/** Escapes `& < > " '` for safe interpolation into HTML. */
 export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => {
     switch (c) {
@@ -144,18 +138,18 @@ export function escapeHtml(s: string): string {
   });
 }
 
-/** `low – high` with an en dash, e.g. `COP 1,197,000 – 1,463,000` (the high value's own `COP ` prefix dropped, matching the documented display format). */
+/** `COP 1,197,000 – 1,463,000`, matching the documented display format. */
 function estimateDisplay(low: number, high: number, m: Messages): string {
   return `${formatCop(low, m)} – ${formatNumber(high, m)}`;
 }
 
-/** The same control-character set `LeadValidator::validate_name()` normalizes, replaced with a space. */
+/** The control-character set `LeadValidator::validate_name()` normalizes, as a space. */
 function oneLine(s: string): string {
   // eslint-disable-next-line no-control-regex -- the control-character range is the whole point of this check
   return s.replace(/[\x00-\x1f\x7f\u0085\u2028\u2029]/g, ' ');
 }
 
-/** "Friday, November 20, 2026" or "viernes 20 de noviembre de 2026", from an `America/Bogota` move date (a bare calendar date, parsed in that zone so it reads as the same day everywhere). */
+/** Parsed in `America/Bogota`, so the bare date reads as the same day everywhere. */
 function longDate(isoDate: string, m: Messages): string {
   return DateTime.fromISO(isoDate, { zone: 'America/Bogota' }).setLocale(m.dateLocale).toFormat(m.dateFormat);
 }
@@ -163,11 +157,9 @@ function longDate(isoDate: string, m: Messages): string {
 interface Config {
   google: { leads_sheet_id: string; leads_tab: string };
   alerts: { error_email: string };
-  /** The team email's language, `en` or `es`; `en` when absent. */
   team_locale?: unknown;
 }
 
-/** The team alert's last line when `config.team_locale` isn't `en` or `es`: the email still goes out, in English, and says why. */
 export const TEAM_LOCALE_NOTE = 'Note: config.team_locale is not "en" or "es", so this email is in English. Fix config/config.json.';
 
 type SheetRow = Record<(typeof SHEET_HEADERS)[number], string | number>;
@@ -179,17 +171,15 @@ interface MapLeadOutput {
 }
 
 /**
- * Builds the sheet row and the two lead-notification emails (a plain-text team alert in the
- * config's `team_locale`, an escaped HTML customer summary in the lead's own language) in one
- * tested function. Neither language can fail a lead: an invalid `team_locale` gives an English
- * team alert with a note saying so, and a lead with no usable locale gets the default language.
+ * Neither language can fail a lead: an invalid `team_locale` gives an English team alert with a
+ * note, and a lead with no usable locale gets the default language.
  */
 export function run(input: { lead: Lead; config: Config }): MapLeadOutput {
   const { lead, config } = input;
   const { customer, move, estimate } = lead;
   const teamLocale = teamLocaleOrDefault(config);
   const team = MESSAGES[teamLocale.locale];
-  // parseLead() already normalized it; normalized again so a caller that skipped it still gets a real table.
+  // Normalized again for a caller that skipped parseLead().
   const leadLocale: unknown = lead.locale;
   const forCustomer = MESSAGES[normalizeLocale(typeof leadLocale === 'string' ? leadLocale : '')];
 
@@ -218,10 +208,8 @@ export function run(input: { lead: Lead; config: Config }): MapLeadOutput {
   const teamExtras = extrasIn(team);
   const labels = team.teamLabels;
   const teamSubject = oneLine(team.teamSubject(lead.reference, move.origin, move.destination, move.date));
-  // NOTE: plain text, with no tel:/mailto: links — WordPress's own email validator allows `?`,
-  // `&`, and `=` in the local part, so a crafted lead could otherwise pre-fill a mailto reply.
-  // Every value here goes through oneLine(), so a line break in any one of them can never forge
-  // an extra "Phone:"/"Email:"/etc. line in this plain-text email.
+  // Plain text with no tel:/mailto: links: the email rule allows `?`, `&`, and `=` in the local
+  // part, so a crafted lead could pre-fill a mailto reply. oneLine() stops forged lines.
   const teamText = [
     `${labels.name}: ${oneLine(customer.name)}`,
     `${labels.phone}: ${oneLine(customer.phone)}`,

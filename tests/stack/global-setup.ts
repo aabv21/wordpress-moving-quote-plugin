@@ -14,9 +14,8 @@ async function cronIsRunning(): Promise<boolean> {
 }
 
 /**
- * Stops the `cron` sidecar for the whole stack-test run and restarts it afterward only if it was
- * running beforehand. The outbox and `wp cron event run --due-now` loop would otherwise race the
- * tests' own assertions about delivery state and log contents.
+ * Stops `cron` for the run, so its loop can't race assertions about delivery state, and restarts
+ * it afterward only if it was running.
  */
 export default async function globalSetup(): Promise<() => Promise<void>> {
   const wasRunning = await cronIsRunning();

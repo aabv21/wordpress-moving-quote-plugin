@@ -6,15 +6,9 @@ import type { EstimateRequest } from './form-state.ts';
 import { latestOnly } from './latest.ts';
 
 /**
- * Builds one estimate fetcher bound to `estimateUrl` and `onDisplay` (the caller's own write to
- * the DOM, or a test's own spy), which receives the display text and whether it is a price or a
- * failure. Only the network call is wrapped in `latestOnly` — never the write — because
- * `latestOnly` discards a superseded call's *return value*, not any side effect the wrapped
- * function performs itself. Wrapping a function that writes `textContent` internally
- * would still run that write for every call, in whatever order its response arrived, so a slow
- * response for stale input could overwrite a newer result already on screen. Keeping the write
- * out here, called only when the fetch's result `!== undefined`, is what makes a superseded call
- * a true no-op.
+ * Only the network call is wrapped in `latestOnly`, never the `onDisplay` write: `latestOnly`
+ * discards a superseded call's return value, not its side effects. Writing only when the result
+ * `!== undefined` keeps a stale response from overwriting a newer one.
  */
 export function createEstimateFetcher(
   estimateUrl: string,

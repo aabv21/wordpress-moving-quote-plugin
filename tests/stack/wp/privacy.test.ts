@@ -4,7 +4,7 @@ import { disableDelivery, resetRateLimits, restNonce, rest, sqlWp, table, wp } f
 
 const LEADS_PATH = '/moving-quote/v1/leads';
 
-/** The customer-facing reference `LeadRecord::reference()` builds: `MQ-` plus the first 8 hex of the UUID, uppercased. */
+/** Mirrors `LeadRecord::reference()`. */
 function referenceFor(requestUuid: string): string {
   return `MQ-${requestUuid.replaceAll('-', '').slice(0, 8).toUpperCase()}`;
 }
@@ -22,15 +22,8 @@ interface EraserResult {
 }
 
 /**
- * Calls the exporter/eraser the way WordPress core's own Tools → Export/Erase Personal Data
- * screens would: through `apply_filters('wp_privacy_personal_data_exporters'|'erasers', [])`,
- * which exercises `Admin\PersonalData::register()`'s own registration (already wired into
- * `Plugin::boot()`, so it's live on every real request) instead of calling
- * `Admin\PersonalData::export()`/`::erase()` by name and skipping that step. Finds this plugin's
- * entry by its own registered key (`moving-quote-leads`) among whatever else is registered, then
- * invokes its `callback`. Driving the full core request lifecycle needs an emailed confirmation
- * link, which has no place in an automated test; this still proves registration and the callback
- * both work, which is the part this plugin owns.
+ * Through the core filters, as the privacy screens call it, so registration is exercised too. The
+ * full core flow needs an emailed confirmation link, which an automated test can't follow.
  */
 async function callPersonalData<T>(kind: 'exporters' | 'erasers', email: string): Promise<T> {
   const script = `
@@ -91,8 +84,7 @@ describe('personal data: export and erase', () => {
     expect(fields).toContainEqual({ name: 'Extras', value: 'Packing, Temporary storage' });
     expect(fields).toContainEqual({ name: 'Language', value: 'en_US' });
     expect(fields).toContainEqual({ name: 'Distance (km)', value: '120' });
-    // packing (200,000) + storage (300,000) on top of the apartment/2-room/Barranquilla-Cartagena
-    // base (1,130,000) gives 1,630,000, ±10% range_percent rounded to the nearest 1,000 COP.
+    // 1,130,000 base + packing 200,000 + storage 300,000, ±10% rounded to 1,000 COP.
     expect(fields).toContainEqual({ name: 'Estimate amount (COP)', value: '1630000' });
     expect(fields).toContainEqual({ name: 'Estimate low (COP)', value: '1467000' });
     expect(fields).toContainEqual({ name: 'Estimate high (COP)', value: '1793000' });
@@ -132,13 +124,8 @@ describe('personal data: export and erase', () => {
     const erased = await eraseFor(email);
     expect(erased.done).toBe(true);
     expect(erased.items_removed).toBe(true);
-    // The row itself is gone, but copies still exist outside this database: the lead was synced
-    // to n8n inline right after insert (delivery is disabled for this whole file, but the eraser
-    // itself makes no assumption about that — it always warns), so a copy can still sit in the
-    // Moving leads sheet, in the two notification emails already sent, or in a failed n8n
-    // execution's stored data for up to 168 h. The eraser can't reach any of those, so it must
-    // say so instead of reporting a full erasure — named by this lead's own MQ-… reference, the
-    // one identifier a site owner can actually search the sheet and their inbox for.
+    // The eraser always warns about copies it can't reach (sheet, emails, n8n), by the MQ-…
+    // reference an owner can search for, even though delivery is off in this file.
     expect(erased.items_retained).toBe(true);
     expect(erased.messages.length).toBeGreaterThan(0);
     expect(erased.messages.join(' ')).toContain(referenceFor(lead.submission_id as string));
@@ -165,17 +152,13 @@ describe('personal data: export and erase', () => {
     );
 
     try {
-      // The exporter's own find_by_email() goes through the parseable-rows path, so this row
-      // never appears in an export — proof that the eraser's direct DELETE below isn't just
-      // reusing the exporter's own lookup under the hood.
+      // The exporter skips this row, proving the eraser doesn't reuse its lookup.
       const exported = await exportFor(email);
       expect(exported.data).toHaveLength(0);
 
       const erased = await eraseFor(email);
       expect(erased.items_removed).toBe(true);
-      // The eraser warns by reference even for a row its own exporter can't parse: it deletes by
-      // a direct SQL statement, not through the parsed-row path, so an unparseable status is no
-      // excuse to skip the warning either.
+      // The warning covers an unparseable row too.
       expect(erased.items_retained).toBe(true);
       expect(erased.messages.join(' ')).toContain(referenceFor(uuid));
 

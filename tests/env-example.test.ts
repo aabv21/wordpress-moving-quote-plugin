@@ -10,10 +10,7 @@ it('.env.example lists every variable compose.yaml and setup.sh read', () => {
   // compose.yaml only ever interpolates as `${VAR}`.
   const usedByCompose = [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]);
 
-  // setup.sh names its required vars in its own empty-var guard (`for name in WP_URL ...`) and
-  // reads them as `$VAR` or `${VAR}`. Requiring an uppercase first letter tells an env var apart
-  // from the script's own lowercase locals (`$db_check_tries`, `$admin_url`, …) and from a
-  // positional parameter (`$1`), which would otherwise also match `[A-Z0-9_]+`.
+  // An uppercase first letter tells an env var from setup.sh's lowercase locals and from `$1`.
   const usedBySetup = [...setupSh.matchAll(/\$\{?([A-Z][A-Z0-9_]*)\}?/g)].map((m) => m[1]);
 
   const used = [...usedByCompose, ...usedBySetup].filter((name): name is string => name !== undefined);

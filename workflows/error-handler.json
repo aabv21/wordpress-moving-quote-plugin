@@ -71,7 +71,7 @@
         -260
       ],
       "parameters": {
-        "content": "## Email operator\nEvery field anchors on `$('On workflow error').first().json`, with optional chaining and fallbacks, because `$json` here is `{ config }` after \"Parse config\", not the trigger's own output — and a trigger or activation error carries no `execution` key at all, only `trigger`.",
+        "content": "## Email operator\nEvery field anchors on `$('On workflow error').first().json`, since `$json` here is `{ config }`. Optional chaining and fallbacks cover an activation error, which has no `execution` key, only `trigger`.",
         "height": 300,
         "width": 560,
         "color": 7

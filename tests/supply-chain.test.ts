@@ -27,8 +27,7 @@ interface ComposerJson {
 
 const composer = JSON.parse(readFileSync('composer.json', 'utf8')) as ComposerJson;
 
-// Parses a Composer cooldown duration string ("3 days") into days, so the test checks the
-// semantic floor (>= 3 days) rather than the exact string.
+// Checks the floor (>= 3 days), not the exact string.
 const cooldownDays = (period: string): number => {
   const match = /^(\d+)\s*(second|minute|hour|day|week)s?$/.exec(period.trim());
   if (!match) throw new Error(`unparseable cooldown period: ${period}`);
@@ -70,9 +69,8 @@ test('pnpm effective config carries every supply-chain setting', async () => {
 
 test('trustPolicyExclude holds exactly the owner-approved exceptions', async () => {
   const config = await pnpmConfig();
-  // Any future entry here needs the same shape (an exact name@version, never a bare name), a
-  // reason, this test extended to list it, and the owner's approval. See AGENTS.md's
-  // "Supply-chain hardening" section.
+  // A new entry needs an exact name@version, a reason, this list extended, and the owner's
+  // approval. See AGENTS.md's "Supply-chain hardening".
   expect(config.trustPolicyExclude).toEqual([
     '@octokit/endpoint@9.0.6',
     '@octokit/plugin-paginate-rest@9.2.2',
@@ -115,17 +113,14 @@ test('every Compose image is pinned by digest', () => {
   }
 });
 
-// Reads the merged, effective Compose config (not the raw YAML text) so `n8n-worker`'s own
-// settings, inherited from `n8n` through `extends` in compose.queue.yaml, are checked too, instead
-// of only the services that happen to write their own security_opt/cap_drop block.
+// The merged config, so settings `n8n-worker` inherits through `extends` are checked too.
 const composeConfig = async (args: string[]): Promise<Record<string, { security_opt?: string[]; cap_drop?: string[] }>> => {
   const { stdout } = await execFileAsync('docker', ['compose', ...args, 'config', '--format', 'json']);
   return (JSON.parse(stdout) as { services: Record<string, { security_opt?: string[]; cap_drop?: string[] }> }).services;
 };
 
 test('every long-running Compose service disables privilege escalation', async () => {
-  // "php" is excluded: it's a one-shot `docker compose run` tools container (profiles: [tools]),
-  // never a long-running service.
+  // "php" is a one-shot tools container, never long-running.
   const queue = await composeConfig(['-f', 'compose.yaml', '-f', 'compose.queue.yaml']);
   for (const name of ['db', 'wordpress', 'wpcli', 'cron', 'postgres', 'n8n', 'redis', 'n8n-worker']) {
     expect(queue[name]?.security_opt, name).toContain('no-new-privileges:true');
@@ -136,9 +131,8 @@ test('only n8n (and the worker that extends it) drops every Linux capability', a
   const queue = await composeConfig(['-f', 'compose.yaml', '-f', 'compose.queue.yaml']);
   expect(queue.n8n?.cap_drop).toEqual(['ALL']);
   expect(queue['n8n-worker']?.cap_drop).toEqual(['ALL']);
-  // Postgres, MySQL, WordPress/Apache, and Redis each switch users internally at startup
-  // (dropping from root to their own service account), which needs a capability (e.g. chown,
-  // setuid/setgid) this repo hasn't proven safe to drop per-image yet.
+  // The other images drop from root at startup, which needs capabilities (chown, setuid/setgid)
+  // not yet proven safe to drop per image.
   for (const name of ['db', 'wordpress', 'wpcli', 'cron', 'postgres', 'redis']) {
     expect(queue[name]?.cap_drop, name).toBeUndefined();
   }
@@ -189,9 +183,7 @@ test('every `docker run` image reference in .github/workflows/*.yml is pinned by
   let checked = 0;
   for (const file of files) {
     const content = readFileSync(join(workflowsDir, file), 'utf8');
-    // Matches an image reference with or without an owner/repo slash (e.g. `composer:2.11.0@sha256:…`
-    // as well as `koalaman/shellcheck:v0.11.0@sha256:…`); a line this can't parse at all still fails
-    // the digest check below instead of silently never being counted.
+    // With or without an owner slash; an unparseable line still fails the digest check below.
     const images = content
       .split('\n')
       .filter((line) => /\bdocker run\b/.test(line))

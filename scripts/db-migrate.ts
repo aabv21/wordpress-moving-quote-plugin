@@ -11,10 +11,7 @@ const MIGRATION_NAME = /^(\d{3})_[a-z0-9_]+\.sql$/;
 /** psql's `\getenv psql_variable ENV_NAME`, the only way a migration reads `.env`. */
 const GETENV = /^\\getenv[ \t]+\w+[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*$/gm;
 
-/**
- * Runs before anything else, every time: creates the ledger of applied files (as the owner role,
- * so `app` owns it, not the superuser) and lists what it holds.
- */
+/** Creates the ledger as the owner role, so `app` owns it, not the superuser. */
 export const BOOTSTRAP_SQL = `\\getenv owner APP_DB_USER
 SET LOCAL ROLE :"owner";
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -25,14 +22,12 @@ SELECT filename FROM schema_migrations ORDER BY filename;
 `;
 
 /**
- * Runs after the migrations, every time: `setup-credentials` rebuilds n8n's app credential from
- * `.env` on every run, so the role's password must follow `.env` on every run too, or a changed
- * value would lock n8n out. psql quotes the value itself; it never reaches an argument list.
+ * Runs every time: `setup-credentials` rebuilds n8n's credential from `.env` each run, so the
+ * password must follow or a changed value locks n8n out. psql quotes the value itself.
  *
- * Postgres logs a failed statement's full text by default (`log_min_error_statement = error`),
- * and this one carries the password, so the transaction raises that threshold first, and turns
- * statement logging off in case a server enables it. The same statement re-asserts the role's
- * attributes, so a hand-granted `CREATEDB` or `SUPERUSER` doesn't survive the next run.
+ * Postgres logs a failed statement's text by default, so the transaction raises
+ * `log_min_error_statement` and turns statement logging off first. Re-asserting the attributes
+ * means a hand-granted `CREATEDB` or `SUPERUSER` doesn't survive the next run.
  */
 export const RUNTIME_PASSWORD_SQL = `SET LOCAL log_min_error_statement = panic;
 SET LOCAL log_statement = 'none';
@@ -44,10 +39,10 @@ ALTER ROLE :"runtime_role" WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPL
 /** Any fixed key: every run takes the same transaction-scoped advisory lock, so two runs can't interleave one file. */
 export const MIGRATION_LOCK_KEY = 6_420_001;
 
-/** The variables naming the other roles, which the runtime role must never share a name with. */
+/** The runtime role must never share a name with these. */
 const OTHER_ROLE_NAMES = ['POSTGRES_USER', 'N8N_DB_USER', 'APP_DB_USER'] as const;
 
-/** The `.sql` files in `fileNames`, in sequence order. Throws on a misnamed file or a reused sequence number. */
+/** Throws on a misnamed file or a reused sequence number. */
 export function orderMigrations(fileNames: readonly string[]): string[] {
   const files = fileNames.filter((name) => name.endsWith('.sql')).sort();
   const seen = new Map<string, string>();
@@ -61,39 +56,33 @@ export function orderMigrations(fileNames: readonly string[]): string[] {
   return files;
 }
 
-/** The files in `files` not yet in `applied`, in order. */
 export function pendingMigrations(files: readonly string[], applied: ReadonlySet<string>): string[] {
   return files.filter((file) => !applied.has(file));
 }
 
-/** Every environment variable `sql` reads with `\getenv`, once each, in order. */
 export function requiredEnv(sql: string): string[] {
   return [...new Set([...sql.matchAll(GETENV)].map((match) => match[1] ?? ''))];
 }
 
-/** The names in `names` that `env` leaves unset or empty. Compose turns an unset name into an empty one, so both count. */
+/** Compose turns an unset name into an empty one, so both count as missing. */
 export function missingEnv(names: readonly string[], env: Readonly<Record<string, string | undefined>>): string[] {
   // eslint-disable-next-line security/detect-object-injection -- name comes from a migration's own \getenv line, not user input
   return names.filter((name) => !env[name]);
 }
 
-/** The error for `source` needing `missing`. It names variables only, never a value. */
+/** Names variables only, never a value. */
 export function missingEnvError(source: string, missing: readonly string[]): Error {
   const verb = missing.length === 1 ? 'is' : 'are';
   return new Error(`${source} needs ${missing.join(', ')}, which ${verb} not set in .env; see .env.example and docs/database.md`);
 }
 
-/**
- * The variables in `OTHER_ROLE_NAMES` whose value equals `APP_RUNTIME_DB_USER`'s. Sharing a name
- * would point the runtime role's grants and password at the owner or the superuser instead.
- */
+/** A shared name would aim the runtime grants and password at the owner or the superuser. */
 export function runtimeRoleClashes(env: Readonly<Record<string, string | undefined>>): string[] {
   const runtime = env.APP_RUNTIME_DB_USER;
   // eslint-disable-next-line security/detect-object-injection -- name is one of the fixed OTHER_ROLE_NAMES
   return runtime ? OTHER_ROLE_NAMES.filter((name) => env[name] === runtime) : [];
 }
 
-/** The index just past the next `token` at or after `from`, or the end of `sql` if there is none. */
 function skipPast(sql: string, token: string, from: number): number {
   const at = sql.indexOf(token, from);
   return at === -1 ? sql.length : at + token.length;
@@ -145,9 +134,7 @@ function codeOnly(sql: string): string {
 }
 
 /**
- * The first transaction-control statement in `sql` (`BEGIN`, `COMMIT`, `ROLLBACK`, `ABORT`,
- * `START TRANSACTION`, or `END`), or `undefined`. A migration runs inside db-migrate's own
- * transaction, together with its ledger row, so one of these would split the two.
+ * A migration runs in one transaction with its ledger row; any of these would split the two.
  */
 export function transactionControl(sql: string): string | undefined {
   for (const statement of codeOnly(sql).split(';')) {
@@ -157,18 +144,17 @@ export function transactionControl(sql: string): string | undefined {
   return undefined;
 }
 
-/** The statement that records `file` as applied, appended to the file so both commit together. */
+/** Appended to the file, so both commit together. */
 export function recordMigration(file: string): string {
   if (!MIGRATION_NAME.test(file)) throw new Error(`${file} is not a migration file name`);
   return `INSERT INTO schema_migrations (filename) VALUES ('${file}');\n`;
 }
 
-/** What one psql run sends for `file`: the advisory lock first, then the file, then its ledger row. */
 export function migrationScript(file: string, sql: string): string {
   return `SELECT pg_advisory_xact_lock(${String(MIGRATION_LOCK_KEY)});\n${sql}\n${recordMigration(file)}`;
 }
 
-/** Runs `sql` as the superuser in one transaction, failing with psql's own error, redacted. */
+/** Fails with psql's own error, redacted. */
 async function apply(label: string, sql: string): Promise<string> {
   const result = await runPsql({ role: 'POSTGRES_USER', database: 'app', forwardEnv: requiredEnv(sql), singleTransaction: true }, sql);
   if (!result.ok) throw new Error(`${label} failed, and nothing in it was applied:\n${redact(result.stderr.trim(), secretValues(process.env))}`);
@@ -180,7 +166,6 @@ function assertEnv(source: string, sql: string): void {
   if (missing.length > 0) throw missingEnvError(source, missing);
 }
 
-/** Applies every pending migration, then resets the runtime role's password and attributes. `pnpm run setup` runs this first. */
 export async function dbMigrate(): Promise<void> {
   loadDotEnv();
   const files = orderMigrations(readdirSync(MIGRATIONS_DIR));

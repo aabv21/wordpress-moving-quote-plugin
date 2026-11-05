@@ -16,7 +16,7 @@ interface LeadRow {
   attempts: string;
 }
 
-/** The customer-facing reference `LeadRecord::reference()` builds: `MQ-` plus the first 8 hex of the UUID, uppercased. */
+/** Mirrors `LeadRecord::reference()`. */
 function referenceFor(requestUuid: string): string {
   return `MQ-${requestUuid.replaceAll('-', '').slice(0, 8).toUpperCase()}`;
 }
@@ -26,7 +26,6 @@ function stripBom(text: string): string {
   return 0xfeff === text.codePointAt(0) ? text.slice(1) : text;
 }
 
-/** Scrapes an `href` out of the first `<a>` whose visible text is `linkText`, out of every `<a>` tag in `html`. */
 function scrapeHref(html: string, linkText: string): string {
   const linkPattern = /<a href=(["'])(.*?)\1[^>]*>([^<]*)<\/a>/g;
   for (const match of html.matchAll(linkPattern)) {
@@ -35,11 +34,7 @@ function scrapeHref(html: string, linkText: string): string {
   throw new Error(`no link with text "${linkText}" found in the given HTML`);
 }
 
-/**
- * Scrapes the "Delete" link's own `href` for one lead row: the delete action's URL always
- * carries `action=moving_quote_delete_lead` and `id=$leadId` as query args, which is enough to
- * pick the right row's link out of a page listing several leads, each with its own.
- */
+/** Matched by `action=moving_quote_delete_lead` and `id=$leadId` in the URL. */
 function scrapeDeleteHref(html: string, leadId: string): string {
   const linkPattern = /<a href=(["'])(.*?)\1[^>]*class="submitdelete"[^>]*>/g;
   for (const match of html.matchAll(linkPattern)) {
@@ -49,11 +44,7 @@ function scrapeDeleteHref(html: string, leadId: string): string {
   throw new Error(`no delete link found for lead id ${leadId}`);
 }
 
-/**
- * Scrapes the status-update form's nonce for one lead row: the `<form>…</form>` block containing
- * `name="id" value="$leadId"`, then the `_wpnonce` hidden input inside that same block, out of
- * every such form in `html`.
- */
+/** The `_wpnonce` inside the `<form>` holding `name="id" value="$leadId"`. */
 function scrapeStatusNonce(html: string, leadId: string): string {
   const formPattern = /<form method="post"[^>]*>[\s\S]*?<\/form>/g;
   for (const form of html.matchAll(formPattern)) {
@@ -84,9 +75,7 @@ describe('admin: leads list, status, export, retry', () => {
   let plainLeadUuid: string;
   let restoreDelivery: () => Promise<void>;
 
-  // Registered first, so its afterAll (below) is the last one to run (afterAll hooks run in
-  // reverse registration order): nothing else in this file may let a lead actually reach n8n,
-  // including a row this file requeues through "Retry delivery".
+  // Registered first so its afterAll runs last: no lead here may reach n8n, requeued ones included.
   beforeAll(async () => {
     restoreDelivery = await disableDelivery();
   });
@@ -99,10 +88,7 @@ describe('admin: leads list, status, export, retry', () => {
     await resetRateLimits();
     nonce = await restNonce();
 
-    // The <script> name must be seeded as already-stored hostile data: REST's own
-    // sanitize_text_field() strips a <script>…</script> tag and its content before it ever
-    // reaches the database, so submitting it that way would never exercise the list table's own
-    // escaping at all (and would fail validation with 422 besides).
+    // Seeded directly as already-stored hostile data: the list table's own escaping is what's under test.
     const leadsTable = await table();
     scriptLeadUuid = crypto.randomUUID();
     await sqlWp(
@@ -150,13 +136,8 @@ describe('admin: leads list, status, export, retry', () => {
     expect(html).toContain(`<label class="screen-reader-text" for="moving-quote-status-${plainLeadId}">Status of lead ${referenceFor(plainLeadUuid)}</label>`);
     expect(html).toContain(`<select id="moving-quote-status-${plainLeadId}" name="status">`);
 
-    // HTML doesn't allow nested forms: any <form> still open when the list table's own <table
-    // class="wp-list-table"> starts would make the parser drop every row's own <form
-    // method="post"> start tag, folding its controls into whichever form is still open instead —
-    // the first row's "Update" button would then just resubmit that outer form (if it were a GET
-    // filter form, switching the list filter with the nonce landing in the URL), never actually
-    // updating that lead's status. Every <form> opened before the table must already be closed by
-    // the time the table starts: no unbalanced, still-open start tag.
+    // A <form> still open when the table starts would swallow the first row's status form (HTML
+    // drops a nested form's start tag), so its update would never apply.
     const tableIndex = html.indexOf('<table class="wp-list-table');
     expect(tableIndex).toBeGreaterThan(-1);
     const beforeTable = html.slice(0, tableIndex);
@@ -236,9 +217,7 @@ describe('admin: leads list, status, export, retry', () => {
     expect(res.headers.get('content-type')).toMatch(/^text\/csv/);
     const disposition = res.headers.get('content-disposition');
     expect(disposition).toMatch(/filename="moving-leads-\d{4}-\d{2}-\d{2}\.csv"/);
-    // The filename date is "today" in America/Bogota, not UTC: gmdate() ignores the timezone a
-    // DateTimeImmutable was built with and always formats in UTC, so it would silently drift to
-    // tomorrow's date for several hours every evening Bogota time.
+    // Bogota's "today", not UTC's, which is tomorrow for several hours every Bogota evening.
     const bogotaToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     expect(disposition).toContain(`filename="moving-leads-${bogotaToday}.csv"`);
 
@@ -284,10 +263,8 @@ describe('admin: leads list, status, export, retry', () => {
   });
 
   it('exports every good row across more than one chunk, even with a bad row inside the first chunk', async () => {
-    // chunk_after()'s batch size (EXPORT_CHUNK) is 500 and private; 510 good rows plus one bad
-    // row inside that first batch reproduces the exact failure this guards against: dropping the
-    // bad row from the parsed batch made it look short (499 of 500), so the export loop stopped
-    // after one chunk instead of fetching the second one, silently losing every row past it.
+    // EXPORT_CHUNK is 500: a bad row in the first batch makes it parse short (499), which must not
+    // end the export before the second batch.
     const leadsTable = await table();
     const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
     const goodCount = 510;
@@ -299,9 +276,7 @@ $table = $args[0];
 $marker = $args[1];
 $good_count = (int) $args[2];
 
-// The bad row is inserted FIRST, so its auto-increment id is lower than every good row's — it
-// lands inside the first id-ordered 500-row batch, not wherever the bulk insert below happens to
-// place it.
+// Inserted first, so its lower id lands in the first 500-row batch.
 $bad_uuid = sprintf( '00000000-0000-4000-9000-%012d', 0 );
 $wpdb->query( $wpdb->prepare(
 	"INSERT INTO {$table} (request_uuid, created_at, status, move_type, rooms, origin_city, destination_city, distance_km, move_date, extras, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, sync_status, attempts, next_attempt_at, last_error, sent_at) VALUES (%s, UTC_TIMESTAMP(), 'not-a-real-status', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', '', %s, '570000000005', %s, UTC_TIMESTAMP(), 1130000, 1017000, 1243000, 'pending', 0, 0, '', NULL)",
@@ -337,8 +312,7 @@ echo 'ok';
       expect(body).not.toContain(`Bulk bad row ${marker}`);
       const goodRowCount = body.split(`Bulk ${marker} `).length - 1;
       expect(goodRowCount).toBe(goodCount);
-      // The last good row (by insertion order / id) is present: proof the export didn't stop
-      // after the first, bad-row-shortened chunk and silently drop the second chunk's rows.
+      // The last good row proves the second batch was read.
       expect(body).toContain(`Bulk ${marker} ${String(goodCount - 1)}`);
     } finally {
       await sqlWp(`DELETE FROM ${leadsTable} WHERE customer_name LIKE 'Bulk ${marker}%' OR customer_name = 'Bulk bad row ${marker}'`);
@@ -449,9 +423,7 @@ echo 'ok';
     const dashboard = await fetch(site(DASHBOARD_PAGE), { headers: { Cookie: adminCookies } });
     expect(await dashboard.text()).toContain(STUCK_NOTICE_TEXT);
 
-    // Clear the stuck condition, then verify through sqlWp that nothing still qualifies before
-    // asserting the notice is gone — a leftover row from another run could otherwise make the
-    // absence assertions below pass or fail for the wrong reason.
+    // Verify nothing still qualifies first, so a leftover row can't skew the absence assertions.
     await sqlWp(`UPDATE ${leadsTable} SET sync_status = 'sent' WHERE request_uuid IN ('${formulaLeadUuid}', '${scriptLeadUuid}')`);
     const stillStuck = await sqlWp(
       `SELECT id FROM ${leadsTable} WHERE sync_status = 'failed' OR ( sync_status = 'pending' AND created_at < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 HOUR) )`,
@@ -483,8 +455,7 @@ echo 'ok';
       const dashboard = await fetch(site(DASHBOARD_PAGE), { headers: { Cookie: adminCookies } });
       expect(await dashboard.text()).not.toContain(STUCK_NOTICE_TEXT);
     } finally {
-      // Restore both rows to a non-stuck, non-closed state so a later test in this file (or a
-      // retry of this one) never inherits a closed status it didn't set itself.
+      // Restore both rows, so a later test never inherits a closed status.
       await sqlWp(`UPDATE ${leadsTable} SET sync_status = 'sent', status = 'new' WHERE request_uuid IN ('${formulaLeadUuid}', '${scriptLeadUuid}')`);
     }
   });

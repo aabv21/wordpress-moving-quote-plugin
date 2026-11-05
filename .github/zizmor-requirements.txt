@@ -1,12 +1,8 @@
-# Hash-pinned requirements for zizmor, installed by the `actions` CI job with
-# `pip install --require-hashes -r .github/zizmor-requirements.txt`. zizmor ships no runtime
-# dependencies of its own (`requires_dist` is empty on PyPI), so this one package's hashes are
-# the whole closure `--require-hashes` needs — every published wheel plus the sdist, so pip can
-# still validate whichever one it resolves for the runner's own platform.
+# Installed by the `actions` job with `pip install --require-hashes`. zizmor has no runtime
+# dependencies, so these hashes (every wheel plus the sdist) are the whole closure.
 #
-# Hashes from https://pypi.org/pypi/zizmor/1.31.1/json, cross-checked locally against
-# `pip download zizmor==1.31.1 --no-deps` plus `pip hash` for the macOS arm64 and manylinux x86_64
-# wheels (CI runs on ubuntu-latest, which resolves the manylinux_2_28_x86_64 wheel below).
+# From https://pypi.org/pypi/zizmor/1.31.1/json, cross-checked with `pip download` and `pip hash`
+# for the macOS arm64 and manylinux x86_64 wheels (CI resolves manylinux_2_28_x86_64).
 zizmor==1.31.1 \
     --hash=sha256:385732e55ca152a013b0863213b67be32f94157775354b8ad23cc9c5d70cdc82 \
     --hash=sha256:3b35b393e8d437e275c7e399047c9892ccc290f3fc5e6aeb9f65a5d3b2a470e0 \

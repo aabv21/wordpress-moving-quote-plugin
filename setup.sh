@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
-# Installs and configures WordPress for Chivabox Movers. Idempotent: safe to run again after the
-# stack is already set up. Requires `docker compose up -d --wait` to have run first.
+# Installs and configures WordPress idempotently. Run `docker compose up -d --wait` first.
 #
-# SITE_LOCALE (from .env, or the command line) picks the site language: en_US (the default) or
-# es_CO. es_CO downloads WordPress's own Spanish (Colombia) core language pack, so it needs network
-# access; the plugin's translations ship with the plugin and need none.
-# Example: SITE_LOCALE=es_CO ./setup.sh
+# SITE_LOCALE (.env or the command line): en_US (default) or es_CO, which downloads WordPress's
+# Spanish core pack and so needs network access. Example: SITE_LOCALE=es_CO ./setup.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
 # A SITE_LOCALE given on the command line wins over the one in .env, which is read next.
 site_locale="${SITE_LOCALE:-}"
 
-# Read the settings from .env, so the script works from a fresh shell.
 if [ ! -f .env ]; then
   echo "setup.sh: .env not found; run node scripts/init-env.ts first" >&2
   exit 1
@@ -26,11 +22,8 @@ wp() {
   docker compose exec -T wpcli wp "$@"
 }
 
-# `db` can report healthy before the real MySQL server is listening (its init phase runs a
-# temporary server on a Unix socket only). Probe with a raw mysqli connection, bypassing
-# WordPress entirely: the CLI image's external MariaDB client binary (what `wp db check` shells
-# out to) rejects MySQL 8.4's self-signed TLS certificate, but WP-CLI's own PHP mysqli driver
-# connects to it fine.
+# `db` can report healthy while its init server listens only on a Unix socket. Probe with PHP's
+# mysqli: the image's MariaDB client (behind `wp db check`) rejects MySQL 8.4's self-signed cert.
 # Single-quoted on purpose: this is PHP, read through getenv(), not a shell variable.
 # shellcheck disable=SC2016
 db_probe='try {
@@ -53,8 +46,7 @@ done
 
 site_locale="${site_locale:-${SITE_LOCALE:-en_US}}"
 
-# The site's own copy, in each supported language. Page slugs stay the same in both, so the quote
-# form's thank-you redirect and every link below keep working whichever language the site uses.
+# Slugs are the same in both languages, so the thank-you redirect and links always work.
 case "$site_locale" in
   en_US)
     tagline="Moving across Colombia's Caribbean coast"
@@ -106,11 +98,8 @@ for name in WP_URL WP_ADMIN_USER WP_ADMIN_PASSWORD WP_ADMIN_EMAIL LEAD_WEBHOOK_S
 done
 
 if ! wp core is-installed >/dev/null 2>&1; then
-  # `--prompt=admin_password` keeps the password off argv and out of the process list, reading it
-  # from stdin instead. But WP-CLI's PHP build has readline() available, and reading a prompt's
-  # answer from a non-tty pipe through readline() echoes that answer straight back to stdout, so
-  # the whole call is redirected to /dev/null; stderr is left alone, and `set -e` still catches a
-  # failure. Errors print to stderr either way, so this only hides WP-CLI's own progress notices.
+  # `--prompt` keeps the password off argv, but readline() echoes a piped answer to stdout, so
+  # stdout goes to /dev/null. Errors still reach stderr, and `set -e` still catches a failure.
   wp core install \
     --url="$WP_URL" \
     --title="Chivabox Movers" \
@@ -146,9 +135,8 @@ if wp post get 2 >/dev/null 2>&1; then
   wp post delete 2 --force >/dev/null
 fi
 
-# Creates a published post of the given type unless one with that slug already exists. An existing
-# one is left exactly as it is, even if its content differs from what this script would write: the
-# site owner may have edited it since.
+# An existing post with the slug is left as is, even if its content differs: the owner may have
+# edited it.
 create_post_if_missing() {
   post_type="$1"
   slug="$2"
@@ -171,8 +159,6 @@ create_page_if_missing "home" "$home_title" "<!-- wp:heading --><h2>${home_headi
 create_page_if_missing "get-a-quote" "$quote_title" "<!-- wp:paragraph --><p>${quote_intro}</p><!-- /wp:paragraph -->
 <!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->"
 
-# [moving_quote_reference] shows the MQ-… reference the quote form passes along on its redirect,
-# and nothing when the page is opened directly.
 create_page_if_missing "thank-you" "$thanks_title" "<!-- wp:paragraph --><p>${thanks_intro}</p><!-- /wp:paragraph -->
 <!-- wp:shortcode -->[moving_quote_reference]<!-- /wp:shortcode -->
 <!-- wp:heading --><h2 class=\"wp-block-heading\">${thanks_heading}</h2><!-- /wp:heading -->
@@ -190,10 +176,8 @@ wp option update page_on_front "$home_id"
 
 wp plugin activate moving-quote
 
-# Delivery settings: the webhook URL is a fixed in-network address, so it's a plain argument. The
-# secret and the team email come from .env and are piped through STDIN so neither ever appears on
-# the command line (visible in `ps` and shell history); `option patch update` doesn't echo a piped
-# value back to stdout.
+# The secret and team email go through STDIN, never the command line (`ps`, shell history);
+# `option patch update` doesn't echo a piped value.
 wp option patch update moving_quote_settings webhook_url "http://n8n:5678/webhook/moving-quote/leads"
 wp option patch update moving_quote_settings webhook_secret <<< "$LEAD_WEBHOOK_SECRET"
 wp option patch update moving_quote_settings team_email <<< "$TEAM_EMAIL"

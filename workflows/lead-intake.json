@@ -139,7 +139,7 @@
         -260
       ],
       "parameters": {
-        "content": "## Record once\nReads the runtime config (needed by the caller that follows this one), then inserts the lead's `request_uuid` into `processed_events`. `ON CONFLICT DO NOTHING RETURNING event_id` gives back a row only for a genuinely new id; a replay returns no row, which Postgres turns into a synthesized `{ success: true }` item with no `event_id` — that is what \"New request?\" tests for.",
+        "content": "## Record once\nReads the runtime config for the hand-off, then inserts the lead's `request_uuid` into `processed_events`. A replay returns no row, so the Postgres node synthesizes a `{ success: true }` item with no `event_id`: what \"New request?\" tests for.",
         "height": 300,
         "width": 640,
         "color": 5
@@ -297,7 +297,7 @@
         -260
       ],
       "parameters": {
-        "content": "## Hand off\nAfter the caller already has its `accepted` response, builds `{ lead, config }` and calls `process-lead` fire-and-forget (`options.waitForSubWorkflow: false`), so a failure there raises exactly one alert and never delays or changes WordPress's own response.",
+        "content": "## Hand off\nAfter `accepted` is sent, calls `process-lead` with `{ lead, config }`, fire-and-forget (`options.waitForSubWorkflow: false`), so a failure there raises one alert and never changes WordPress's response.",
         "height": 300,
         "width": 620,
         "color": 5

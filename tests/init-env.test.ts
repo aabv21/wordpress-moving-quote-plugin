@@ -21,9 +21,7 @@ describe('fillSecrets', () => {
 
 describe('.env.tmp', () => {
   it('is git-ignored at the repo root, so a crashed writeEnvFile() run never leaves every .env secret trackable', async () => {
-    // writeEnvFile() above writes .env.tmp (holding the same secrets .env itself would) before
-    // renaming it over .env; a crashed run between those two steps can leave that tmp file
-    // behind. `git check-ignore -q` exits 0 only when the path is actually ignored.
+    // A crashed run can leave .env.tmp, holding the same secrets, behind.
     await expect(execFileAsync('git', ['check-ignore', '-q', '.env.tmp'])).resolves.toBeDefined();
   });
 });
@@ -33,9 +31,7 @@ describe('writeEnvFile', () => {
     const dir = mkdtempSync(join(tmpdir(), 'cvb-env-'));
     try {
       const path = join(dir, '.env');
-      // A crashed prior run can leave `.env.tmp` behind at whatever mode it was created with.
-      // `writeFileSync`'s `{ mode }` option only applies when the file doesn't already exist, so
-      // without the defensive chmod this stale file would keep its looser mode.
+      // `{ mode }` applies only on create, so a stale tmp file needs the explicit chmod.
       writeFileSync(`${path}.tmp`, 'stale', { mode: 0o644 });
       writeEnvFile(path, 'A=1\nN8N_ENCRYPTION_KEY=secret\n');
       expect(readFileSync(path, 'utf8')).toBe('A=1\nN8N_ENCRYPTION_KEY=secret\n');

@@ -12,16 +12,14 @@ use WP_REST_Request;
 use WP_REST_Response;
 
 /**
- * The public estimate endpoint: prices a move from the current settings. No nonce, no customer
- * data, and nothing is ever saved.
+ * No nonce, no customer data, nothing saved.
  */
 final class EstimateController {
 	private const NAMESPACE = 'moving-quote/v1';
 	private const ROUTE     = '/estimate';
 
 	public static function register(): void {
-		// No args schema: every field is validated by LeadValidator, so a restrictive schema here
-		// would make core reject a bad request with its own 400 before the contract's 422 ever runs.
+		// No args schema: core would answer its own 400 before the contract's 422.
 		register_rest_route(
 			self::NAMESPACE,
 			self::ROUTE,
@@ -85,10 +83,7 @@ final class EstimateController {
 	}
 
 	/**
-	 * The parsed JSON request body as a string-keyed array. The stub types get_json_params() as
-	 * always returning array, but a top-level JSON scalar (e.g. a bare string or number) is valid
-	 * JSON and decodes to that scalar at runtime, not an array; this guards against that case
-	 * instead of trusting the stub over the real behavior.
+	 * The stub types get_json_params() as array, but a top-level JSON scalar decodes to that scalar.
 	 *
 	 * @return array<string, mixed>
 	 */

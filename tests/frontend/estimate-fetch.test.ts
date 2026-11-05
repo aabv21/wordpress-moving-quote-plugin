@@ -21,15 +21,13 @@ describe('createEstimateFetcher', () => {
     const firstCall = fetchEstimate(REQUEST);
     const secondCall = fetchEstimate(REQUEST);
 
-    // The newer (second) call's response arrives first; the older (first) call's response
-    // arrives after it — the exact ordering a slow network response for stale input produces.
+    // The newer call's response arrives first, as with a slow response for stale input.
     resolveSecond(new Response(JSON.stringify({ display: 'COP 2,000,000 – 2,400,000' }), { status: 200 }));
     await secondCall;
     resolveFirst(new Response(JSON.stringify({ display: 'COP 1,000,000 – 1,200,000' }), { status: 200 }));
     await firstCall;
 
-    // Only the newer call's text was ever written: the stale response resolved after it, but
-    // caused no write at all, so the displayed estimate never regresses to the older value.
+    // The stale response caused no write at all.
     expect(displayed).toEqual(['COP 2,000,000 – 2,400,000']);
   });
 

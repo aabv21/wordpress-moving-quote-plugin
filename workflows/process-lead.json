@@ -72,7 +72,7 @@
         -260
       ],
       "parameters": {
-        "content": "## Append row\nAppends one row to the configured `Moving leads` tab, auto-mapped by field name from \"Row fields\"' JSON output. `options.cellFormat: 'RAW'` stores every cell exactly as sent — a phone number never becomes 5.7E+11, and a formula-looking name never runs as a formula — matching the RAW append `tests/workflows.test.ts` pins.",
+        "content": "## Append row\nAppends one row to the `Moving leads` tab, auto-mapped by field name. `options.cellFormat: 'RAW'` stores every cell as sent: a phone never becomes 5.7E+11, and a formula-looking name never runs.",
         "height": 300,
         "width": 620,
         "color": 5

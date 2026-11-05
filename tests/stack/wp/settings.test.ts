@@ -13,10 +13,8 @@ const SUBSCRIBER_LOGIN = 'moving-quote-settings-subscriber';
 const CITIES = ['Barranquilla', 'Cartagena', 'Montería', 'Riohacha', 'Santa Marta', 'Sincelejo', 'Valledupar'];
 
 /**
- * Pulls every `moving_quote_settings[...]` form field out of a rendered settings page, along with
- * the `settings_fields()` hidden inputs needed to resubmit the form to `options.php`. This repo
- * has no HTML parser dependency, so this matches the plugin's own plain, single-line `<input>`
- * markup rather than parsing a full DOM.
+ * Includes the `settings_fields()` hidden inputs. By regex over the plugin's single-line
+ * `<input>` markup: this repo has no HTML parser dependency.
  */
 function scrapeForm(html: string): { fields: [string, string][]; wpNonce: string; optionPage: string; httpReferer: string } {
   const fields: [string, string][] = [];
@@ -46,7 +44,6 @@ function decodeHtmlEntities(text: string): string {
   return text.replaceAll('&#038;', '&').replaceAll('&amp;', '&').replaceAll('&quot;', '"').replaceAll('&#039;', "'");
 }
 
-/** Submits a scraped form to `options.php`, following WordPress's own post-save redirect. */
 async function submitSettingsForm(scraped: ReturnType<typeof scrapeForm>, cookies: string, overrides: Record<string, string> = {}): Promise<Response> {
   const body = new URLSearchParams();
   body.set('option_page', scraped.optionPage);
@@ -135,9 +132,7 @@ describe('settings page', () => {
     const after = await wpJson<{ per_km: number }>(['option', 'get', OPTION_NAME]);
     expect(after.per_km).toBe(4500);
 
-    // WordPress's settings_errors() reads its notices from a one-time transient, and only when
-    // ?settings-updated is present, so the notice shows only by following options.php's own
-    // post-save redirect (which carries that query arg) — not a plain re-GET of the bare page.
+    // settings_errors() shows only with ?settings-updated, so follow options.php's redirect.
     const redirectLocation = res.headers.get('location');
     expect(redirectLocation).toBeDefined();
     const afterSave = await fetch(site(redirectLocation!), { headers: { Cookie: adminCookies } });

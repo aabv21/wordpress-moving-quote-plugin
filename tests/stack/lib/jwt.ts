@@ -9,7 +9,6 @@ function base64UrlDecode(input: string): Buffer {
   return Buffer.from(input, 'base64url');
 }
 
-/** Signs `claims` into a compact HS256 JWT, used by tests that need to mint their own tokens. */
 export function signHs256(claims: object, secret: string, header: object = { alg: 'HS256', typ: 'JWT' }): string {
   const headerPart = base64UrlEncode(JSON.stringify(header));
   const claimsPart = base64UrlEncode(JSON.stringify(claims));
@@ -19,10 +18,8 @@ export function signHs256(claims: object, secret: string, header: object = { alg
 }
 
 /**
- * Verifies a compact HS256 JWT's signature with a constant-time comparison, decodes its header and
- * claims, and returns both — or null when the token is malformed or the signature doesn't match.
- * Never compares the secret itself: a test asserts the returned value is not null, never that two
- * secrets are equal, so a mismatch never has to be diagnosed by eye against a logged secret.
+ * Constant-time; null when malformed or unsigned by `secret`. Tests assert not-null, never compare
+ * secrets, so no secret is ever logged.
  */
 export function decodeVerified(token: string, secret: string): { header: unknown; claims: unknown } | null {
   const parts = token.split('.');

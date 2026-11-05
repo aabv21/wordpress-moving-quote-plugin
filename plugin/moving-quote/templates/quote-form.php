@@ -33,9 +33,8 @@ $steps = [
 ];
 
 $privacy_url = get_privacy_policy_url();
-// The server rule (Leads\LeadValidator::validate_move_date(), called with a hardcoded
-// America/Bogota zone, not the site's own configured timezone) computes "today" the same way, so
-// the date input's own min can never fall a day behind or ahead of what the REST API will accept.
+// America/Bogota, like LeadValidator::validate_move_date(), not the site timezone, so min always
+// matches what the REST API accepts.
 $today        = ( new DateTimeImmutable( 'now', new DateTimeZone( 'America/Bogota' ) ) )->format( 'Y-m-d' );
 $encoded_json = wp_json_encode( $config );
 $config_json  = false !== $encoded_json ? $encoded_json : '{}';
@@ -55,7 +54,7 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 		<?php endforeach; ?>
 	</ol>
 
-	<?php // Hidden from assistive technology as well as from sight and Tab order: only a bot filling every field by DOM access ever reaches it. ?>
+	<?php // Hidden from sight, Tab order, and assistive technology: only a bot filling fields by DOM access reaches it. ?>
 	<p class="moving-quote__honeypot moving-quote__offscreen" aria-hidden="true">
 		<label for="mq-website"><?php esc_html_e( 'Leave this field empty', 'moving-quote' ); ?></label>
 		<input type="text" id="mq-website" name="website" tabindex="-1" autocomplete="off" />

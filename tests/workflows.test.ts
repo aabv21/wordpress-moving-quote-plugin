@@ -7,8 +7,7 @@ import { listJsonFiles } from '../scripts/lib/list-json-files.ts';
 import { CODE_NODES, CREDENTIALS } from '../scripts/lib/manifest.ts';
 import type { WorkflowJson, WorkflowNode } from '../scripts/lib/workflow-types.ts';
 
-// This file exercises whatever workflow JSON is actually committed, so it stays meaningful (and
-// starts failing loudly) the moment a workflow file lands without the manifest entries it needs.
+// Tests the committed JSON, so a workflow landing without its manifest entries fails here.
 const credentialIds = new Set(CREDENTIALS.map((c) => c.id));
 
 function readWorkflow(path: string): WorkflowJson {
@@ -21,7 +20,6 @@ function node(wf: WorkflowJson, name: string): WorkflowNode {
   return found;
 }
 
-/** Every node of `type` across every file in `workflows/`, paired with the file it came from. */
 function allNodesOfType(type: string): { file: string; node: WorkflowNode }[] {
   const matches: { file: string; node: WorkflowNode }[] = [];
   for (const path of listJsonFiles('workflows')) {
@@ -79,9 +77,8 @@ it('every Google Sheets and Gmail node across workflows/ retries 3 times with a 
 });
 
 it('no Gmail node across workflows/ sets options.senderName on a send-only-scoped credential', () => {
-  // n8n 2.45.6's Gmail node only calls options.senderName's extra GET users/me/profile when that
-  // option is set; a credential narrowed to gmail.send alone (cvbCredGmail0001) isn't authorized
-  // for that call, so every Gmail node wired to one must leave senderName unset.
+  // options.senderName makes n8n 2.45.6's Gmail node call GET users/me/profile, which gmail.send
+  // alone doesn't authorize.
   const matches = allNodesOfType('n8n-nodes-base.gmail');
   expect(matches.length).toBeGreaterThan(0);
   for (const { file, node: n } of matches) {
@@ -306,9 +303,8 @@ describe('process-lead.json', () => {
     });
     expect((n.parameters.columns as { mappingMode?: string }).mappingMode).toBe('autoMapInputData');
     expect((n.parameters.options as { cellFormat?: string }).cellFormat).toBe('RAW');
-    // The 2.45.6 default ('insertInNewColumn') adds a new column when the sheet's own headers
-    // drift from what's sent, silently "repairing" a renamed header instead of failing loudly;
-    // 'error' makes a header mismatch fail the node (and alert) instead.
+    // The 2.45.6 default ('insertInNewColumn') silently adds a column for a renamed header;
+    // 'error' fails the node and alerts.
     expect((n.parameters.options as { handlingExtraData?: string }).handlingExtraData).toBe('error');
     expect(n.retryOnFail).toBe(true);
     expect(n.maxTries).toBe(3);

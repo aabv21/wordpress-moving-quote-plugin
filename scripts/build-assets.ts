@@ -7,13 +7,8 @@ const OUTFILE = 'plugin/moving-quote/assets/quote-form.js';
 const BANNER = '/* Generated from src/frontend/quote-form.ts by pnpm run build:assets. Edit the source. */';
 
 /**
- * Bundles `src/frontend/quote-form.ts` into the plugin's generated, committed asset: a minified
- * IIFE targeting es2020, banner-stamped so a reader of the generated file knows not to edit it.
- *
- * With `check: true`, writes nothing; instead it compares the freshly built output against the
- * file already on disk and returns its path in the result only when they differ, so CI can fail
- * a stale commit without ever touching the working tree. Returns the list of changed files
- * (empty when nothing changed, or when `check` is false and the build matched what was there).
+ * Returns the files that differ from what's on disk. With `check: true` nothing is written, so CI
+ * can fail a stale commit without touching the working tree.
  */
 export async function buildAssets(opts: { check: boolean }): Promise<string[]> {
   const result = await esbuild.build({

@@ -28,22 +28,11 @@ export default defineConfig([
     },
   },
   {
-    // `tests/stack/lib/stack.ts` calls `process.loadEnvFile('.env')` at import time, and
-    // `tests/stack/lib/execution-data.ts` and `tests/stack/lib/leads.ts` both import `stack.ts`
-    // transitively, so importing any of the three outside `tests/stack/**` — even indirectly
-    // through another helper — would fail the moment it ran without a stack up, or without
-    // `.env` (CI's Quality job has neither). `tests/stack/wp/**` and `tests/stack/n8n/**` files
-    // themselves are outside this rule's `files` glob already, so this only reaches a test
-    // elsewhere that reached into `tests/stack/**` by hand. This rule backs the convention
-    // documented in AGENTS.md with an enforced one, instead of relying on it alone.
-    //
-    // `no-restricted-imports`'s own glob patterns don't support excluding a subset of a wildcard
-    // match (a `!`-prefixed pattern is matched literally, not treated as a negation), so the
-    // stack-only modules are named explicitly instead of matching `**/stack/**` and trying to
-    // carve out `tests/stack/**`'s side-effect-free ones (`lib/poll.ts`, `lib/jwt.ts`,
-    // `lib/receiver.ts` today — no `.env` load and no live-stack dependency at import time, so
-    // importing any of them directly is fine). A new file under `tests/stack/lib/` that itself
-    // loads `.env` or needs a live stack must be added to this list.
+    // Enforces AGENTS.md's rule: `stack.ts` loads `.env` at import time, and `execution-data.ts`
+    // and `leads.ts` import it, so none may reach a test outside `tests/stack/**` (CI's quality
+    // job has no `.env`). The modules are listed by name because a `!` pattern can't carve the
+    // side-effect-free ones (`poll.ts`, `jwt.ts`, `receiver.ts`) out of a glob. Add any new
+    // `tests/stack/lib/` file that loads `.env` or needs a live stack.
     files: ['tests/**'],
     ignores: ['tests/stack/**'],
     rules: {
@@ -74,10 +63,8 @@ export default defineConfig([
     },
   },
   {
-    // The frontend runs in the browser: no Node builtins, no process, no Buffer, no require.
-    // Every computed index here is a statically-typed key (keyof FormValues, a 0|1|2 step, a
-    // byte 0-255) or a bounded array position, never an unvalidated string from the network; the
-    // rule can't see TypeScript's types and flags every computed index as if it were.
+    // Browser code: no Node builtins. Every computed index is a typed key or a bounded position,
+    // which the object-injection rule can't see.
     files: ['src/frontend/**'],
     rules: {
       'no-restricted-globals': ['error', 'process', 'Buffer', 'require'],

@@ -4,8 +4,7 @@ export type MoveType = 'apartment' | 'house' | 'office';
 export type Extra = 'packing' | 'furniture_assembly' | 'storage' | 'piano_fragile';
 
 /**
- * The exact lead payload contract WordPress sends to n8n, parsed. `locale` arrives as the
- * WordPress locale the lead was submitted under (`es_CO`, `en_US`, …) and is kept here already
+ * The parsed lead contract. `locale` arrives as a WordPress locale (`es_CO`) and is stored
  * normalized to the email language it selects.
  */
 export interface Lead {
@@ -37,28 +36,23 @@ export interface Lead {
   };
 }
 
-/** Lowercase only: PHP's `LeadValidator::validate_submission_id()` lowercases every UUID it accepts, and `event_id` in `processed_events` is case-sensitive text. */
+/** Lowercase only: PHP lowercases every UUID, and `processed_events.event_id` is case-sensitive. */
 const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const MOVE_TYPES = new Set<string>(['apartment', 'house', 'office']);
 const EXTRAS = new Set<string>(['packing', 'furniture_assembly', 'storage', 'piano_fragile']);
 const MOVE_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-/** DATE_ATOM with a numeric offset, e.g. `2026-11-04T09:15:00-05:00` (never a bare `Z`: WordPress always converts to a named timezone before formatting). The component ranges and the offset bound are checked separately in `isValidSubmittedAt()`; a regex alone would accept `2026-99-99T99:99:99+99:99`. */
+/** DATE_ATOM with a numeric offset, never `Z` (WordPress formats in a named zone). Ranges are checked in `isValidSubmittedAt()`. */
 const SUBMITTED_AT_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})([+-])(\d{2}):(\d{2})$/;
-/** None of these, nor whitespace or a control character, may appear anywhere in a simple address. */
 const FORBIDDEN_EMAIL_CHARS = new Set(['"', ',', ';', ':', '<', '>', '(', ')', '[', ']', '\\']);
 
 // eslint-disable-next-line no-control-regex -- the control-character range is deliberately excluded
 const EMAIL_WHITESPACE_OR_CONTROL_RE = /[\s\x00-\x1f\x7f]/;
 
 /**
- * A simple address: exactly one `@`, non-empty local and domain parts, at least one dot in the
- * domain, and none of `" , ; < > ( ) [ ] : \` or whitespace/control characters anywhere — the
- * same rule `LeadValidator::validate_email()` applies after `FILTER_VALIDATE_EMAIL`. That
- * underlying PHP validator (and this contract's own looser, prior check) both accept a quoted
- * local part like `"a,b"@example.com`, which Gmail's own `sendTo` splits on the comma into a
- * second recipient — so both `customer.email` and `team_email` are checked against this one rule.
- * Written as plain string operations, not one nested-quantifier regex, so there's no backtracking
- * blow-up to reason about on an adversarial input.
+ * One `@`, non-empty parts, a dot in the domain, and none of `" , ; < > ( ) [ ] : \`, whitespace,
+ * or controls: the rule `LeadValidator::is_simple_email()` applies. A quoted local part like
+ * `"a,b"@example.com` would make Gmail's `sendTo` add a second recipient. Plain string operations,
+ * not a nested-quantifier regex, so there's no backtracking blow-up.
  */
 function isSimpleEmail(value: string): boolean {
   if (EMAIL_WHITESPACE_OR_CONTROL_RE.test(value)) return false;
@@ -77,7 +71,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Every key in `value` is one of `keys`, with no extra top-level field. */
 function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
   return Object.keys(value).every((key) => keys.includes(key));
 }
@@ -94,11 +87,8 @@ function isValidCalendarDate(value: string): boolean {
 }
 
 /**
- * `submitted_at` matches `SUBMITTED_AT_RE`'s shape, but that regex alone accepts an impossible
- * date-time like `2026-99-99T99:99:99+99:99`: every component is checked against its own real
- * range here (via Luxon, so a non-leap Feb 29 is caught too, in a fixed UTC zone — the offset
- * itself needs no timezone conversion, just its own bound below), and the UTC offset is bounded
- * to ±14:00, the widest offset any real timezone actually uses.
+ * The regex alone accepts `2026-99-99T99:99:99+99:99`. Luxon checks each component (a non-leap
+ * Feb 29 included), and the offset is bounded to ±14:00, the widest real one.
  */
 function isValidSubmittedAt(value: string): boolean {
   const match = SUBMITTED_AT_RE.exec(value);
@@ -132,11 +122,8 @@ function isValidSubmittedAt(value: string): boolean {
 }
 
 /**
- * Code points, not UTF-16 units — matching PHP's `mb_strlen()` with UTF-8 encoding, which
- * `LeadValidator::validate_name()` counts a name by. A single basic emoji is one code point here
- * and two UTF-16 units in `.length`; a multi-code-point grapheme cluster (a ZWJ sequence, a
- * flag, a skin-tone modifier) still counts as more than one here, same as it does in `mb_strlen`
- * — this intentionally matches PHP's own code-point counting, not a full grapheme-aware count.
+ * Code points, not UTF-16 units or graphemes, to match PHP's `mb_strlen()` in
+ * `LeadValidator::validate_name()`.
  */
 function codePointLength(value: string): number {
   return Array.from(value).length;
@@ -146,11 +133,8 @@ function codePointLength(value: string): number {
 const CONTROL_CHARACTER_RE = /[\x00-\x1f\x7f\u0085\u2028\u2029]/;
 
 /**
- * True if `value` contains a C0 control, DEL, NEL (U+0085), LINE SEPARATOR (U+2028), or PARAGRAPH
- * SEPARATOR (U+2029). `LeadValidator::validate_name()` normalizes this exact set to a single
- * space, so a genuine WordPress payload never carries one here — this keeps the contract exactly
- * as strict as the PHP side for the fields that land, unescaped, in a plain-text email, where any
- * of these could otherwise forge an extra line.
+ * C0 controls, DEL, NEL, U+2028, U+2029: the set `LeadValidator::validate_name()` normalizes. Any
+ * of them could forge an extra line in the plain-text team email.
  */
 function hasControlCharacter(value: string): boolean {
   return CONTROL_CHARACTER_RE.test(value);
@@ -180,8 +164,7 @@ function parseMove(value: unknown): Lead['move'] | null {
   if (typeof distanceKm !== 'number' || !Number.isInteger(distanceKm) || distanceKm < 0) return null;
   if (typeof date !== 'string' || !isValidCalendarDate(date)) return null;
   if (!Array.isArray(extras) || !extras.every((extra): extra is string => typeof extra === 'string' && EXTRAS.has(extra))) return null;
-  // PHP's LeadValidator::validate_extras() dedupes as it builds the list, so a genuine WordPress
-  // payload never repeats one; reject a payload that does rather than silently accepting it.
+  // PHP dedupes extras, so a repeat means the payload didn't come from WordPress.
   if (new Set(extras).size !== extras.length) return null;
 
   return {
@@ -200,10 +183,8 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
 }
 
 /**
- * `low` and `high` are each rounded to the nearest 1,000 COP (`Pricing\Calculator::rounded_bound`),
- * but `amount` is not — with `range_percent` 0, which Settings allows, an `amount` that isn't a
- * multiple of 1,000 then falls outside `[low, high]` even though the estimate is entirely valid.
- * Only `low <= high` is checked here; `amount` is unconstrained relative to either bound.
+ * Only `low <= high`: the bounds are rounded to 1,000 COP but `amount` isn't, so with
+ * `range_percent` 0 a valid `amount` can fall outside `[low, high]`.
  */
 function parseEstimate(value: unknown): Lead['estimate'] | null {
   if (!isRecord(value) || !hasOnlyKeys(value, ['currency', 'amount', 'low', 'high'])) return null;
@@ -221,10 +202,8 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
 const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'customer', 'move', 'estimate'] as const;
 
 /**
- * The email language for the payload's `locale`. The field is optional: a lead signed by a plugin
- * version that predates it can still be in WordPress's retry queue, so a missing one reads as the
- * default language, as does an empty one (a row saved before the column existed) or any language
- * the emails aren't written in. A present but non-string value is a contract violation (null).
+ * Optional: a lead from an older plugin version can still be in the retry queue. Missing, empty,
+ * or unknown reads as the default language; a non-string is a contract violation (null).
  */
 function parseLocale(value: unknown): Locale | null {
   if (value === undefined) return DEFAULT_LOCALE;
@@ -232,11 +211,6 @@ function parseLocale(value: unknown): Locale | null {
   return normalizeLocale(value);
 }
 
-/**
- * Parses and validates the exact contract body WordPress signs and sends, matching the PHP side's
- * own field formats and ranges; never the move-date window, which is WordPress's own submit rule,
- * not re-enforced here (see the NOTE below).
- */
 export function parseLead(value: unknown): Lead | null {
   if (!isRecord(value) || !hasOnlyKeys(value, LEAD_KEYS)) return null;
   const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, customer, move, estimate } = value;
@@ -247,8 +221,7 @@ export function parseLead(value: unknown): Lead | null {
   if (typeof reference !== 'string' || reference !== expectedReference) return null;
 
   if (typeof submittedAt !== 'string' || !isValidSubmittedAt(submittedAt)) return null;
-  // site_name is WordPress's raw, unsanitized blog title (get_bloginfo('name')), which is blank
-  // once a merchant clears Settings → General → Site Title; any string, including '', is valid.
+  // The raw blog title, blank when the Site Title is cleared, so '' is valid.
   if (typeof siteName !== 'string') return null;
   if (typeof teamEmail !== 'string' || !isSimpleEmail(teamEmail)) return null;
 
@@ -258,10 +231,8 @@ export function parseLead(value: unknown): Lead | null {
   const parsedCustomer = parseCustomer(customer);
   if (!parsedCustomer) return null;
 
-  // NOTE: move.date is checked only as a valid calendar date here. The today-to-365-days window
-  // is WordPress's own submit rule (Leads\LeadValidator::validate_move_date); re-enforcing it in
-  // n8n would reject every retry of a lead submitted before the window's upper bound once today
-  // passes that date, and reject a same-day retry made after midnight forever.
+  // Only a valid calendar date: the today-to-365-days window is WordPress's submit rule, and
+  // re-checking it here would reject a legitimate retry once the window has moved.
   const parsedMove = parseMove(move);
   if (!parsedMove) return null;
 

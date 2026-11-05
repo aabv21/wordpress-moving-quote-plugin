@@ -23,12 +23,8 @@ services:
       dockerfile: docker/php/Dockerfile
     profiles: [tools]
     environment:
-      # Running as the host's own uid:gid (package.json's "php" script) keeps every file this
-      # container writes into the bind-mounted repo owned by the host user instead of root, but
-      # that uid has no /etc/passwd entry inside the container, so $HOME would otherwise resolve
-      # to "/" (unwritable). Composer's own COMPOSER_HOME (the Dockerfile's ENV) covers its
-      # package cache; HOME here covers anything else that falls back to it (PHPUnit's own
-      # runtime files, a future Composer plugin's cache, etc.).
+      # The "php" script runs as the host uid:gid, which has no /etc/passwd entry here, so $HOME
+      # would be "/" (unwritable). COMPOSER_HOME covers Composer's cache; HOME covers the rest.
       HOME: /tmp
     volumes:
       - .:/app
@@ -142,10 +138,8 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    # n8n's own image already runs as the unprivileged `node` user (never root) and needs no
-    # Linux capability to do its job (no raw sockets, no binding a privileged port, no device
-    # access), so every capability the container runtime would otherwise grant by default is
-    # dropped. n8n-worker (compose.queue.yaml) inherits this through `extends`.
+    # n8n runs as the unprivileged `node` user and needs no capability. n8n-worker inherits this
+    # through `extends`.
     cap_drop: [ALL]
     ports:
       - 127.0.0.1:5678:5678

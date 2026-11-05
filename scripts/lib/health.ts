@@ -1,4 +1,4 @@
-/** Polls `${baseUrl}/healthz` once a second until it responds OK or `budgetMs` elapses, with a 5 s timeout per request. */
+/** Once a second, 5 s timeout per request. */
 export async function waitForHealthy(baseUrl: string, budgetMs: number): Promise<boolean> {
   const deadline = Date.now() + budgetMs;
   for (;;) {
@@ -14,10 +14,8 @@ export async function waitForHealthy(baseUrl: string, budgetMs: number): Promise
 }
 
 /**
- * Polls `${baseUrl}/webhook/${webhookPath}` once a second until it answers 401 (live and
- * JWT-protected) or `budgetMs` elapses, with a 5 s timeout per request. A POST with no
- * `Authorization` header is exactly what the Webhook node's own JWT check rejects first, before
- * any workflow code runs, so 401 is the cheapest possible proof the publish actually took effect.
+ * A POST with no token gets 401 from the Webhook's JWT check before any workflow code runs: the
+ * cheapest proof the publish took effect.
  */
 export async function waitForWebhookAuthProtected(baseUrl: string, webhookPath: string, budgetMs: number): Promise<boolean> {
   const deadline = Date.now() + budgetMs;

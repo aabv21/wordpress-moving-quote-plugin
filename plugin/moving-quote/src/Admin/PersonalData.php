@@ -9,11 +9,8 @@ use DateTimeImmutable;
 use DateTimeZone;
 
 /**
- * Registers this plugin's leads with WordPress core's own personal-data tools (Tools → Export/
- * Erase Personal Data), both keyed by email: the exporter returns every matching lead's fields,
- * the eraser deletes every matching row. Core itself requires `manage_options` to reach either
- * screen and owns the whole request lifecycle (the confirmation email, the retry on failure), so
- * neither callback here checks a capability or a nonce of its own.
+ * Core's personal-data tools, keyed by email. Core requires `manage_options` and owns the request
+ * lifecycle, so neither callback checks a capability or nonce of its own.
  */
 final class PersonalData {
 	public static function register(): void {
@@ -49,8 +46,7 @@ final class PersonalData {
 	 * @return array{data: list<array{group_id: string, group_label: string, item_id: string, data: list<array{name: string, value: string}>}>, done: bool}
 	 */
 	public static function export( string $email_address, int $page = 1 ): array {
-		// Every matching lead is returned on page 1; there is no per-page limit here because a
-		// single visitor's lead count is small, unlike the admin CSV export's own batching.
+		// One page: a single visitor's lead count is small.
 		if ( $page > 1 ) {
 			return [
 				'data' => [],
@@ -155,25 +151,16 @@ final class PersonalData {
 		];
 	}
 
-	/** `$stored` (UTC, `Y-m-d H:i:s`) converted to `$tz` and formatted the same way. */
 	private static function bogota_time( string $stored, DateTimeZone $tz ): string {
 		return ( new DateTimeImmutable( $stored, new DateTimeZone( 'UTC' ) ) )->setTimezone( $tz )->format( 'Y-m-d H:i:s' );
 	}
 
 	/**
-	 * Deletes every lead matching `$email_address` in one statement
-	 * (`LeadRepository::delete_by_email()`), rather than parsing each row first and deleting it by
-	 * id — a row whose `status` `LeadRecord::from_row()` can't parse (which the exporter's own
-	 * `find_by_email()` would skip) must still be erased, since an erasure request exists
-	 * precisely to remove data the parsed view doesn't need to make sense of first.
+	 * Deletes without parsing, so a row with an unparseable `status` is still erased.
 	 *
-	 * Deleting this plugin's own row is not a full erasure: every delivered lead was synced to
-	 * n8n right after insert, so a copy can still sit in the Moving leads sheet, in the two
-	 * notification emails already sent (team and customer), or — for up to 168 hours — in a
-	 * failed n8n execution's stored data (see "Security: what n8n 2.45.6 actually does with the
-	 * stored token" in AGENTS.md). None of those are reachable from WordPress, so whenever a row
-	 * was actually deleted, this reports `items_retained` and names each deleted lead's own
-	 * `MQ-…` reference as what to remove by hand from those three places.
+	 * Not a full erasure: copies can remain in the sheet, the two sent emails, and for up to 168 h
+	 * a failed n8n execution (see "Token retention, precisely" in `docs/architecture.md`). When a
+	 * row is deleted, this reports `items_retained` and names each `MQ-…` reference to remove by hand.
 	 *
 	 * @return array{items_removed: bool, items_retained: bool, messages: list<string>, done: bool}
 	 */

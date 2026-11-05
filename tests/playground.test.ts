@@ -69,7 +69,7 @@ function shape(step: unknown): unknown {
   ) as unknown;
 }
 
-/** `setup.sh`'s own copy for one `SITE_LOCALE`: every `name="value"` line inside that `case` branch. */
+/** Every `name="value"` line in that `SITE_LOCALE`'s `case` branch of `setup.sh`. */
 function setupCopy(locale: string): Record<string, string> {
   const lines = readFileSync('setup.sh', 'utf8').split('\n');
   const start = lines.indexOf(`  ${locale})`);

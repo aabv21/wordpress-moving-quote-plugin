@@ -33,33 +33,28 @@ const CONTRACT_COLUMNS = [
   'locale',
 ] as const;
 
-/** `Install\Installer::DB_VERSION`: bumped to '2' when the `locale` column was added. */
+/** Must match `Installer::DB_VERSION`. */
 const DB_VERSION = '2';
 
 /**
- * Settings keys this test compares between the stored option and `Defaults::settings()`. Excludes
- * `webhook_url`, `webhook_secret`, and `team_email`: `setup.sh` now writes those three to deliver
- * leads to the local n8n, so they always differ from the empty-string defaults once it has run.
+ * Excludes the three delivery keys: `setup.sh` sets them, so they differ from the defaults.
  */
 const COMPARED_SETTINGS_KEYS = ['base_rates', 'per_room', 'per_km', 'extras', 'range_percent', 'routes'] as const;
 
 /**
- * Asserts `actual` matches `expected` on every key in `COMPARED_SETTINGS_KEYS`, failing with only
- * the names of the mismatching keys. The option holds the webhook secret from a later task on, so
- * a failure here must never print either side's full value.
+ * Fails with key names only: the option holds the webhook secret, which must never be printed.
  */
 function expectSettingsMatch(actual: Record<string, unknown>, expected: Record<string, unknown>): void {
   const mismatched = COMPARED_SETTINGS_KEYS.filter((key) => JSON.stringify(actual[key]) !== JSON.stringify(expected[key]));
   expect(mismatched, `settings mismatch on key(s): ${mismatched.join(', ')}`).toEqual([]);
 }
 
-/** Row count for `moving_quote_rl_test`'s two option rows (value + timeout), read straight from `wp_options`. */
+/** The value row plus its timeout row. */
 async function rateLimitTransientRowCount(): Promise<number> {
   const rows = await sqlWp("SELECT option_name FROM wp_options WHERE option_name LIKE '%moving_quote_rl_test%'");
   return rows.length;
 }
 
-/** Whether the leads table currently exists in the WordPress database. */
 async function leadsTableExists(): Promise<boolean> {
   const leadsTable = await table();
   const [row] = await sqlWp(`SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '${leadsTable}'`);
@@ -71,7 +66,6 @@ async function cronHookScheduled(): Promise<boolean> {
   return events.some((event) => 'moving_quote_process_outbox' === event.hook);
 }
 
-/** Reads `Settings\Defaults::settings()` straight from PHP, as the install's own source of truth. */
 async function pricingDefaults(): Promise<Record<string, unknown>> {
   const stdout = await wp(['eval', 'echo json_encode( \\Chivabox\\MovingQuote\\Settings\\Defaults::settings() );']);
   return JSON.parse(stdout) as Record<string, unknown>;
@@ -99,13 +93,8 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
   });
 
   it('activation runs to completion on a single-site install regardless of the network_wide argument', async () => {
-    // Installer::activate() refuses on is_multisite(), not on the $network_wide argument
-    // register_activation_hook()'s callback receives — defining the MULTISITE constant to
-    // simulate that path breaks WP-CLI's own bootstrap without the real multisite database
-    // tables (wp_site, wp_blogs, …) this stack's single-site WordPress install doesn't have, so
-    // the refusal branch itself isn't exercised here. What's verifiable on this stack: a call
-    // with $network_wide true still runs to completion instead of being refused, confirming that
-    // argument alone (now unused by the check) never triggers it.
+    // The refusal checks is_multisite(); faking MULTISITE breaks WP-CLI without the multisite
+    // tables, so only this half is testable: $network_wide alone never triggers it.
     await wp(['eval', 'delete_option( "moving_quote_db_version" ); delete_option( "moving_quote_settings" );']);
     await wp(['eval', '\\Chivabox\\MovingQuote\\Install\\Installer::activate( true );']);
     await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);
@@ -151,18 +140,11 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
   });
 
   it('an in-place upgrade (no re-activation) also seeds the settings and the cron', async () => {
-    // Simulates a site that was already active before this version shipped: activate() never
-    // runs again, so plugins_loaded's maybe_upgrade() is the only thing that can repair it.
-    // All three removals run inside one wp eval call, so none of them individually triggers
-    // maybe_upgrade() to repair state before the others have a chance to run: each separate wp
-    // command boots WordPress and fires plugins_loaded before that command's own CLI logic runs,
-    // so deleting the version option through three separate wp commands would let the first
-    // deletion's own plugins_loaded cycle recreate the settings and the cron before the other two
-    // commands ever execute.
+    // A site active before this version: only maybe_upgrade() can repair it. One wp eval, since
+    // every separate wp command fires plugins_loaded and would repair state between removals.
     await wp(['eval', 'delete_option( "moving_quote_db_version" ); delete_option( "moving_quote_settings" ); wp_clear_scheduled_hook( "moving_quote_process_outbox" );']);
 
-    // A separate, later wp command is the first to see every piece of state gone, and is what
-    // actually exercises plugins_loaded's maybe_upgrade() repair path.
+    // The next wp command is the first to see it all gone, and runs the repair.
     await wp(['option', 'get', 'siteurl']);
 
     await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);

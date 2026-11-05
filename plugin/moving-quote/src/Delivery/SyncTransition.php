@@ -5,7 +5,6 @@ namespace Chivabox\MovingQuote\Delivery;
 
 use Chivabox\MovingQuote\Leads\SyncStatus;
 
-/** Computes the next sync state for a lead after one delivery attempt, success or failure. */
 final class SyncTransition {
 	private const ERROR_MAX_LENGTH = 500;
 

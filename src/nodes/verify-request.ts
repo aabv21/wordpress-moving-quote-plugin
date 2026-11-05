@@ -17,7 +17,7 @@ function rejected(status: 401 | 422, reason: string): Rejection {
   return { ok: false, status, reason };
 }
 
-/** `jwtPayload` has the four claims n8n's own JWT check doesn't itself enforce the shape of. */
+/** n8n's JWT check doesn't enforce these four claims' shape. */
 function parseClaims(jwtPayload: unknown): Claims | null {
   if (typeof jwtPayload !== 'object' || jwtPayload === null) return null;
   const { iat, exp, jti, body_sha256: bodySha256 } = jwtPayload as Record<string, unknown>;
@@ -29,13 +29,9 @@ function parseClaims(jwtPayload: unknown): Claims | null {
 }
 
 /**
- * Verifies the claims n8n's native JWT auth doesn't itself check (lifetime, skew, body binding),
- * the payload contract, and the `jti` ↔ `request_uuid` binding, in that order. The Webhook node's
- * own `jwtAuth` check has already verified the signature, and `exp` only when it's present (a
- * signed token with no `exp` passes that check and reaches here as `missing_claims`), before this
- * runs: a missing token, a bad signature, an expired token, or `alg: "none"` never reaches here
- * (401/403 from the webhook itself, with no execution created). This is the one place the rest of
- * the contract is enforced, instead of a chain of IF nodes.
+ * What the Webhook's `jwtAuth` doesn't check, in order: lifetime, skew, body binding, the
+ * contract, and `jti` = `request_uuid`. `jwtAuth` verifies `exp` only when present, so a token
+ * without one reaches here as `missing_claims`.
  */
 export function run(
   input: { body: unknown; jwtPayload?: unknown; body_sha256: string },

@@ -4,12 +4,10 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Install;
 
 /**
- * The leads table definition, in the format `dbDelta()` expects. A column added after the first
- * release goes last: `dbDelta()` appends a new column to an existing table, so a fresh install
- * and an upgraded one end up with the same column order.
+ * A new column goes last: `dbDelta()` appends it to an existing table, so fresh and upgraded
+ * installs keep the same column order.
  */
 final class Schema {
-	/** Builds the `CREATE TABLE` statement for the leads table, ready for `dbDelta()`. */
 	public static function sql( string $table, string $charset_collate ): string {
 		return "CREATE TABLE {$table} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

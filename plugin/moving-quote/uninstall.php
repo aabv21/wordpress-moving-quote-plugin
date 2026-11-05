@@ -1,7 +1,6 @@
 <?php
 /**
- * Uninstall handler: runs only when the plugin is deleted through WordPress, never on a plain
- * file delete or a deactivation.
+ * Runs only when WordPress deletes the plugin, never on deactivation.
  *
  * @package Chivabox\MovingQuote
  */

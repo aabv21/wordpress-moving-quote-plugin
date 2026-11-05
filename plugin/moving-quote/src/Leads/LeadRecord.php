@@ -4,9 +4,7 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Leads;
 
 /**
- * A leads-table row, typed from the string values `$wpdb` returns. Every property is named after
- * its column. `locale` is the site language the lead was submitted under (`determine_locale()`),
- * or `''` for a row saved before that column existed.
+ * `locale` is `''` for a row saved before that column existed.
  */
 final readonly class LeadRecord {
 	/** @param list<string> $extras */
@@ -70,26 +68,19 @@ final readonly class LeadRecord {
 		);
 	}
 
-	/** The short, customer-facing reference: `MQ-` plus the first 8 hex of the request UUID, uppercased. */
+	/** `MQ-` plus the first 8 hex of the request UUID, uppercased. */
 	public function reference(): string {
 		return self::reference_for( $this->request_uuid );
 	}
 
-	/**
-	 * The same reference `reference()` builds, from a bare `request_uuid` with no full
-	 * `LeadRecord` needed — used where a row exists only as an id (e.g. the personal-data
-	 * eraser naming a lead whose copies elsewhere it can't reach, before or instead of parsing
-	 * the row into a record at all).
-	 */
+	/** For a bare `request_uuid`, such as the eraser's unparsed rows. */
 	public static function reference_for( string $request_uuid ): string {
 		$hex = str_replace( '-', '', $request_uuid );
 		return 'MQ-' . strtoupper( substr( $hex, 0, 8 ) );
 	}
 
 	/**
-	 * True when `$value` has the exact shape `reference_for()` produces: `MQ-` and 8 uppercase hex
-	 * digits. The thank-you page echoes a reference back from its own query string, so nothing
-	 * else may ever reach that output.
+	 * The thank-you page echoes its query string through this, so nothing else may pass.
 	 */
 	public static function is_reference( string $value ): bool {
 		return 1 === preg_match( '/^MQ-[0-9A-F]{8}$/D', $value );

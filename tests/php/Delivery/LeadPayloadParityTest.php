@@ -9,10 +9,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Builds a `LeadRecord` for every edge case in `tests/fixtures/lead-payloads/` and asserts
- * `LeadPayload::body()` matches that fixture byte for byte — proving the committed files are
- * PHP's own real output, not a hand-written guess, for the corpus the TypeScript side's
- * `parseLead()` is checked against in `tests/nodes/lead-payload-parity.test.ts`.
+ * Proves each fixture in `tests/fixtures/lead-payloads/` is PHP's real output, for the corpus
+ * `tests/nodes/lead-payload-parity.test.ts` checks `parseLead()` against.
  */
 final class LeadPayloadParityTest extends TestCase {
 	private const SITE_NAME  = 'Chivabox Movers';

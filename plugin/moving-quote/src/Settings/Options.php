@@ -6,17 +6,14 @@ namespace Chivabox\MovingQuote\Settings;
 use Chivabox\MovingQuote\Pricing\{DistanceTable, Rates};
 
 /**
- * Reads the plugin's settings option.
- *
  * @phpstan-import-type SettingsShape from Defaults
  */
 final class Options {
 	public const NAME = 'moving_quote_settings';
 
 	/**
-	 * Merged over the pricing defaults through the same pure sanitizer the settings form uses, so
-	 * a partially-seeded or corrupted option never yields a missing or wrongly-typed key: every
-	 * field that doesn't validate falls back to its default instead of crashing a page load.
+	 * Runs through the form's pure sanitizer over the defaults, so a partial or corrupted option
+	 * falls back per field instead of crashing a page load.
 	 *
 	 * @return SettingsShape
 	 */
@@ -51,7 +48,6 @@ final class Options {
 		return self::all()['team_email'];
 	}
 
-	/** True once the webhook URL, the webhook secret, and the team email are all set. */
 	public static function delivery_enabled(): bool {
 		$settings = self::all();
 		return '' !== $settings['webhook_url'] && '' !== $settings['webhook_secret'] && '' !== $settings['team_email'];

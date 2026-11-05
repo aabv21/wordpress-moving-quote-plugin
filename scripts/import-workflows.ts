@@ -8,18 +8,13 @@ import { WORKFLOWS, type WorkflowEntry } from './lib/manifest.ts';
 
 const WORKFLOWS_DIR = 'workflows';
 
-/**
- * `err.message` plus the failed command's stdout, when there is one - n8n's CLI prints its own
- * error detail to stdout rather than stderr, so `err.message` alone (just "Command failed: ...")
- * dropped it. Never reads `.env`: this is the stdout of an `n8n` CLI invocation, not env content.
- */
+/** Adds the command's stdout: n8n's CLI prints its error detail there, not to stderr. */
 function errorDetail(err: unknown): string {
   if (!(err instanceof Error)) return String(err);
   const stdout = (err as { stdout?: unknown }).stdout;
   return typeof stdout === 'string' && stdout.trim() !== '' ? `${err.message}\n${stdout.trim()}` : err.message;
 }
 
-/** Every `manifestIds` entry not present in `seenIds`, in manifest order. */
 export function missingWorkflowIds(manifestIds: readonly string[], seenIds: ReadonlySet<string>): string[] {
   return manifestIds.filter((id) => !seenIds.has(id));
 }
@@ -30,10 +25,8 @@ async function seenWorkflowIds(): Promise<Set<string>> {
 }
 
 /**
- * Imports every file in `workflows/`, then verifies each manifest id actually landed (a read-only
- * `list:workflow`), retrying the import once on a miss — `import:workflow` can exit 0 having
- * silently skipped a file still settling onto the bind mount right after it was written. Throws,
- * naming the still-missing ids, if a retry doesn't recover them.
+ * Verifies each manifest id landed and retries once: `import:workflow` can exit 0 having skipped a
+ * file still settling onto the bind mount.
  */
 async function importAndVerify(manifestIds: readonly string[]): Promise<void> {
   await compose(['exec', '-T', 'n8n', 'n8n', 'import:workflow', '--separate', '--input=/workflows']);
@@ -85,12 +78,9 @@ export async function importWorkflows(): Promise<void> {
     if (!healthy) {
       failures.push('n8n did not become healthy after restart');
     } else {
-      // /healthz reports healthy well before a sub-workflow call is guaranteed to read the
-      // version just published. A reconciler syncs workflow_published_version to the active
-      // version on its own schedule (10 s by default,
-      // N8N_WORKFLOW_PUBLICATION_RECONCILE_INTERVAL_SECONDS), so a call made right after the
-      // restart can still run the previous version. This fixed wait is longer than that default
-      // interval, not a guarantee against a slower one.
+      // /healthz is up before the reconciler syncs workflow_published_version (every 10 s by
+      // default, N8N_WORKFLOW_PUBLICATION_RECONCILE_INTERVAL_SECONDS). The wait outlasts that
+      // default, not a slower one.
       await new Promise<void>((resolve) => setTimeout(resolve, 15_000));
 
       if (n8nUrl) {

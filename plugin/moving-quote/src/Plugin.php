@@ -9,9 +9,6 @@ use Chivabox\MovingQuote\Frontend\{ReferenceShortcode, Shortcode};
 use Chivabox\MovingQuote\Install\Installer;
 use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
 
-/**
- * Plugin entry point: wires bootstrap hooks for the main plugin file.
- */
 final class Plugin {
 	public const VERSION = '1.1.0';
 
@@ -19,9 +16,7 @@ final class Plugin {
 		add_action(
 			'init',
 			static function () use ( $plugin_file ): void {
-				// dirname( plugin_basename( $plugin_file ) ) is the plugin's own folder name
-				// relative to wp-content/plugins, not a hardcoded 'moving-quote', which would
-				// silently stop finding translations the moment the folder is ever renamed.
+				// Not a hardcoded 'moving-quote': a renamed folder would lose its translations.
 				load_plugin_textdomain( 'moving-quote', false, dirname( plugin_basename( $plugin_file ) ) . '/languages' );
 			}
 		);
@@ -30,7 +25,6 @@ final class Plugin {
 		register_deactivation_hook( $plugin_file, [ Installer::class, 'deactivate' ] );
 		add_filter( 'cron_schedules', [ Installer::class, 'add_schedule' ] ); // phpcs:ignore WordPress.WP.CronInterval.ChangeDetected -- the interval is a fixed 60 seconds, defined in Installer::add_schedule().
 		add_action( 'plugins_loaded', [ Installer::class, 'maybe_upgrade' ] );
-		// A cron-triggered run of the outbox simply discards the delivered count, like any action callback.
 		add_action( Installer::CRON_HOOK, [ Outbox::class, 'process_due' ] ); // @phpstan-ignore return.void (process_due() has a meaningful return for its direct callers, not just this hook)
 
 		add_action( 'admin_menu', [ Menu::class, 'register' ] );

@@ -7,8 +7,7 @@ use Chivabox\MovingQuote\Pricing\DistanceTable;
 use Chivabox\MovingQuote\Settings\Options;
 
 /**
- * The `[moving_quote]` shortcode: registers its script and style once on `init`, but enqueues
- * them only from `render()`, so the asset loads only on a page that actually uses the shortcode.
+ * Registers assets on `init` but enqueues them from `render()`, so they load only where used.
  */
 final class Shortcode {
 	public const TAG     = 'moving_quote';
@@ -70,9 +69,8 @@ final class Shortcode {
 	}
 
 	/**
-	 * The URL of the thank-you page named by the `thank_you` attribute, or null when it doesn't
-	 * exist. get_permalink() never returns false for an actual WP_Post, only for a missing or
-	 * numeric post ID, which get_page_by_path()'s own null check already rules out here.
+	 * Null when the page doesn't exist. get_permalink() returns false only for a missing post,
+	 * which the null check already rules out.
 	 */
 	public static function thank_you_url( string $slug ): ?string {
 		$page = get_page_by_path( $slug );
@@ -80,10 +78,7 @@ final class Shortcode {
 	}
 
 	/**
-	 * The embedded `data-config` payload: the two REST URLs, a fresh `wp_rest` nonce, the
-	 * thank-you URL (or null), and every translated string the frontend writes itself. Text the
-	 * template already renders (the estimate panel's states, the inline success message) stays
-	 * in the template instead.
+	 * Holds only strings the script writes itself; text the template renders stays there.
 	 *
 	 * @return array{
 	 *     estimateUrl: string,

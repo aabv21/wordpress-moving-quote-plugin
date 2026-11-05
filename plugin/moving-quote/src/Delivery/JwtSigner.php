@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Delivery;
 
-/** Signs a claims array into a compact HS256 JWT. */
 final class JwtSigner {
 	private const HEADER = [
 		'alg' => 'HS256',

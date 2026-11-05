@@ -14,10 +14,8 @@ const SQL_BLOCK_COMMENT_RE = /\/\*[\s\S]*?\*\//g;
 const SQL_PLACEHOLDER_RE = /\$\d/;
 
 /**
- * n8n formats a Postgres query client-side before sending it, replacing every `$N` in the raw text
- * — including inside a `--` or `/* *\/` comment — with its bound value. Its escaping only doubles
- * `'`, so a bound value containing a newline can end a `--` comment and turn whatever follows into
- * live SQL. A query must never reference a placeholder from within a comment.
+ * n8n substitutes every `$N` in the raw query text, comments included, and only doubles `'`, so a
+ * bound value with a newline can end a `--` comment and turn the rest into live SQL.
  */
 export function hasPlaceholderInSqlComment(query: string): boolean {
   const comments = [...query.matchAll(SQL_LINE_COMMENT_RE), ...query.matchAll(SQL_BLOCK_COMMENT_RE)].map((m) => m[0]);
@@ -28,11 +26,8 @@ export function hasPlaceholderInSqlComment(query: string): boolean {
 const RETRY_REQUIRED_TYPES = new Set(['n8n-nodes-base.postgres', 'n8n-nodes-base.googleSheets', 'n8n-nodes-base.gmail', 'n8n-nodes-base.httpRequest']);
 
 /**
- * True for a manifest credential entry whose `data` sets `customScopes: true` and `enabledScopes`
- * to exactly `gmail.send` — the shape `cvbCredGmail0001` uses. Narrowed this way, n8n 2.45.6's
- * Gmail node can only call `POST users/me/messages/send`; any node option that makes it call a
- * different endpoint (`options.senderName`, which calls `GET users/me/profile` first) fails with
- * a 403 once the credential is re-consented under this scope.
+ * Under `gmail.send` alone, n8n 2.45.6's Gmail node can only send: `options.senderName` calls
+ * `GET users/me/profile` first and gets a 403.
  */
 function isSendOnlyGmailCredential(credential: { data: (env: Readonly<Record<string, string>>) => Record<string, unknown> }): boolean {
   const data = credential.data({});
@@ -45,8 +40,7 @@ export function checkWorkflow(
 ): string[] {
   const credentials = opts.credentials ?? CREDENTIALS;
   const errors: string[] = [];
-  // Widen past WorkflowJson's own (optimistic) field types so a malformed or hand-edited file can
-  // be reported instead of crashing the check.
+  // Widened past WorkflowJson's types, so a malformed file is reported instead of crashing.
   const raw: Record<string, unknown> = wf;
 
   for (const field of ['id', 'name', 'nodes', 'connections', 'settings']) {

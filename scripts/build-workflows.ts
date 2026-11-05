@@ -5,15 +5,11 @@ import { build } from 'esbuild';
 import { CODE_NODES, type CodeNodeEntry } from './lib/manifest.ts';
 import type { WorkflowJson } from './lib/workflow-types.ts';
 
-// n8n's Code-node Task Runner sandbox runs generated code after `Object.defineProperty = () =>
-// ({})` (@n8n/task-runner's createVmExecutableCode freezes builtins this way). esbuild's IIFE
-// output attaches every named export through that same function (`__defProp(target, name, {
-// get: ... })`), so under that sandbox each export silently never lands and `__node.run` comes
-// back undefined. Swapping esbuild's own `__defProp` helper for a plain assignment sidesteps
-// `Object.defineProperty` entirely; a plain function export needs no live binding or descriptor.
-// NOTE: this patches esbuild's current codegen for this exact helper, pinned by esbuild's version
-// in package.json. If a future esbuild renames or restructures it, the guard below throws instead
-// of silently shipping a broken Code node; the fix is to update the needle/replacement together.
+// n8n's Task Runner (@n8n/task-runner's createVmExecutableCode) sets `Object.defineProperty =
+// () => ({})` before running jsCode. esbuild's IIFE attaches exports through `__defProp`, so every
+// export would vanish and `__node.run` would be undefined; a plain assignment sidesteps it.
+// NOTE: this patches esbuild's codegen at its exact pinned version. If a newer esbuild changes the
+// helper, the guard below throws; update the needle and replacement together.
 const ESBUILD_DEFINE_PROP = 'var __defProp = Object.defineProperty;';
 const HARDENED_DEFINE_PROP =
   'var __defProp = (obj, key, desc) => { obj[key] = desc && "get" in desc ? desc.get() : desc.value; return obj; };';

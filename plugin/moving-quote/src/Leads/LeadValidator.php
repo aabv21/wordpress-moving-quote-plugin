@@ -6,9 +6,8 @@ namespace Chivabox\MovingQuote\Leads;
 use Chivabox\MovingQuote\Pricing\{DistanceTable, Extra, MoveType, QuoteInput};
 
 /**
- * Validates and normalizes a quote or lead submission against the plugin's limits, collecting every
- * error instead of stopping at the first one. Never calls a WordPress function: every message is a
- * stable code, mapped to display text by `Rest\Messages`.
+ * Collects every error instead of stopping at the first. Pure: errors are stable codes, mapped to
+ * display text by `Rest\Messages`.
  */
 final class LeadValidator {
 	private const ROOMS_MIN                = 1;
@@ -21,8 +20,7 @@ final class LeadValidator {
 	private const MOVE_DATE_MAX_DAYS_AHEAD = 365;
 
 	/**
-	 * Validates only the fields that affect price: move type, rooms, origin, destination, and
-	 * extras. Used by the estimate endpoint, which has no customer or consent fields.
+	 * Only the fields that affect price, for the estimate endpoint.
 	 *
 	 * @param array<string, mixed> $input
 	 */
@@ -38,9 +36,6 @@ final class LeadValidator {
 	}
 
 	/**
-	 * Validates every lead field, in the order: submission_id, move_type, rooms, origin,
-	 * destination, extras, move_date, name, phone, email, consent.
-	 *
 	 * @param array<string, mixed> $input
 	 */
 	public static function lead( array $input, DistanceTable $distances, \DateTimeImmutable $now, \DateTimeZone $tz ): LeadDraft|FieldErrors {
@@ -63,10 +58,8 @@ final class LeadValidator {
 	}
 
 	/**
-	 * Validates move_type, rooms, origin, destination, and extras, in that order, appending any
-	 * failure to `$errors` by reference. Returns every field's normalized value regardless of
-	 * whether it was valid, so a caller that only inspects `$errors` never has to guard a missing
-	 * array key.
+	 * Returns every normalized value even when invalid, so a caller that only checks `$errors`
+	 * never guards a missing key.
 	 *
 	 * @param array<string, mixed> $input
 	 * @param array<string, string> $errors
@@ -141,10 +134,8 @@ final class LeadValidator {
 	}
 
 	/**
-	 * Validates a city name and, once it matches a configured city case-insensitively, normalizes
-	 * it to that city's own canonical spelling — `DistanceTable::distance_km()` looks up its
-	 * `$this->distances` array by exact string, so an accepted-but-differently-cased value (e.g.
-	 * "cartagena") would otherwise never find the route a correctly-cased submission does.
+	 * Normalizes a case-insensitive match to the configured spelling: `DistanceTable::distance_km()`
+	 * looks routes up by exact string, so "cartagena" would otherwise find no route.
 	 *
 	 * @param array<string, string> $errors
 	 */
@@ -165,7 +156,6 @@ final class LeadValidator {
 		return $canonical;
 	}
 
-	/** The configured city matching `$city` case-insensitively, in its own canonical spelling; null when none matches. */
 	private static function canonical_city( string $city, DistanceTable $distances ): ?string {
 		foreach ( $distances->cities() as $known ) {
 			if ( 0 === strcasecmp( $known, $city ) ) {
@@ -176,9 +166,7 @@ final class LeadValidator {
 	}
 
 	/**
-	 * Validates the destination city, then — only once both cities are individually known —
-	 * whether a route exists between them, reporting a missing route on `destination` per the
-	 * contract.
+	 * Checks the route only once both cities are known, and reports a missing one on `destination`.
 	 *
 	 * @param array<string, string> $errors
 	 */
@@ -259,10 +247,8 @@ final class LeadValidator {
 	}
 
 	/**
-	 * C0 controls, DEL, NEL, LINE SEPARATOR, and PARAGRAPH SEPARATOR — the set a `LeadController`
-	 * REST submission can still carry, since `LeadController` passes the raw JSON body straight to
-	 * this validator with no `sanitize_text_field()` pass first (that function exists, but nothing
-	 * calls it for this route).
+	 * C0 controls, DEL, NEL, U+2028, U+2029. `LeadController` passes the raw JSON body here with no
+	 * `sanitize_text_field()` pass, so this is the only line-break guard.
 	 */
 	private const CONTROL_CHARACTER_PATTERN = '/[\x{0000}-\x{001F}\x{007F}\x{0085}\x{2028}\x{2029}]+/u';
 
@@ -278,8 +264,7 @@ final class LeadValidator {
 		}
 		$normalized = preg_replace( self::CONTROL_CHARACTER_PATTERN, ' ', $value );
 		if ( null === $normalized ) {
-			// preg_replace() returns null only on a PCRE-level failure, which for this pattern
-			// means $value isn't valid UTF-8 (the /u modifier refuses to run on it).
+			// Null here means $value isn't valid UTF-8 (the /u modifier refuses it).
 			$errors['name'] = 'invalid';
 			return '';
 		}
@@ -319,12 +304,7 @@ final class LeadValidator {
 		return $digits;
 	}
 
-	/**
-	 * A simple address only: none of `" , ; < > ( ) [ ] : \`, and no whitespace or control
-	 * character, anywhere in the value. `FILTER_VALIDATE_EMAIL` alone accepts a quoted local part
-	 * such as `"a,b"@example.com`, which n8n's Gmail node splits on the comma into a second
-	 * recipient — this rejects exactly what that quoting would otherwise smuggle through.
-	 */
+	/** See `is_simple_email()`. */
 	private const FORBIDDEN_EMAIL_CHARACTER_PATTERN = '/[\s\x{0000}-\x{001F}\x{007F}"(),;:<>[\]\\\\]/u';
 
 	/** @param array<string, string> $errors */
@@ -341,12 +321,9 @@ final class LeadValidator {
 	}
 
 	/**
-	 * A simple address: `FILTER_VALIDATE_EMAIL` passes, and none of `" , ; < > ( ) [ ] : \` or
-	 * whitespace/control characters appear anywhere in it. `FILTER_VALIDATE_EMAIL` alone accepts a
-	 * quoted local part such as `"a,b"@example.com`, which n8n's Gmail node splits on the comma
-	 * into a second recipient — this rejects exactly what that quoting would otherwise smuggle
-	 * through. Shared with `Settings\SettingsSanitizer`, so a saved team address always passes the
-	 * same rule `src/nodes/lead.ts`'s `isSimpleEmail()` enforces on the n8n side.
+	 * `FILTER_VALIDATE_EMAIL`, minus whitespace, controls, and `" , ; < > ( ) [ ] : \`. The filter
+	 * alone accepts `"a,b"@example.com`, which n8n's Gmail node splits into two recipients. Shared
+	 * with `Settings\SettingsSanitizer`; matches `isSimpleEmail()` in `src/nodes/lead.ts`.
 	 */
 	public static function is_simple_email( string $value ): bool {
 		if ( false === filter_var( $value, FILTER_VALIDATE_EMAIL ) ) {

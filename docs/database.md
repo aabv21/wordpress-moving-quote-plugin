@@ -15,7 +15,7 @@ Two databases back this repo: MySQL, which WordPress itself owns (the leads tabl
 
 ### Stack tests read as the owner role, on purpose
 
-`tests/stack/lib/stack.ts`'s `psqlAs`/`sqlApp`, used by `tests/stack/n8n/intake.test.ts` and `tests/stack/n8n/runtime.test.ts` to inspect `processed_events`, connect as `$APP_DB_USER`, not `app_runtime`. That's test tooling, not n8n: nothing in `workflows/` ever connects as `app`. AGENTS.md's documented false-duplicate recovery command (`docker compose exec -T postgres sh -c "psql -U \"\$APP_DB_USER\" -d app -c \"DELETE FROM processed_events WHERE event_id = '<request_uuid>'\""`) also runs as the owner role, deliberately: a manual recovery DELETE is an operator action, not a runtime path `app_runtime`'s grants need to cover, so it uses the role that already has full rights in `app` rather than widening the runtime role's grants just for this one rare case.
+`tests/stack/lib/stack.ts`'s `psqlAs`/`sqlApp`, used by `tests/stack/n8n/intake.test.ts` and `tests/stack/n8n/runtime.test.ts` to inspect `processed_events`, connect as `$APP_DB_USER`, not `app_runtime`. That's test tooling, not n8n: nothing in `workflows/` ever connects as `app`. The recovery command in `architecture.md`'s "Recovering a false duplicate" (`docker compose exec -T postgres sh -c "psql -U \"\$APP_DB_USER\" -d app -c \"DELETE FROM processed_events WHERE event_id = '<request_uuid>'\""`) also runs as the owner role, deliberately: a manual recovery DELETE is an operator action, not a runtime path `app_runtime`'s grants need to cover, so it uses the role that already has full rights in `app` rather than widening the runtime role's grants just for this one rare case.
 
 ## Every statement and what covers it
 
@@ -85,7 +85,7 @@ Postgres also logs a failed statement's full text by default (`log_min_error_sta
 | `processed_events` | none — `event_id` is the lead's own `request_uuid`, an opaque identifier with no PII embedded | nothing | kept indefinitely; see the manual-prune note below |
 | `schema_migrations` | none | nothing | it's the ledger |
 
-`processed_events` holds no customer-identifying data itself (no name, phone, or email — just the opaque `request_uuid` and an arrival timestamp), so there's no privacy reason to prune it. It still grows by one row per lead forever, with no automatic job. A manual prune, run by hand against old rows once their corresponding WordPress lead is long past any possible retry or recovery need (see AGENTS.md's false-duplicate recovery, which depends on the row still existing):
+`processed_events` holds no customer-identifying data itself (no name, phone, or email — just the opaque `request_uuid` and an arrival timestamp), so there's no privacy reason to prune it. It still grows by one row per lead forever, with no automatic job. A manual prune, run by hand against old rows once their corresponding WordPress lead is long past any possible retry or recovery need (see "Recovering a false duplicate" in `architecture.md`, which depends on the row still existing):
 
 ```sh
 docker compose exec -T postgres sh -c "psql -U \"\$APP_DB_USER\" -d app -c \"DELETE FROM processed_events WHERE received_at < now() - interval '2 years'\""
@@ -106,9 +106,9 @@ So a lead's PII in WordPress's own database is kept until one of two things happ
 
 **n8n execution data:** `compose.yaml` keeps `EXECUTIONS_DATA_PRUNE=true` and `EXECUTIONS_DATA_MAX_AGE=168`, so n8n deletes executions after 168 hours. Every workflow in `workflows/` sets `settings.saveManualExecutions: false` (`tests/workflows.test.ts` iterates `workflows/` and asserts it for every file), so a manual run from the editor is never kept either:
 
-- **`lead-intake`** carries the raw signed JWT (`Authorization` header, stored verbatim by n8n with no redaction — see AGENTS.md's "Security: what n8n 2.45.6 actually does with the stored token") and the lead's own PII (name, phone, email) once parsed.
+- **`lead-intake`** carries the raw signed JWT (`Authorization` header, stored verbatim by n8n with no redaction — see "Token retention, precisely" in `architecture.md`) and the lead's own PII (name, phone, email) once parsed.
 - **`process-lead`** carries the same PII, since its one caller hands it the parsed lead directly.
-- **`error-handler`** carries whatever the failing execution's own trigger or error payload held, which can include either workflow's data (see AGENTS.md's "Security" note on `$('On workflow error').first().json`).
+- **`error-handler`** carries whatever the failing execution's own trigger or error payload held, which can include either workflow's data (see "error-handler" in `architecture.md`'s node-by-node section).
 
 A per-workflow carve-out wouldn't hold here any more than it does in the other three demos: every workflow in this repo either receives the lead directly or receives the failing execution's own payload, so all three are on the list.
 

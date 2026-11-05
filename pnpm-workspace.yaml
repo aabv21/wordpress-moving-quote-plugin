@@ -1,9 +1,8 @@
 packages:
   - "."
 
-# Supply-chain hardening. Every value is written explicitly, even where it equals pnpm's own
-# default, so the effective config doesn't silently drift if a future pnpm major changes a
-# default. See AGENTS.md's "Supply-chain hardening" section for what each setting does.
+# Every value is explicit, even a default, so a future pnpm default can't drift it. See AGENTS.md's
+# "Supply-chain hardening".
 minimumReleaseAge: 4320 # minutes (3 days); blocks installing a package version published more recently
 minimumReleaseAgeExclude: [] # override pnpm's own default n8n exclusions; nothing is exempt from the age gate
 trustPolicy: no-downgrade # installs fail if a package's trust evidence regresses from an earlier release

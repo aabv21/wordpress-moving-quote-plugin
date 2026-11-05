@@ -12,10 +12,8 @@ const ESTIMATE_PATH = '/moving-quote/v1/estimate';
 const LEADS_PATH = '/moving-quote/v1/leads';
 
 /**
- * Writes `WPLANG` straight through `$wpdb`, bypassing `update_option()`: core's own sanitizer only
- * accepts a language whose core pack is installed, and this stack never downloads one (CI has no
- * network for that, and the plugin's translations ship with the plugin). The plugin's own strings
- * load from its bundled `languages/` folder whatever core has installed. `null` deletes the row.
+ * Through `$wpdb`: `update_option()` accepts only a language with an installed core pack, which
+ * this stack never downloads. `null` deletes the row.
  */
 async function writeSiteLanguage(value: string | null): Promise<void> {
   const script = `<?php
@@ -34,7 +32,6 @@ if ( '' !== $wpdb->last_error ) {
   await wp(value === null ? ['eval-file', '-'] : ['eval-file', '-', value], script);
 }
 
-/** Reverses the HTML entities `esc_html()`/`esc_attr()` encode text with. */
 function decodeHtmlEntities(text: string): string {
   return text
     .replaceAll('&quot;', '"')
@@ -46,7 +43,7 @@ function decodeHtmlEntities(text: string): string {
     .replaceAll('&amp;', '&');
 }
 
-/** The rendered `[moving_quote]` form's raw markup alone, so the theme's and core's own (untranslated, here) English never counts. */
+/** The form alone, so the theme's and core's untranslated English never counts. */
 function quoteForm(html: string): string {
   const form = /<form class="moving-quote"[\s\S]*?<\/form>/.exec(html)?.[0];
   if (form === undefined) throw new Error('the quote form was not rendered');
@@ -54,16 +51,14 @@ function quoteForm(html: string): string {
 }
 
 /**
- * Every English source string from the plugin's Spanish catalog that has a distinct Spanish
- * translation and no placeholder, so it would appear verbatim in rendered markup if it were left
- * untranslated.
+ * Sources with a distinct translation and no placeholder: each would appear verbatim if untranslated.
  */
 function englishSources(): string[] {
   const po = parsePo(readFileSync('plugin/moving-quote/languages/moving-quote-es_CO.po', 'utf8'));
   return po.entries.filter((entry) => entry.msgidPlural === null && entry.msgstr[0] !== entry.msgid && placeholders(entry.msgid).length === 0).map((entry) => entry.msgid);
 }
 
-/** Whether `source` occurs in `text` as a whole phrase: not glued to a letter on either side. */
+/** Not glued to a letter on either side. */
 function containsPhrase(text: string, source: string): boolean {
   const isLetter = (char: string | undefined): boolean => char !== undefined && /[A-Za-z]/.test(char);
   for (let at = text.indexOf(source); at !== -1; at = text.indexOf(source, at + 1)) {
@@ -72,7 +67,6 @@ function containsPhrase(text: string, source: string): boolean {
   return false;
 }
 
-/** The English sources found in `text` as whole phrases: a leftover a Spanish render never translated. */
 function englishLeftovers(text: string, sources: string[]): string[] {
   return sources.filter((source) => containsPhrase(text, source));
 }
@@ -136,9 +130,7 @@ describe('the site in Spanish (WPLANG=es_CO)', () => {
   it("formats the estimate's numbers with the site language's own separators", async () => {
     const res = await rest(ESTIMATE_PATH, { move_type: 'apartment', rooms: 2, origin: 'Barranquilla', destination: 'Cartagena', extras: [] });
     expect(res.status).toBe(200);
-    // number_format_i18n() takes its separators from WordPress core's own language pack, which
-    // this stack doesn't install (SITE_LOCALE=es_CO ./setup.sh does): read the separator WordPress
-    // itself uses, rather than assume one.
+    // The separator comes from core's language pack, which this stack lacks; read it, don't assume.
     const separator = await wp(['eval', 'global $wp_locale; echo $wp_locale->number_format["thousands_sep"];']);
     const group = (n: number): string => new Intl.NumberFormat('en-US').format(n).replaceAll(',', separator);
     expect((res.json as { display: string }).display).toBe(`COP ${group(1017000)} – ${group(1243000)}`);
