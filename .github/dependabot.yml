@@ -78,3 +78,7 @@ updates:
       # Patch updates still come through; a MySQL version bump is reviewed and pinned by hand.
       - dependency-name: mysql
         update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      # NOTE: compose.yaml pins two tag families of the one `wordpress` image (the server's
+      # `7.x-php8.3-apache` and WP-CLI's `cli-2.x-php8.3`), which fails Dependabot's update with
+      # `unknown_error`. Bump both by hand, re-resolving each digest, until it handles mixed families.
+      - dependency-name: wordpress
