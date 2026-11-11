@@ -31,7 +31,17 @@ describe('map-lead', () => {
       estimate_cop: 1330000,
       estimate_low_cop: 1197000,
       estimate_high_cop: 1463000,
+      request_uuid: '6f1c2a9e-3b4d-4e8f-9a1b-2c3d4e5f6a7b',
     });
+  });
+
+  it('gives two leads that share a reference different sheet match keys', () => {
+    // Same first 8 hex, so the same MQ- reference; the sheet upsert keys on the full request_uuid.
+    const other: Lead = { ...lead, request_uuid: '6f1c2a9e-0000-4000-8000-000000000000' };
+    const first = run({ lead, config }).row;
+    const second = run({ lead: other, config }).row;
+    expect(second.reference).toBe(first.reference);
+    expect(second.request_uuid).not.toBe(first.request_uuid);
   });
 
   it('passes formula-looking text through unchanged for the RAW append', () => {

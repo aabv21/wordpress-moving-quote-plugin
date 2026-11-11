@@ -161,7 +161,7 @@ describe('lead intake webhook', () => {
     expect(await processedCount(requestUuid)).toBe(1);
   });
 
-  // n8n 2.45.6 stores the token unredacted; a successful run is soft-deleted and purged at the next
+  // n8n stores the token unredacted (checked against 2.45.6); a successful run is soft-deleted and purged at the next
   // hard-delete cycle. See "Token retention, precisely" in docs/architecture.md.
   it.skipIf(skipForLiveGoogle)('a successful run is soft-deleted for the next hard-delete cycle, not kept until EXECUTIONS_DATA_MAX_AGE', async () => {
     const { text, requestUuid } = buildBody();

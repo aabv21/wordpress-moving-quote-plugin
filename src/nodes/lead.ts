@@ -129,15 +129,20 @@ function codePointLength(value: string): number {
   return Array.from(value).length;
 }
 
-// eslint-disable-next-line no-control-regex -- the control-character range is the whole point of this check
-const CONTROL_CHARACTER_RE = /[\x00-\x1f\x7f\u0085\u2028\u2029]/;
-
 /**
- * C0 controls, DEL, NEL, U+2028, U+2029: the set `LeadValidator::validate_name()` normalizes. Any
- * of them could forge an extra line in the plain-text team email.
+ * C0 controls, DEL, NEL, U+2028, U+2029: the set `LeadValidator::CONTROL_CHARACTER_PATTERN`
+ * normalizes. Any of them could forge an extra line in a plain-text email.
  */
+// eslint-disable-next-line no-control-regex -- the control-character range is the whole point of this check
+export const CONTROL_CHARACTER_RE = /[\x00-\x1f\x7f\u0085\u2028\u2029]/;
+
 function hasControlCharacter(value: string): boolean {
   return CONTROL_CHARACTER_RE.test(value);
+}
+
+/** Replaces every `CONTROL_CHARACTER_RE` character with a space, so a value stays on one line. */
+export function oneLine(s: string): string {
+  return Array.from(s, (char) => (CONTROL_CHARACTER_RE.test(char) ? ' ' : char)).join('');
 }
 
 function parseCustomer(value: unknown): Lead['customer'] | null {

@@ -164,7 +164,7 @@
       "id": "append",
       "from": "process-lead",
       "to": "sheets",
-      "label": "append row (RAW)",
+      "label": "append or update row by request_uuid (RAW)",
       "fromSide": "top",
       "toSide": "left"
     },
@@ -216,7 +216,7 @@
       "title": "n8n side",
       "items": [
         "lead-intake verifies the HS256 JWT and records the request once in Postgres",
-        "process-lead appends the sheet row, then emails the team and the customer",
+        "process-lead appends or updates the lead's sheet row by request_uuid, then emails the team and the customer",
         "error-handler is the shared alert every other workflow's errorWorkflow points to"
       ]
     },

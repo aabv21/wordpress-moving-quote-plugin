@@ -84,7 +84,7 @@ export const CREDENTIALS: readonly CredentialEntry[] = [
     name: 'Gmail',
     type: 'gmailOAuth2',
     env: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
-    // n8n 2.45.6's GmailOAuth2Api defaults to six scopes, gmail.modify and full mail.google.com
+    // n8n's GmailOAuth2Api (checked against 2.45.6) defaults to six scopes, gmail.modify and full mail.google.com
     // included. Every workflow here only sends, so the consent and token narrow to gmail.send.
     data: (env) => ({
       clientId: readEnv(env, 'GOOGLE_OAUTH_CLIENT_ID'),
@@ -107,6 +107,12 @@ export const CODE_NODES: readonly CodeNodeEntry[] = [
     node: 'Map lead',
     source: 'src/nodes/map-lead.ts',
     why: 'one tested function builds the sheet row and both notification emails from the same lead, instead of separate Set and expression nodes for each',
+  },
+  {
+    file: 'error-handler.json',
+    node: 'Compose alert',
+    source: 'src/nodes/error-alert.ts',
+    why: "one tested function picks the team's language and builds the alert from either error payload shape, execution or trigger, instead of an inline expression per field",
   },
 ];
 

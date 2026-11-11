@@ -8,7 +8,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit && tsc --noEmit -p src/frontend/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/frontend/tsconfig.json && tsc --noEmit -p tests/dom/tsconfig.json",
     "lint": "eslint .",
     "test": "vitest run",
     "build:assets": "node scripts/build-assets.ts",
@@ -20,6 +20,7 @@
     "export": "node scripts/export-workflows.ts",
     "test:stack": "vitest run --config vitest.stack.config.ts",
     "test:stack:wp": "vitest run --config vitest.stack.config.ts tests/stack/wp",
+    "test:stack:n8n": "vitest run --config vitest.stack.config.ts tests/stack/n8n",
     "php": "docker compose run --rm --user \"$(id -u):$(id -g)\" php"
   },
   "devDependencies": {
@@ -29,6 +30,7 @@
     "esbuild": "0.28.2",
     "eslint": "^10.14.0",
     "eslint-plugin-security": "^4.2.0",
+    "happy-dom": "21.0.4",
     "jiti": "^2.7.0",
     "luxon": "^3.7.2",
     "typescript": "~6.0.3",

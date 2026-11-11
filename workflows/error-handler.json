@@ -13,7 +13,7 @@
         -260
       ],
       "parameters": {
-        "content": "## Error handler\nRuns whenever a workflow with `errorWorkflow` set to this one fails, including a trigger or activation error, which carries no `execution` key. Reads config itself (not through a sub-workflow), then emails the operator a plain-text alert naming the failed node, the error, the execution URL, and the time in Bogota. This workflow carries no `errorWorkflow` of its own, so a failure here does not loop back into itself.",
+        "content": "## Error handler\nRuns whenever a workflow with `errorWorkflow` set to this one fails, including a trigger or activation error, which carries no `execution` key. Reads config itself (not through a sub-workflow), then emails the operator a plain-text alert in the team's language (`team_locale`) naming the failed node, the error, the execution URL, and the time in Bogota. This workflow carries no `errorWorkflow` of its own, so a failure here does not loop back into itself.",
         "height": 300,
         "width": 700,
         "color": 4
@@ -63,7 +63,7 @@
     },
     {
       "id": "stickyEmailOperator1",
-      "name": "Sticky Note: Email operator",
+      "name": "Sticky Note: Compose alert",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -71,11 +71,41 @@
         -260
       ],
       "parameters": {
-        "content": "## Email operator\nEvery field anchors on `$('On workflow error').first().json`, since `$json` here is `{ config }`. Optional chaining and fallbacks cover an activation error, which has no `execution` key, only `trigger`.",
+        "content": "## Compose and send the alert\n`Alert input` hands `Compose alert` the config, the Error Trigger's own output (`$('On workflow error').first().json`, since `$json` here is `{ config }`), and the Bogota time, so the Code node stays free of the clock. `Compose alert` writes the alert in `team_locale`, falling back to English with a note when it's invalid, and covers an activation error, which has no `execution` key. `Email operator` sends its `to`, `subject`, and `text` as plain text.",
         "height": 300,
-        "width": 560,
+        "width": 1000,
         "color": 7
       }
+    },
+    {
+      "id": "nodeAlertInput0001",
+      "name": "Alert input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        640,
+        100
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { config: $json.config, failure: $('On workflow error').first().json, time: $now.setZone('America/Bogota').toFormat('yyyy-LL-dd HH:mm') } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "nodeComposeAlert01",
+      "name": "Compose alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Why Code: one tested function picks the team's language and builds the alert from either error payload shape, execution or trigger, instead of an inline expression per field. Generated from src/nodes/error-alert.ts by pnpm run build:workflows; edit the source.\n\"use strict\";\nvar __node = (() => {\n  var __defProp = (obj, key, desc) => { obj[key] = desc && \"get\" in desc ? desc.get() : desc.value; return obj; };\n  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;\n  var __getOwnPropNames = Object.getOwnPropertyNames;\n  var __hasOwnProp = Object.prototype.hasOwnProperty;\n  var __export = (target, all) => {\n    for (var name in all)\n      __defProp(target, name, { get: all[name], enumerable: true });\n  };\n  var __copyProps = (to, from, except, desc) => {\n    if (from && typeof from === \"object\" || typeof from === \"function\") {\n      for (let key of __getOwnPropNames(from))\n        if (!__hasOwnProp.call(to, key) && key !== except)\n          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });\n    }\n    return to;\n  };\n  var __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n  // src/nodes/error-alert.ts\n  var error_alert_exports = {};\n  __export(error_alert_exports, {\n    ALERT_MESSAGES: () => ALERT_MESSAGES,\n    run: () => run\n  });\n\n  // src/nodes/locale.ts\n  var LOCALES = [\"en\", \"es\"];\n  var DEFAULT_LOCALE = \"en\";\n  var TEAM_LOCALE_NOTE = 'Note: config.team_locale is not \"en\" or \"es\", so this email is in English. Fix config/config.json.';\n  function isLocale(value) {\n    return LOCALES.includes(value);\n  }\n  function parseTeamLocale(config) {\n    const value = config.team_locale;\n    if (value === void 0) return DEFAULT_LOCALE;\n    if (typeof value === \"string\" && isLocale(value)) return value;\n    throw new Error(`config.team_locale must be \"en\" or \"es\", got ${JSON.stringify(value)}`);\n  }\n  function teamLocaleOrDefault(config) {\n    try {\n      return { locale: parseTeamLocale(config), valid: true };\n    } catch {\n      return { locale: DEFAULT_LOCALE, valid: false };\n    }\n  }\n\n  // src/nodes/lead.ts\n  var CONTROL_CHARACTER_RE = /[\\x00-\\x1f\\x7f\\u0085\\u2028\\u2029]/;\n  function oneLine(s) {\n    return Array.from(s, (char) => CONTROL_CHARACTER_RE.test(char) ? \" \" : char).join(\"\");\n  }\n\n  // src/nodes/error-alert.ts\n  var ALERT_MESSAGES = {\n    en: {\n      subject: (name) => `[Chivabox demo] Workflow failed: ${name}`,\n      failedNode: \"Failed node\",\n      error: \"Error\",\n      execution: \"Execution\",\n      time: \"Time\",\n      unknownWorkflow: \"unknown workflow\",\n      activation: \"activation\",\n      unknownError: \"unknown error\",\n      noExecution: \"n/a (activation error)\"\n    },\n    es: {\n      subject: (name) => `[Chivabox demo] Falló el flujo: ${name}`,\n      failedNode: \"Nodo que falló\",\n      error: \"Error\",\n      execution: \"Ejecución\",\n      time: \"Hora\",\n      unknownWorkflow: \"flujo desconocido\",\n      activation: \"activación\",\n      unknownError: \"error desconocido\",\n      noExecution: \"no aplica (error de activación)\"\n    }\n  };\n  function isRecord(value) {\n    return typeof value === \"object\" && value !== null && !Array.isArray(value);\n  }\n  function field(value, key) {\n    return isRecord(value) ? value[key] : void 0;\n  }\n  function text(value, fallback) {\n    return typeof value === \"string\" && value !== \"\" ? value : fallback;\n  }\n  function run(input) {\n    const { config, failure, time } = input;\n    const teamLocale = teamLocaleOrDefault(isRecord(config) ? config : {});\n    const m = ALERT_MESSAGES[teamLocale.locale];\n    const execution = field(failure, \"execution\");\n    const trigger = field(failure, \"trigger\");\n    const workflowName = text(field(field(failure, \"workflow\"), \"name\"), m.unknownWorkflow);\n    const errorMessage = text(field(field(execution, \"error\"), \"message\"), text(field(field(trigger, \"error\"), \"message\"), m.unknownError));\n    const lines = [\n      `${m.failedNode}: ${text(field(execution, \"lastNodeExecuted\"), m.activation)}`,\n      `${m.error}: ${errorMessage}`,\n      `${m.execution}: ${text(field(execution, \"url\"), m.noExecution)}`,\n      `${m.time}: ${time} America/Bogota`,\n      ...teamLocale.valid ? [] : [TEAM_LOCALE_NOTE]\n    ];\n    const to = field(field(config, \"alerts\"), \"error_email\");\n    return {\n      to: typeof to === \"string\" ? to : \"\",\n      subject: oneLine(m.subject(workflowName)),\n      text: lines.join(\"\\n\")\n    };\n  }\n  return __toCommonJS(error_alert_exports);\n})();\nreturn [{ json: __node.run($input.first().json) }];\n"
+      },
+      "notes": "Why Code: one tested function picks the team's language and builds the alert from either error payload shape, execution or trigger, instead of an inline expression per field"
     },
     {
       "id": "nodeEmailOperator1",
@@ -83,7 +113,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        640,
+        1080,
         100
       ],
       "retryOnFail": true,
@@ -92,10 +122,10 @@
       "parameters": {
         "resource": "message",
         "operation": "send",
-        "sendTo": "={{ $json.config.alerts.error_email }}",
-        "subject": "=[Chivabox demo] Workflow failed: {{ (({ workflow }) => workflow?.name ?? 'unknown workflow')($('On workflow error').first().json) }}",
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
         "emailType": "text",
-        "message": "=Failed node: {{ (({ execution }) => execution?.lastNodeExecuted ?? 'activation')($('On workflow error').first().json) }}\nError: {{ (({ execution, trigger }) => execution?.error?.message ?? trigger?.error?.message ?? 'unknown error')($('On workflow error').first().json) }}\nExecution: {{ (({ execution }) => execution?.url ?? 'n/a (activation error)')($('On workflow error').first().json) }}\nTime: {{ $now.setZone('America/Bogota').toFormat('yyyy-LL-dd HH:mm') }} America/Bogota",
+        "message": "={{ $json.text }}",
         "options": {
           "appendAttribution": false
         }
@@ -132,6 +162,28 @@
       ]
     },
     "Parse config": {
+      "main": [
+        [
+          {
+            "node": "Alert input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert input": {
+      "main": [
+        [
+          {
+            "node": "Compose alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose alert": {
       "main": [
         [
           {

@@ -16,5 +16,6 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["scripts", "src/nodes", "src/globals.d.ts", "tests", "eslint.config.ts", "vitest.config.ts", "vitest.stack.config.ts"]
+  "include": ["scripts", "src/nodes", "src/globals.d.ts", "tests", "eslint.config.ts", "vitest.config.ts", "vitest.stack.config.ts"],
+  "exclude": ["tests/dom"]
 }
