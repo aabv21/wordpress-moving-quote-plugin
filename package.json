@@ -20,6 +20,7 @@
     "export": "node scripts/export-workflows.ts",
     "test:stack": "vitest run --config vitest.stack.config.ts",
     "test:stack:wp": "vitest run --config vitest.stack.config.ts tests/stack/wp",
+    "test:stack:n8n": "vitest run --config vitest.stack.config.ts tests/stack/n8n",
     "php": "docker compose run --rm --user \"$(id -u):$(id -g)\" php"
   },
   "devDependencies": {
