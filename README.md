@@ -2,17 +2,30 @@
 
 **Demo.** Fictional business, not client work.
 
-A custom WordPress plugin that gives instant moving estimates, keeps every request safe in WordPress, and sends signed leads to n8n for the team sheet and emails.
+A custom WordPress plugin that gives instant moving estimates in English and Spanish, keeps every request safe in WordPress, and sends signed leads to n8n for the team sheet and emails.
 
 **Single-site only.** This plugin doesn't support WordPress Multisite; activating it on a Multisite install (network-wide or per-site) is refused with a clear message.
 
-## Status
+## Video
 
-The repository skeleton, the strict TypeScript toolchain, the PHP toolchain, and CI are in place. The plugin has its skeleton, its pricing engine, its install lifecycle (the leads table, default settings, and the outbox cron schedule), its admin settings page (rates, cities and distances, delivery), its public REST API (an estimate endpoint and a lead-submission endpoint with validation, rate limiting, and deduplication), the customer-facing three-step quote form with a TypeScript frontend bundled by esbuild, signed delivery of every saved lead to n8n, with an inline attempt right after the insert and a cron-driven outbox that retries a failed one with backoff, and an admin Leads page (filtering, paging, per-row status updates, a formula-injection-safe CSV export, retrying a failed delivery, and a stuck-delivery notice). The full local stack (WordPress, MySQL, Postgres, n8n) runs in Docker Compose, and `setup.sh` installs and configures WordPress and the delivery settings idempotently. The n8n workflow tooling (hygiene checks, the Code-node build, import/export, and credential setup) is in place, and all three workflows are published: `lead-intake` verifies a signed lead's JWT and records it once in Postgres; `process-lead` builds the sheet row and the two notification emails and appends/sends them, called fire-and-forget right after `lead-intake` answers; `error-handler` is the shared alert every workflow's `errorWorkflow` points to. The Google Sheets and Gmail credentials aren't wired in yet: `process-lead` fails at the Google Sheets step on every run today, and `error-handler`'s own alert about it needs the same missing Gmail credential, both proven end to end locally (through to the exact failing node, not just "an error happened") rather than left untested until the owner's live session. The plugin also runs in WordPress Playground (`playground/blueprint.json`, `playground/blueprint.local.json`), with no server to install: the live estimate, the three-step form, and the thank-you redirect all work against Playground's SQLite-backed WordPress. Everything a visitor, an admin, or a lead's email recipient reads is available in English and Spanish (Colombia): the plugin ships its own translations, and the n8n emails follow the lead's language (customer) and a configured team language (team).
+A 60–120 second walkthrough will be linked here.
 
-## Screenshots
+## Architecture
 
-The quote form, its thank-you page, and the Leads admin, in WordPress's default theme (Twenty Twenty-Five) on WordPress Playground, at 1280 px and 390 px wide. Retaken from the committed code whenever the form's markup or stylesheet changes; see [`docs/testing.md`](docs/testing.md)'s manual accessibility check.
+![System architecture: the browser submits to WordPress's REST API, which inserts into the leads table and sends a signed request to n8n's lead-intake workflow; lead-intake records the request once in Postgres and hands off to process-lead, which appends or updates a row in Google Sheets and emails the team and the customer; error-handler alerts the operator on any workflow failure](docs/diagrams/architecture.svg)
+
+Open the [interactive diagram](docs/diagrams/architecture.html) to read it full-size, pan, and inspect each node. [`docs/architecture.md`](docs/architecture.md) covers the components, the workflows node by node, the data model, failure modes with recovery steps, scaling limits, and security, with the lead-delivery sequence diagram. [`docs/testing.md`](docs/testing.md) covers every test suite and what continuous integration (CI) runs.
+
+## What it does
+
+- **A three-step quote form with a live estimate.** The `[moving_quote]` shortcode asks for the move (type, rooms, both cities, a date), the extra services, and the customer's details. The price range in Colombian pesos updates as the visitor fills in the first step, and a submission lands on a thank-you page that shows the lead's `MQ-…` reference.
+- **English and Spanish, with an EN | ES switcher.** The demo site is bilingual through Polylang: Get a Quote at `/get-a-quote/` and Cotizar at `/es/cotizar/`. The form, its error messages, the price's separators (`COP 1.017.000 – 1.243.000` in Spanish), the thank-you page, and the lead's stored language all follow the page.
+- **Every lead is saved first, then delivered.** WordPress stores the lead in its own table, then sends it to n8n as a signed request. If n8n is down, a cron-driven outbox retries with backoff, so no lead is lost.
+- **One sheet row and two emails per lead.** n8n verifies the signature, records the lead once, and writes one row to the `Moving leads` Google Sheet. It then emails the team a plain-text summary and the customer their estimate, in the customer's language.
+- **A Leads admin page.** Moving quotes → Leads lists every lead with its status and delivery state, filters by status, exports a formula-safe CSV, retries a failed delivery, and warns on the Dashboard when a lead hasn't reached n8n.
+- **An alert to the operator.** Any workflow failure emails the operator the failed node, the error, and the execution link, in the team's language.
+
+The quote form, its thank-you page, and the Leads admin, in WordPress's default theme (Twenty Twenty-Five) on the local stack, at 1280 px and 390 px wide:
 
 | Screen | 1280 px | 390 px |
 |---|---|---|
@@ -23,144 +36,162 @@ The quote form, its thank-you page, and the Leads admin, in WordPress's default 
 | The thank-you page | <img src="docs/screenshots/thank-you-desktop.png" width="480" alt="The thank-you page: We received your moving request, the lead's reference number, a What happens next list of three steps, and a Back to the home page button"> | <img src="docs/screenshots/thank-you-mobile.png" width="180" alt="The thank-you page at phone width, with the reference number kept on one line"> |
 | Moving quotes → Leads | <img src="docs/screenshots/admin-leads-desktop.png" width="480" alt="The Leads admin screen in WordPress's own styles: status views with counts, an Export CSV button, and a table of leads with reference, customer, move, route, estimate, a labelled status select with Update, and delivery state"> | <img src="docs/screenshots/admin-leads-mobile.png" width="180" alt="The Leads admin screen at phone width: one line per lead, the first expanded into labelled rows"> |
 
-### The quote form's design tokens
-
-Every color, radius, and spacing value in `plugin/moving-quote/assets/quote-form.css` is a `--mq-*` custom property declared on `.moving-quote`. The form draws its own light surface, so each pair below holds whatever theme surrounds it, a dark one included.
-
-| Foreground | Background | Ratio | WCAG AA needs | Used for |
-|---|---|---|---|---|
-| text `#0F172A` | surface `#F8FAFC` | 17.06:1 | 4.5:1 | labels, step titles, step text on the card |
-| text `#0F172A` | field `#FFFFFF` | 17.85:1 | 4.5:1 | control values, option labels, the Back button |
-| text `#0F172A` | panel `#EFF6FF` | 16.40:1 | 4.5:1 | the estimate value, a checked option row, Back on hover |
-| text at 70% opacity (`#525A6A`) | panel `#EFF6FF` | 6.37:1 | 4.5:1 | the previous estimate while a new one loads |
-| muted `#475569` | surface `#F8FAFC` | 7.24:1 | 4.5:1 | upcoming step labels, the extras intro |
-| muted `#475569` | field `#FFFFFF` | 7.58:1 | 4.5:1 | an upcoming step's number |
-| muted `#475569` | panel `#EFF6FF` | 6.96:1 | 4.5:1 | the estimate label, hint, disclaimer, and loading spinner |
-| white `#FFFFFF` | primary `#1D4ED8` | 6.70:1 | 4.5:1 | Next, the current step's number |
-| white `#FFFFFF` | primary-hover `#1E40AF` | 8.72:1 | 4.5:1 | Next on hover |
-| white `#FFFFFF` | CTA `#C2410C` | 5.18:1 | 4.5:1 | Send my request, Sending… |
-| white `#FFFFFF` | CTA-hover `#9A3412` | 7.31:1 | 4.5:1 | Send my request on hover |
-| error `#B91C1C` | surface `#F8FAFC` | 6.18:1 | 4.5:1 | field errors |
-| error `#B91C1C` | field `#FFFFFF` | 6.47:1 | 4.5:1 | the form-level error box |
-| error `#B91C1C` | panel `#EFF6FF` | 5.95:1 | 4.5:1 | the estimate error |
-| success `#15803D` | surface `#F8FAFC` | 4.79:1 | 4.5:1 | the inline success title and icon |
-| primary `#1D4ED8` | surface `#F8FAFC` | 6.41:1 | 3:1 (UI) | the focus ring, step connectors, links |
-| primary `#1D4ED8` | field `#FFFFFF` | 6.70:1 | 3:1 (UI) | a focused control's border |
-| primary `#1D4ED8` | panel `#EFF6FF` | 6.16:1 | 3:1 (UI) | a done step's marker, a checked option's border |
-| border `#64748B` | field `#FFFFFF` | 4.76:1 | 3:1 (UI) | control and Back button boundaries |
-| border `#64748B` | surface `#F8FAFC` | 4.55:1 | 3:1 (UI) | an upcoming step's marker ring |
-| error `#B91C1C` | field `#FFFFFF` | 6.47:1 | 3:1 (UI) | an invalid control's boundary |
-| divider `#CBD5E1`, panel border `#BFDBFE` | surface, panel | decorative | none | the card border, the stepper rule, unchecked option rows, the estimate band's edge |
-
-Shape: an 8 px radius, 44 px minimum targets, and a 4 / 8 / 12 / 16 / 24 / 32 px spacing scale. Type comes from the theme. Motion is 150 ms on color, opacity, or transform, and `prefers-reduced-motion` turns it off.
-
-## Architecture
-
-![System architecture: the browser submits to WordPress's REST API, which inserts into the leads table and sends a signed request to n8n's lead-intake workflow; lead-intake records the request once in Postgres and hands off to process-lead, which appends a row to Google Sheets and emails the team and the customer; error-handler alerts the operator on any workflow failure](docs/diagrams/architecture.svg)
-
-Open the [interactive diagram](docs/diagrams/architecture.html) to read it full-size, pan, and inspect each node. [`docs/architecture.md`](docs/architecture.md) covers the components, the data model, failure modes with recovery steps, scaling limits, and security, including the exact lead-delivery sequence diagram. [`docs/testing.md`](docs/testing.md) covers every test suite's command, coverage, and what continuous integration (CI) actually runs.
-
-## What works now
-
-- `pnpm run typecheck`, `pnpm run lint`, and `pnpm test` pass.
-- `scripts/init-env.ts` builds `.env` from `.env.example`, filling only empty `_PASSWORD`, `_SECRET`, and `_KEY` values (skipping `GOOGLE_*`, which come from the owner's own OAuth client) with random hex, and refuses to overwrite an existing `.env`. The write is atomic: it writes a temp file at mode 0600, then renames it over `.env`, so an interrupted run never leaves a truncated file.
-- `pnpm run php composer check` (PHPCS, PHPStan level 9, PHPUnit) and `pnpm run php composer audit` pass, inside a PHP 8.3 Docker image. PHPUnit covers `Pricing\Calculator`, `Pricing\DistanceTable`, `Settings\SettingsSanitizer`, `Leads\LeadValidator`, `Leads\LeadRecord`, the pure `Delivery` classes (`JwtSigner`, `LeadPayload`, `ResponseCheck`, `Backoff`, `SyncTransition`), and the pure `Admin\CsvEscaper` and `Admin\LeadCsv`, with no WordPress bootstrap.
-- `Pricing\Calculator::estimate()` computes a moving estimate (amount, range, distance) from a move type, room count, origin, destination, and extras, against the default rates and routes in `Settings\Defaults`.
-- `docker compose up -d --wait` brings up WordPress 7.1.4 on MySQL 8.4 (with a WP-CLI container and a cron sidecar) and n8n 2.45.6 on Postgres 17, all healthy.
-- `./setup.sh` installs WordPress, sets the site description, timezone, and pretty permalinks, activates the default theme and the plugin, and creates the Home, Get a Quote, and Thank You pages and a primary navigation menu (Home and Get a Quote), so the theme's header never falls back to listing every page. It's idempotent: running it again changes nothing.
-- `pnpm run test:stack` drives the real stack over HTTP and WP-CLI: WordPress is installed and configured as expected, the plugin is active, the site pages respond, Postgres keeps the `app` and `n8n` databases isolated from each other's roles, and a lead's signed delivery (acceptance, a failure retried with backoff, a 3xx that's never followed, an unreachable or misconfigured webhook, and a poisoned row that doesn't block the rest of the batch) is verified against a local HTTP receiver standing in for n8n.
-- Activating the plugin creates the leads table through `dbDelta`, seeds `moving_quote_settings` with the pricing defaults (without overwriting an existing value), sets `moving_quote_db_version`, and schedules the `moving_quote_process_outbox` hook on a 60-second `moving_quote_every_minute` schedule.
-- Deactivating the plugin only clears the scheduled hook; the leads table and the settings stay. Reactivating restores the hook without touching either. A stored schema version older than the plugin's reruns `dbDelta` on the next page load.
-- Uninstalling through WordPress (`wp plugin uninstall`, or deleting the plugin from the dashboard) drops the leads table, deletes both options, deletes the rate-limit transients, and clears the scheduled hook.
-- The "Moving quotes" admin menu has a Settings page (rates, cities and distances, delivery) at Settings → Moving Quote Settings, gated to `manage_options`: an anonymous visitor is redirected to log in, and any other logged-in user gets a 403.
-- Saving the settings form accepts Colombian-formatted amounts ("4.500", "4,500", "4500" all mean 4,500 COP), rejects an invalid amount, city, route, percentage, URL, secret, or email with a notice while keeping the last valid value, and never prints the webhook secret in the page HTML.
-- `./setup.sh` also sets the webhook URL, the webhook secret (from `LEAD_WEBHOOK_SECRET`), and the team email (from `TEAM_EMAIL`), piped through STDIN so neither secret touches the command line.
-- `POST /wp-json/moving-quote/v1/estimate` prices a move from the current settings with no nonce required, and is rate-limited to 120 requests per 10 minutes per IP by default (both limits filterable through `moving_quote_rate_limits`, and the client IP itself filterable through `moving_quote_client_ip` for a site behind a trusted reverse proxy). A city submitted in a different case than its configured spelling ("cartagena") is normalized before pricing, so it prices identically to the canonical form.
-- `POST /wp-json/moving-quote/v1/leads` requires a valid `X-WP-Nonce`, rejects a filled honeypot field by answering success without saving anything, validates every field (rooms 1–5, a known city pair, a move date from today through 12 months out in `America/Bogota`, name/phone/email limits, and required consent), prices the move itself (ignoring any price the client sent), and saves the lead. A resubmission with the same browser-minted `submission_id` is idempotent: it returns the already-saved lead instead of creating a second row, including under two identical requests sent at the same time. The `submit` rate limit (5 per hour per IP by default) is only spent by a lead that actually gets inserted, so correcting a validation error or double-tapping Submit never costs part of that budget. Every `submit` request rejected as rate-limited (429) also increments a counter for a fixed 24-hour window (no IP, no PII), surfaced on the stuck-delivery notice once it's non-zero.
-- Once delivery is configured (webhook URL, secret, and team email all set), a newly inserted lead triggers an inline delivery attempt: the response is still 201 regardless of how that attempt goes. The signed request carries an HS256 JWT (`Authorization: Bearer …`, claims `jti`/`iat`/`exp`/`body_sha256`) over a JSON body matching the documented lead-payload contract exactly, and only a 2xx with JSON `status` `accepted` or `duplicate` counts as delivered.
-- A failed attempt is stored `pending` with the error and a backoff-scheduled retry (`min(60 × 2^(n-1), 21600)` seconds, giving up as `failed` after 10 attempts); the `moving_quote_process_outbox` cron hook retries every currently due lead in batches of 20, each one claimed with a lease first so two overlapping runs don't normally deliver the same lead twice. Delivery is at-least-once, not exactly-once: n8n dedupes on the lead's `jti`. A row with data this plugin version can't parse is recorded as a failed attempt and skipped, without blocking the rest of the batch.
-- The `[moving_quote]` shortcode on the Get a Quote page renders an accessible, three-step form (move details, extras, customer details) with a numbered progress stepper (current and done states), a live estimate panel, a honeypot hidden from sight, Tab order, and screen readers alike, and a `<noscript>` fallback. Its script and style load only on a page that uses the shortcode. The stylesheet is built on its own `--mq-*` design tokens (see "The quote form's design tokens" above): a self-contained light card, 44 px targets, visible `:focus-visible` rings, one column at 390 px and two once the form itself is wide enough, and no motion under `prefers-reduced-motion`. axe-core reports zero violations on every screen of the form and the thank-you page at 1280 px and 390 px, in Twenty Twenty-Five and Twenty Twenty-Four.
-- The form's TypeScript frontend (`src/frontend/`, bundled by esbuild into the committed `plugin/moving-quote/assets/quote-form.js`) debounces a live estimate as the visitor fills in step 1, showing its loading, price, and error states in the estimate panel, moves focus to each new step's legend, treats Enter in a field as "Next" until the last step, and on submit disables the button and shows "Sending…" with a spinner until the response arrives. A 2xx redirects to the Thank You page with the lead's `MQ-…` reference (or, if that page doesn't exist, shows an inline success message with the reference and moves focus to it); a 422 shows the field errors, jumps back to the first step that has one, and focuses its first invalid field; a 403, 429, or network failure shows the matching message, resets the estimate display to the placeholder dash (never leaving a stale price from before the failure), and re-enables the button. Typing into the name, phone, or email fields never triggers a refetch, since none of them affects price. Verified in a real browser at 390 px and 1280 px, with a full keyboard-only pass (Tab, Enter, and Space reach and operate every control) and no console errors.
-- The Thank You page says what happens next, shows the lead's reference through `[moving_quote_reference]` (only for a value with the exact `MQ-` and 8 hex digits shape, never looked up), and links back home. A malformed phone or email is answered with a message naming what a valid one looks like.
-- The "Moving quotes" admin page (`Admin\LeadsPage`, a `WP_List_Table` subclass) lists every lead with its reference, customer, move, route, estimate, lifecycle status (a labelled per-row select), and delivery state, collapsing on a phone into core's own one-line-per-lead rows that expand into labelled details, with a view per status (each with a live count), 20 per page, and a filter kept across paging and export. An admin updates a lead's status through a per-row form, deletes a lead through a per-row "Delete" link, and retries a `failed` delivery through a "Retry delivery" link that requeues it (`pending`, 0 attempts, due immediately) — never relabeled "sent", since the retry only requeues the lead. The Delivery column shows `last_error` as visible text, not only in a hover title. Every handler checks `manage_options` before its nonce, and a non-admin gets 403. A row this plugin version can't parse (an unknown `status` value) is skipped instead of fataling the page or the CSV export.
-- "Export CSV" streams every matching lead as `text/csv` with a UTF-8 BOM, in batches of 500, with every cell passed through `Admin\CsvEscaper`: a value starting with `=`, `+`, `-`, `@`, a tab, or a carriage return is prefixed with `'` so it can never run as a spreadsheet formula when the file is opened. The filename's date is "today" in `America/Bogota`, the same zone every other date in the plugin uses.
-- A warning notice on the Dashboard and the Leads page (`manage_options` only) reports how many leads haven't reached n8n — any `failed` lead, or one `pending` for over an hour, excluding a lead the team has already marked `won` or `lost` — and links to the Leads page. A second notice reports how many `submit` requests were rejected as rate-limited in the current 24-hour window, once that count is non-zero.
-- WordPress's own Tools → Export/Erase Personal Data screens, keyed by email, return a matching lead's fields (the exporter) or delete the matching rows (the eraser), through a registered `Admin\PersonalData` exporter and eraser. Deleting the row isn't the whole story: a delivered lead was already synced to n8n, so a copy can still sit in the Moving leads sheet, in the two sent notification emails, or in a failed n8n execution for up to 7 days — the eraser's response names each deleted lead's own `MQ-…` reference and all three places to remove by hand.
-- **English and Spanish (Colombia).** Every user-visible string in the plugin (the form, its script's messages, REST errors, the admin pages and notices, the privacy exporter and eraser) is translatable under the `moving-quote` text domain, with counts through `_n()` and context-dependent words through `_x()`. `plugin/moving-quote/languages/` ships the generated `moving-quote.pot`, a hand-written `moving-quote-es_CO.po` (*usted* with customers, a Colombian business register), and its compiled `.mo` and `.l10n.php`; `pnpm run i18n` regenerates them with the stack's own WP-CLI, and CI fails when any of them drifts from the sources. Switch the site language in Settings → General, or with `SITE_LOCALE=es_CO ./setup.sh`, which also creates the pages with Spanish copy on a fresh stack. Prices use the site language's own separators (`COP 1.017.000 – 1.243.000` in Spanish). Verified against the running stack in Spanish: the quote form (with no English left in it), a REST 422 and its field messages, the thank-you reference line, and the Leads and Settings admin pages.
-- **Each lead remembers its language.** The leads table's new `locale` column (schema version 2, added in place on the next request) stores the site language the lead was submitted in, and the signed payload carries it to n8n. `process-lead` writes the customer email in that language (Spanish: `Su cotización de mudanza de …`, amounts as `COP 1.197.000 – 1.463.000`, the date as `viernes 20 de noviembre de 2026`) and the team email in `config.json`'s `team_locale` (`en` or `es`, default `en`). A lead without a locale — signed by an older plugin version and still being retried, or saved before the column existed — gets English. A visitor-facing language switcher needs a multilingual plugin such as Polylang or WPML; the plugin follows whatever language it sets for the request.
-- Activating the plugin on a WordPress Multisite install — network-wide or per-site — is refused with a clear message instead of creating the table and settings; this plugin is single-site only.
-- CI runs quality (typecheck, lint, test, the frontend asset drift check, the Code-node build drift check, the workflow hygiene check, the PHP checks, an autoloader drift check), security (gitleaks, `pnpm audit`, `composer audit`), actions (actionlint, zizmor), and stack (bring up the whole stack — MySQL, WordPress, WP-CLI, Postgres, n8n — check the translation files against the plugin's strings, run `setup.sh` and `pnpm run setup`, then run the full stack suite, the n8n half included) checks on every pull request.
-- Supply-chain hardening: pnpm with a release-age gate, trust-policy enforcement, blocked exotic sub-dependencies, and build-script approval (`pnpm-workspace.yaml`); Composer's equivalent policy (advisory blocking, abandoned-package audit, a 3-day cooldown, and an explicit `allow-plugins` list) in the root `composer.json`; every Compose image and the PHP Dockerfile's `FROM`/`COPY --from` pinned by digest; a Dependabot cooldown on every ecosystem — see AGENTS.md's "Supply-chain hardening" section.
-- `pnpm run check` runs the workflow hygiene check against `workflows/` (required settings, pinned data, literal secrets, unknown credentials, undocumented Code nodes, missing retries, unsafe Postgres parameters, missing sticky notes); `pnpm run build:workflows -- --check` confirms every Code node's committed `jsCode` matches a fresh build of its `src/nodes/*.ts` source. Both pass cleanly against all three committed workflow files.
-- `pnpm run setup` imports this repo's four n8n credentials (App DB, Lead webhook JWT, Google Sheets, Gmail) against the local n8n instance, skipping any credential whose `.env` values are blank and any that already exists unless named with `--refresh <id>`; it never prints credential data. Verified against the running stack: a first run imports the App DB and Lead webhook JWT credentials and skips the two Google ones (missing `GOOGLE_OAUTH_CLIENT_ID`/`GOOGLE_OAUTH_CLIENT_SECRET`); a second run skips all four (the first two already exist).
-- The `lead-intake` workflow (`workflows/lead-intake.json`, published as `cvbLeadIntake001`) receives a signed lead at `POST /webhook/moving-quote/leads`. The Webhook node's own `jwtAuth` check (credential `Lead webhook JWT`) rejects a missing, malformed, wrong-secret, or expired token before any execution starts (plain-text 401 with no token, 403 otherwise); a generated `verify-request` Code node then checks what the native check doesn't — the token's own lifetime (≤ 300 s), 60 s of clock skew, the `body_sha256` binding to the exact bytes received, the full payload contract, and `jti === request_uuid` — answering 401 or 422 with a `reason` on any failure. A valid request is recorded once in the app Postgres database (`INSERT … ON CONFLICT DO NOTHING RETURNING event_id`) and answered `accepted` or `duplicate`, both 200; five concurrent deliveries of the same signed lead give exactly one `accepted`, four `duplicate`, and one recorded row. After answering `accepted` (never after `duplicate`), it hands the lead to `process-lead` fire-and-forget, so a failure there never changes or delays WordPress's own response. Verified against the running stack, including a `docker compose stop n8n` and restart, a wrong webhook secret, and a redelivery of an already-sent lead through the real WordPress-to-n8n path.
-- The `process-lead` workflow (`workflows/process-lead.json`, published as `cvbProcessLead01`) builds one sheet row and two notification emails from a lead in a single generated `map-lead` Code node — the row in the documented header order with every value stored exactly as sent (a phone number as text, a formula-looking name as literal text, never reinterpreted), a plain-text team alert with no `tel:`/`mailto:` links, and an escaped-HTML customer summary with its reply-to set to the team's own address — then appends the row to the configured Google Sheet and sends both emails. Verified locally through a read-only decode of a real execution's stored data (`tests/stack/n8n/process-lead.test.ts`): the Code node ran and produced the right shapes, and the chain reached the "Append lead row" step, failing there at n8n's own credential lookup — proving the call reaches that step, not merely that the execution exists.
-- The `error-handler` workflow (`workflows/error-handler.json`, published as `cvbErrorHandler1`) is the shared alert every other workflow's `settings.errorWorkflow` points to. It reads the runtime config itself (not through a sub-workflow, so a missing config fails it once with no loop) and emails the operator a plain-text alert naming the failed node, the error, the execution URL, and the time in Bogota — every field anchored on the trigger's own output with optional chaining, so it degrades gracefully for a trigger/activation failure that carries no execution data at all. Every expression was proven, inside the running n8n container, against both an execution-error and a trigger-error payload shape with n8n's own `Expression.resolveWithoutWorkflow`.
-- `pnpm run setup` publishes a workflow whose Google credentials don't exist yet without complaint (credential existence is checked only at execution time); a webhook-started parent and the sub-workflow it calls both always run their currently *published* version, never a newer draft sitting unpublished ahead of it — both confirmed by direct observation against the running instance.
-- Every stack-test case that would reach `process-lead` (`tests/stack/n8n/end-to-end.test.ts`, `tests/stack/n8n/process-lead.test.ts`, and the accepted-lead cases in `tests/stack/n8n/intake.test.ts`) skips itself, with a console message, once either Google credential is configured in n8n — checked from a non-decrypted credential listing, the same way `pnpm run setup` itself checks — so running the suite after the owner wires Google in never appends a test lead to the real sheet or emails the real team.
-- `playground/blueprint.json` (installs the plugin from GitHub) and `playground/blueprint.local.json` (activates it from a `--mount`ed checkout instead) both create the Home, Get a Quote, and Thank You pages and the primary navigation menu, set the front page, and land on Get a Quote. Verified locally with the local blueprint against `@wp-playground/cli@3.1.61`: the estimate endpoint returns the documented response for an apartment move from Barranquilla to Cartagena, the three-step form shows the same live estimate, a submission redirects to `/thank-you/`, and Moving quotes → Leads lists it with Delivery "Pending" — all with no PHP errors or warnings in the CLI output. Fixed one real SQL-portability gap this surfaced: `RateLimiter::acquire_lock()` only accepted MySQL's exact `'1'` success value from `GET_LOCK()`, but Playground's SQLite translator grants the same (meaningless there) lock as the string `'1=1'`, so every request was being rejected as rate-limited; the check now allows exactly `'1'` and `'1=1'` as granted, so any other value — including MySQL's own `'0'` (timeout) or `NULL` (error) — still fails closed, verified against both backends.
-
-### Deferred live checks
-
-Need the owner's real Google account, done in one session once it's wired in:
-
-- An apartment move, 2 rooms, Barranquilla to Cartagena, submission appends one row to `Moving leads`. The headers are in order, `phone` is the text `570000000001`, and a formula-looking name shows as literal text.
-- The team email arrives as plain text with the subject `New lead MQ-…: Barranquilla to Cartagena on …`.
-- The customer email arrives with its reply-to set to the team address and no n8n attribution.
-- A lead submitted while the site is in Spanish gets a Spanish customer email (`Su cotización de mudanza de …`); with `team_locale` set to `es`, the team email arrives in Spanish too (`Nueva solicitud MQ-…`).
-- With the `Moving leads` tab renamed, a submission produces one "[Chivabox demo] Workflow failed: Process lead" email after 3 tries. With the tab renamed back, retrying that execution from the n8n UI resumes at "Append lead row" and adds the row.
-- **The Gmail credential's scope narrowed to send-only** (`scripts/lib/manifest.ts`'s `cvbCredGmail0001` now sets `customScopes`/`enabledScopes` to `gmail.send` alone, instead of n8n's own broader default scope list). Neither Gmail node sets `options.senderName` any more — that option made n8n call `GET users/me/profile` first, which `gmail.send` alone doesn't authorize — so the sender display name now comes from the Google account itself: Gmail → Settings → Accounts → "Send mail as" → edit the name. An existing local stack must re-import this one credential and re-consent in the n8n editor: `pnpm run setup -- --refresh cvbCredGmail0001`, then open the Gmail credential in n8n's UI and run "Sign in with Google" again so the new, narrower consent screen is actually granted. The old OAuth grant (under the old scope list) stays valid until it's revoked at [myaccount.google.com/connections](https://myaccount.google.com/connections), so both notification emails and the error-handler alert keep using it until the re-consent happens.
-
-Needs the repository to be public:
-
-- The public Playground link installs the plugin from GitHub (`playground/blueprint.json`'s `installPlugin` step), rather than from the local mount the CLI command uses.
-- The Spanish Playground link (`playground/blueprint.es.json`) installs the same way, then switches the site to `es_CO` and shows the Spanish pages and form.
+The form's colors, contrast ratios, and spacing are listed under "The quote form's design tokens" in [`docs/architecture.md`](docs/architecture.md).
 
 ## Quick start
 
 ```sh
 pnpm install --frozen-lockfile
-node scripts/init-env.ts
-cp config/config.example.json config/config.json
+node scripts/init-env.ts && cp config/config.example.json config/config.json
 docker compose up -d --wait
 ./setup.sh
 pnpm run setup
 ```
 
-For a Spanish site, run `SITE_LOCALE=es_CO ./setup.sh` instead (or set `SITE_LOCALE=es_CO` in `.env`); it downloads WordPress's own Spanish core language pack, so it needs network access. Set `team_locale` to `es` in `config/config.json` for Spanish team emails.
-
-`node scripts/init-env.ts` writes `.env` from `.env.example`. Fill in `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` by hand once you have the owner's OAuth client; every other secret is generated. Until then, `pnpm run setup` imports the App DB and Lead webhook JWT credentials and publishes all three workflows, skipping the two Google credentials (and leaving `process-lead`'s Google Sheets/Gmail steps unable to run) until those two values are filled in. Once they are, a plain `pnpm run setup` imports them for the first time, since neither credential exists in n8n yet; the sign-in itself then happens in the n8n UI ("Sign in with Google" on each credential), not through the CLI. `--refresh <id>` is only for later, if a credential's `.env` values change and it needs re-importing — re-importing an already-signed-in Google credential this way drops that sign-in, which is why `pnpm run setup` never does it by itself.
-
 Once the stack is up:
 
-- WordPress: <http://localhost:8080>
-- WordPress admin: <http://localhost:8080/wp-admin/> (`WP_ADMIN_USER`/`WP_ADMIN_PASSWORD` from `.env`)
+- WordPress: <http://localhost:8080>, in Spanish at <http://localhost:8080/es/>
+- WordPress admin: <http://localhost:8080/wp-admin/>, with `WP_ADMIN_USER` and `WP_ADMIN_PASSWORD` from `.env`
 - n8n: <http://localhost:5678>
 
-PHP runs only inside Docker: there is no local `php` or `composer`. `pnpm run php <command>` runs `<command>` in the PHP tools container.
+`./setup.sh` builds the site in both languages, with English as the default. It downloads Polylang and WordPress's Spanish language pack, so it needs network access. `pnpm run setup` imports the n8n credentials and publishes the three workflows; until the Google values are in `.env` (see Configuration), it skips the two Google credentials, and `process-lead` stops at its Google Sheets step.
 
-Only one of this series' demo stacks can run at a time: every demo binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up.
+**One stack at a time.** Every demo in this series binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up.
 
-Already running a local stack from before `db/migrations/` or `app_runtime` existed? Follow `docs/database.md`'s "The one-time upgrade for an existing local stack" instead of starting over — it includes the one-time `pnpm run setup -- --refresh cvbCredAppDb0001` the `App DB` credential needs on an existing volume.
+**Upgrading an existing stack.** A stack from before `db/migrations/` existed follows "The one-time upgrade for an existing local stack" in [`docs/database.md`](docs/database.md). A stack from before the language switcher needs `docker compose up -d --wait` first, so the WordPress containers mount `site/mu-plugins/`, then `./setup.sh`, which keeps the existing English pages and adds the Spanish ones and the switcher. An existing `Moving leads` sheet needs `request_uuid` added as its 16th header before the next lead, or every lead stops at "Append lead row" and raises the operator alert.
 
-## Try it in Playground
+PHP runs only inside Docker; there's no local `php` or `composer`. `pnpm run php <command>` runs a command in the PHP tools container.
 
-No server needed: [open the plugin in WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.json) — works once the repository is public. It installs the plugin straight from this repo, creates the Home, Get a Quote, and Thank You pages, and lands on Get a Quote with a working live estimate. Delivery to n8n stays off, since the webhook settings are empty.
+### Try it in Playground
 
-To run the same thing locally against the plugin files on disk, with no checkout of this repo needed on Playground's own servers:
+No server needed: open the plugin in [WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.json), or the same site [in Spanish](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.es.json). Each installs the plugin from this repository's `main`, creates the pages, and lands on the quote form with a working live estimate. Delivery to n8n stays off, and each shows one language, without the switcher.
+
+To run the same thing against the plugin files on disk:
 
 ```sh
 pnpm dlx @wp-playground/cli@3.1.61 server --php=8.3 --port=9400 --mount=./plugin/moving-quote:/wordpress/wp-content/plugins/moving-quote --blueprint=playground/blueprint.local.json
 ```
 
-Verified locally: the estimate endpoint, the three-step form, and the thank-you redirect all work; a submission shows up in Moving quotes → Leads with Delivery "Pending". See `AGENTS.md` for how the blueprint files differ, and `docs/testing.md` for what else was verified.
+## Configuration
 
-The same site in Spanish: [open the Spanish blueprint](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.es.json) (`playground/blueprint.es.json`, also once the repository is public). It sets the site language to `es_CO` and creates the pages with Spanish copy.
+**A Google OAuth client**, in the Google Cloud console:
 
-## Scaling
+- Type "Web application", with the authorized redirect URI `http://localhost:5678/rest/oauth2-credential/callback`.
+- The Google Sheets API and the Gmail API enabled.
+- The OAuth consent screen published **in Production**. In Testing, Google expires refresh tokens after 7 days, which silences the sheet, both emails, and the operator alert at once.
 
-`compose.queue.yaml` is an optional override that switches n8n to queue mode: Redis plus `n8n-worker` containers that run executions instead of the main process. `docker compose -f compose.yaml -f compose.queue.yaml up -d --wait --scale n8n-worker=2` brings up the local stack with two workers; each inherits the same read-only `/files` mounts, encryption key, and database settings as `n8n` (`extends` against `compose.yaml`'s own `n8n` service). Verified locally: the full intake suite passes against two workers, including the five-concurrent-deliveries case (exactly one `accepted`), and the workers' own logs show them starting and finishing executions. `docker compose -f compose.yaml -f compose.queue.yaml down && docker compose up -d --wait` returns to the regular, single-process stack.
+**`.env`**, written by `node scripts/init-env.ts`, which generates every password and secret. Fill in by hand:
 
-**Pending live check:** that queue-mode verification predates `redis` and `n8n-worker` running under `cap_drop`/`no-new-privileges` (added later, see "Supply-chain hardening" in AGENTS.md) — re-run the intake suite against two workers once more to confirm it still passes with that hardening in place.
+| Key | What it is |
+|---|---|
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | The OAuth client above. Run `pnpm run setup` again afterward to import the two Google credentials, then choose "Sign in with Google" on each in n8n. |
+| `TEAM_EMAIL` | The team's inbox for new-lead emails. `./setup.sh` copies it into the plugin's settings. |
+| `SITE_LOCALE` | The site's default language, `en_US` or `es_CO`. The other language lives under `/es/` or `/en/`. Rerunning `./setup.sh` with the other value switches an existing site, and rewrites the menu and button links it created so each language keeps pointing at its own pages. |
 
-**Recreate the containers.** `docker compose up -d --wait` recreates `postgres` and `n8n` with `no-new-privileges` and `n8n`'s dropped capabilities, keeping the named volumes. `docker compose -f compose.yaml -f compose.queue.yaml up -d --wait --scale n8n-worker=2` recreates `redis` and the workers the same way.
+**The `Moving leads` sheet.** A spreadsheet with a tab named `Moving leads`, whose first row is exactly these 16 headers, in this order:
+
+```text
+received_at reference name phone email move_date move_type rooms origin destination distance_km extras estimate_cop estimate_low_cop estimate_high_cop request_uuid
+```
+
+Format the `phone` column as Plain text. `request_uuid` is how a retried run finds the lead's own row, so it updates that row instead of adding a second one.
+
+**`config/config.json`**, read by n8n:
+
+| Key | What it is |
+|---|---|
+| `google.leads_sheet_id` | The spreadsheet's ID, from its URL. |
+| `google.leads_tab` | The tab name, `Moving leads`. |
+| `alerts.error_email` | Where workflow-failure alerts go. |
+| `team_locale` | The team email's and the alert's language, `en` or `es`. Anything else falls back to English, with a note in each email. |
+
+**Rates and cities.** Moving quotes → Settings holds the base rate per move type, the per-room and per-km prices, each extra's price, the range percentage, and the city-to-city distances. Amounts are whole Colombian pesos and accept Colombian formatting: `4.500`, `4,500`, and `4500` all mean 4,500 COP.
+
+**Real system cron.** The stack disables WP-Cron and runs a `cron` container instead. On a real server, add `define( 'DISABLE_WP_CRON', true );` to `wp-config.php`, then run the same command every minute from system cron:
+
+```text
+* * * * * wp cron event run --due-now --path=/var/www/html
+```
+
+**Behind a reverse proxy.** Rate limits key on `REMOTE_ADDR`, which is the proxy's address. Filter `moving_quote_client_ip` once `REMOTE_ADDR` is a trusted proxy; "Behind a reverse proxy" in [`docs/architecture.md`](docs/architecture.md) has a worked example.
+
+## Test scenarios
+
+Automated suites, each with its own section in [`docs/testing.md`](docs/testing.md):
+
+- `pnpm test`: every TypeScript unit, the n8n Code nodes, the workflow pins, and the tooling.
+- `pnpm test tests/dom`: the quote form driven in a DOM (happy-dom), against a fixture of the real markup.
+- `pnpm run php composer check`: PHPCS, PHPStan level 9, and PHPUnit for every pure PHP class.
+- `pnpm run test:stack:wp`: WordPress on the real stack, covering install, settings, the REST API, the form, the Leads admin, delivery, and both languages.
+- `pnpm run test:stack:n8n`: the three workflows on the real stack, from a signed lead to the operator alert.
+- The queue-mode run: `docker compose -f compose.yaml -f compose.queue.yaml up -d --wait --scale n8n-worker=2`, then `pnpm exec vitest run --config vitest.stack.config.ts tests/stack/n8n/intake.test.ts`.
+
+By hand, on the local stack. A stack test already covers each scenario's WordPress half; these confirm the whole path with a real Google account:
+
+| Scenario | Expected result |
+|---|---|
+| 1. Apartment, 2 rooms, Barranquilla → Cartagena, no extras, at `/get-a-quote/` | The form shows `COP 1,017,000 – 1,243,000`. One sheet row with the headers in order, `phone` as the text `570000000001`, and a formula-looking name as literal text. A plain-text team email with the subject `New lead MQ-…: Barranquilla to Cartagena on …`. A customer email that replies to the team address, with no n8n attribution. Leads shows it as Sent. |
+| 2. House, 4 rooms, Cartagena → Santa Marta, every extra | `COP 2,592,000 – 3,168,000` in the form, in the row's `estimate_low_cop`/`estimate_high_cop`, and in both emails. |
+| 3. `docker compose stop n8n`, submit scenario 1, then `docker compose start n8n` | The thank-you page appears at once. The lead is Pending with an error, then Sent within about 2 minutes. Exactly one row and one email pair. Covered for WordPress by `end-to-end.test.ts`'s n8n-stopped case. |
+| 4. Moving quotes → Settings, set the webhook secret to any other 32+ characters, then submit | Delivery shows `HTTP 403` and nothing reaches the sheet. `./setup.sh` restores the secret from `.env`; "Retry delivery" then sends it, once. Covered for WordPress by `end-to-end.test.ts`'s wrong-secret case. |
+| 5. In dev tools, `document.querySelector('[name=website]').value = 'x'`, then submit | The thank-you page shows, but there's no lead and no row. Covered by `quote-api.test.ts`'s honeypot case. |
+| 6. Moving quotes → Settings, per km `5.000` | Scenario 1 shows `COP 1,125,000 – 1,375,000`. Restore `4.000`. |
+
+### Live checks (need a Google account)
+
+Set up, in order:
+
+1. The OAuth client, as in Configuration: the redirect URI, both APIs enabled, and the consent screen in Production.
+2. `.env`: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, and `TEAM_EMAIL`.
+3. The spreadsheet with its `Moving leads` tab and the 16 headers above (`phone` as Plain text), and `config/config.json`'s `google.leads_sheet_id`, `google.leads_tab`, `alerts.error_email`, and `team_locale`.
+4. `docker compose up -d --wait`, `./setup.sh`, then `pnpm run setup`. Add `pnpm run setup -- --refresh cvbCredGmail0001` only if the Gmail credential was imported before it was narrowed to send-only.
+5. In n8n, "Sign in with Google" on both Google credentials. Gmail's consent screen must ask only to send email.
+6. The sender's display name: Gmail → Settings → Accounts → "Send mail as" → edit the name.
+
+Then:
+
+| Check | Expected result |
+|---|---|
+| Scenarios 1–6 above | As listed. |
+| Switch to ES in the header, then send scenario 1 from `/es/cotizar/` | Lands on `/es/gracias/?reference=MQ-…`. The lead's CSV row has `es_CO`. The customer email is `Su cotización de mudanza de …` with `COP 1.017.000 – 1.243.000`. With `team_locale: "en"` the team email is English; with `"es"`, the next one is `Nueva solicitud MQ-…`. |
+| Set `team_locale` to `"ES"`, submit, then restore it | The team email is English and ends with `Note: config.team_locale is not "en" or "es"…`. The customer email is still in the lead's language. |
+| Rename the `Moving leads` tab, then submit scenario 1 | After 3 tries, one `[Chivabox demo] Workflow failed: Process lead` email reaches `alerts.error_email`, naming "Append lead row". Rename the tab back and choose Retry on the failed execution in n8n's executions list: it resumes at "Append lead row", adds the row, and sends both emails. n8n then hides Retry on that execution, so retry it once more through n8n's API: create a key in n8n under Settings → n8n API, run `read -rs N8N_API_KEY && export N8N_API_KEY` and paste it, then `curl -fsS -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" -H 'Content-Type: application/json' -d '{}' http://localhost:5678/api/v1/executions/<execution id>/retry`, with the failed execution's ID from its URL. It answers with `"mode":"retry"`. Still one row for that lead, updated in place by its `request_uuid`, and both emails again: each retry resends the team and customer emails. |
+| The same with `team_locale: "es"`, then restore it | The subject is `[Chivabox demo] Falló el flujo: Process lead`, with Spanish labels. |
+| With both Google credentials signed in, `pnpm run test:stack:n8n` | Every case that would reach `process-lead` or `error-handler` prints its skip message. No test row and no email. |
+| The Gmail consent and the sender name | The consent is send-only, and the sender name shows on both emails. |
+| Both Playground links above, once this version is on `main` | `blueprint.json` installs from GitHub, and `blueprint.es.json` shows the Spanish pages and form. |
+
+## Design decisions
+
+Each is explained in full under "Decisions" in [`docs/architecture.md`](docs/architecture.md).
+
+- **JWT over a hand-rolled HMAC header.** n8n's Webhook node verifies HS256 natively, so the secret stays in an n8n credential and a bad token never starts an execution.
+- **The leads table is the outbox.** WordPress saves the lead first and sends it second, so an n8n outage delays a lead but never loses it.
+- **`jti` dedupe in Postgres.** One UUID is the lead's key, the token's `jti`, and the `processed_events` key, so a retried delivery is recorded once.
+- **Append or update by `request_uuid`, in `RAW` cells.** A retried run updates the lead's own row instead of adding a second, and phones and formula-looking names stay text.
+- **Append before email.** No email goes out for a lead that isn't in the sheet.
+- **A plain-text team email.** It's built from visitor input, so it carries no `tel:` or `mailto:` links a crafted address could abuse.
+- **Polylang as a soft dependency.** The plugin follows whatever language a page is in and works without Polylang.
+- **Alerts in the team's language.** The team email and the operator alert both follow `team_locale`, and an invalid value never blocks either.
+- **Scaling.** `compose.queue.yaml` switches n8n to queue mode, with Redis and workers; see "Scaling" in [`docs/architecture.md`](docs/architecture.md).
+
+## Limitations
+
+- **Rate limits are per IP and fixed-window.** Visitors behind one shared NAT share one budget (5 submissions an hour by default). Upgrade: a per-visitor token, or a CAPTCHA.
+- **A page cache can serve a stale nonce**, and the form then answers "Your session expired". Upgrade: exclude the quote page from the cache.
+- **Distances are approximate**, from a fixed city-to-city table in Settings. Upgrade: a routing API.
+- **WordPress and n8n need synced clocks (NTP)** when they run on different hosts: a token lives 300 seconds, with 60 seconds of allowed skew.
+- **The webhook secret is stored in the database.** Upgrade: a `wp-config.php` constant.
+- **Single site only.** Multisite activation is refused.
+- **Playground runs without delivery and in one language**, since it has no n8n and no Polylang.
+- **An email can still double on a retry.** A retry after Gmail sent but before n8n saw the answer resends it; the sheet row can't double. Duplicates are found by the `MQ-…` reference in the subject.
+- **Append before email, and one shared OAuth client.** A failed append sends no email, and an expired Google grant silences the sheet, both emails, and the alert at once.
+- **A false duplicate.** A lost acknowledgement from Postgres can make a new lead read as a replay, so it never reaches the sheet. "Recovering a false duplicate" in [`docs/architecture.md`](docs/architecture.md) has the commands.
+- **The sheet lookup grows with its rows.** Each run reads the `request_uuid` column to find a match, which is fine for tens of thousands of leads. Upgrade: a keyed store checked before writing.
+- **Twenty Twenty-Five's own strings stay English in Spanish**, such as its footer: they come from the theme's language pack, which this demo doesn't install.
+- **`./setup.sh` needs network access** to download Polylang and WordPress's Spanish language pack.
+- **A site first set up in Spanish before the language switcher keeps Spanish copy on its English pages.** Those pages (English slugs, Spanish text) get tagged English. To fix one, delete the `home`, `get-a-quote`, and `thank-you` pages and the `primary-navigation` menu (`docker compose exec -T wpcli wp post delete <id> --force`), then rerun `./setup.sh`, which recreates them in English.
+
+## License
+
+[MIT](LICENSE).

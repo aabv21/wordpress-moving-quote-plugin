@@ -15,7 +15,7 @@ const plan = (o: Partial<Parameters<typeof planCredentialImport>[0]>) =>
   planCredentialImport({ env, existingIds: new Set(), refresh: new Set(), ...o });
 
 it('builds every credential with its fixed id', () => expect(plan({}).credentials.map((c) => c.id).sort()).toEqual(CREDENTIALS.map((c) => c.id).sort()));
-it('shapes the JWT and Postgres data for n8n 2.45.6', () => {
+it('shapes the JWT and Postgres data for the n8n 2.45 line', () => {
   const byId = new Map(plan({}).credentials.map((c) => [c.id, c.data]));
   expect(byId.get('cvbCredLeadJwt01')).toEqual({ keyType: 'passphrase', secret: 'lead_webhook_secret-test', algorithm: 'HS256' });
   expect(byId.get('cvbCredAppDb0001')).toEqual({ host: 'postgres', port: 5432, database: 'app', user: 'app_runtime_db_user-test', password: 'app_runtime_db_password-test', ssl: 'disable' });

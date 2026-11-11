@@ -78,8 +78,8 @@ it('every Google Sheets and Gmail node across workflows/ retries 3 times with a 
 });
 
 it('no Gmail node across workflows/ sets options.senderName on a send-only-scoped credential', () => {
-  // options.senderName makes n8n 2.45.6's Gmail node call GET users/me/profile, which gmail.send
-  // alone doesn't authorize.
+  // options.senderName makes n8n's Gmail node call GET users/me/profile, which gmail.send alone
+  // doesn't authorize (checked against 2.45.7).
   const matches = allNodesOfType('n8n-nodes-base.gmail');
   expect(matches.length).toBeGreaterThan(0);
   for (const { file, node: n } of matches) {
@@ -308,7 +308,7 @@ describe('process-lead.json', () => {
     });
     expect((n.parameters.columns as { mappingMode?: string }).mappingMode).toBe('autoMapInputData');
     expect((n.parameters.options as { cellFormat?: string }).cellFormat).toBe('RAW');
-    // The 2.45.6 default ('insertInNewColumn') silently adds a column for a renamed header;
+    // n8n's default ('insertInNewColumn', checked against 2.45.7) silently adds a column for a renamed header;
     // 'error' fails the node and alerts.
     expect((n.parameters.options as { handlingExtraData?: string }).handlingExtraData).toBe('error');
     expect(n.retryOnFail).toBe(true);

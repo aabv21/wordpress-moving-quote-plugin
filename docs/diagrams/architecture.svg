@@ -718,7 +718,7 @@ rect.c-bg-rect { fill: var(--bg); }
         </g>
         <g data-graph-role="automatic-crossover" style="--step:8">
           <path data-graph-role="automatic-crossover-underlay" d="M 884 110 L 884 80 Q 884 72 892 72 L 1030 72" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="process-lead" data-edge-to="sheets" data-edge-label="append row (RAW)" data-edge-key="8" data-edge-id="append" data-composition-points="884,110;884,72;1030,72" data-composition-crossover="halo" data-composition-independent="true" d="M 884 110 L 884 80 Q 884 72 892 72 L 1030 72" class="a-default" data-animate="edge" style="--step: 8;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-edge-from="process-lead" data-edge-to="sheets" data-edge-label="append or update row by request_uuid (RAW)" data-edge-key="8" data-edge-id="append" data-composition-points="884,110;884,72;1030,72" data-composition-crossover="halo" data-composition-independent="true" d="M 884 110 L 884 80 Q 884 72 892 72 L 1030 72" class="a-default" data-animate="edge" style="--step: 8;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:9">
           <path data-graph-role="automatic-crossover-underlay" d="M 928 174 L 928 188 Q 928 196 936 196 L 1030 196" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
@@ -909,9 +909,9 @@ rect.c-bg-rect { fill: var(--bg); }
           <rect x="729.1" y="178" width="134.8" height="14" rx="3" class="c-mask"/>
           <text x="796.5" y="188" class="t-edge-emphasis" font-size="8" text-anchor="middle">accepted · fire-and-forget</text>
         </g>
-        <g data-edge-from="process-lead" data-edge-to="sheets" data-edge-label="append row (RAW)" data-edge-key="8" data-edge-id="append">
-          <rect x="913.6" y="52" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="957" y="62" class="t-edge-default" font-size="8" text-anchor="middle">append row (RAW)</text>
+        <g data-edge-from="process-lead" data-edge-to="sheets" data-edge-label="append or update row by request_uuid (RAW)" data-edge-key="8" data-edge-id="append">
+          <rect x="666.4000000000001" y="84" width="211.6" height="14" rx="3" class="c-mask"/>
+          <text x="772.2" y="94" class="t-edge-default" font-size="8" text-anchor="middle">append or update row by request_uuid (RAW)</text>
         </g>
         <g data-edge-from="process-lead" data-edge-to="gmail" data-edge-label="team + customer" data-edge-key="9" data-edge-id="notify">
           <rect x="938" y="176" width="82" height="14" rx="3" class="c-mask"/>
