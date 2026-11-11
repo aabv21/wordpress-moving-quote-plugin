@@ -12,8 +12,8 @@ const ESTIMATE_PATH = '/moving-quote/v1/estimate';
 const LEADS_PATH = '/moving-quote/v1/leads';
 
 /**
- * Through `$wpdb`: `update_option()` accepts only a language with an installed core pack, which
- * this stack never downloads. `null` deletes the row.
+ * Through `$wpdb`, so the value lands exactly as given, whatever `update_option()`'s sanitizer
+ * would do with it. `null` deletes the row.
  */
 async function writeSiteLanguage(value: string | null): Promise<void> {
   const script = `<?php
@@ -71,7 +71,11 @@ function englishLeftovers(text: string, sources: string[]): string[] {
   return sources.filter((source) => containsPhrase(text, source));
 }
 
-describe('the site in Spanish (WPLANG=es_CO)', () => {
+/**
+ * The plugin on its own, with no multilingual plugin: Polylang is deactivated for this file, so the
+ * site language alone decides. `language-switcher.test.ts` covers the same plugin under Polylang.
+ */
+describe('the site in Spanish (WPLANG=es_CO), without Polylang', () => {
   let previousLanguage: string | null;
   let restoreDelivery: () => Promise<void>;
   let adminCookies: string;
@@ -82,19 +86,24 @@ describe('the site in Spanish (WPLANG=es_CO)', () => {
     previousLanguage = rows[0]?.option_value ?? null;
     restoreDelivery = await disableDelivery();
     await resetRateLimits();
+    await wp(['plugin', 'deactivate', 'polylang']);
     await writeSiteLanguage(SPANISH);
     adminCookies = await login(required('WP_ADMIN_USER'), required('WP_ADMIN_PASSWORD'));
   });
 
   afterAll(async () => {
     await writeSiteLanguage(previousLanguage);
+    // Activation drops the rewrite rules; the flush rebuilds them with Polylang's language prefixes.
+    await wp(['plugin', 'activate', 'polylang']);
+    await wp(['rewrite', 'flush', '--hard']);
     await restoreDelivery();
     await deleteCreatedLeads();
     await resetRateLimits();
   });
 
-  it('switches the site locale', async () => {
+  it('switches the site locale, with no multilingual plugin active', async () => {
     await expect(wp(['eval', 'echo get_locale();'])).resolves.toBe(SPANISH);
+    await expect(wp(['eval', "echo function_exists( 'pll_get_post' ) ? 'polylang' : 'none';"])).resolves.toBe('none');
   });
 
   it('renders the quote form in Spanish, with no English left in it', async () => {

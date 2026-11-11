@@ -26,8 +26,8 @@ export function hasPlaceholderInSqlComment(query: string): boolean {
 const RETRY_REQUIRED_TYPES = new Set(['n8n-nodes-base.postgres', 'n8n-nodes-base.googleSheets', 'n8n-nodes-base.gmail', 'n8n-nodes-base.httpRequest']);
 
 /**
- * Under `gmail.send` alone, n8n 2.45.6's Gmail node can only send: `options.senderName` calls
- * `GET users/me/profile` first and gets a 403.
+ * Under `gmail.send` alone, n8n's Gmail node can only send: `options.senderName` calls
+ * `GET users/me/profile` first and gets a 403 (checked against 2.45.7).
  */
 function isSendOnlyGmailCredential(credential: { data: (env: Readonly<Record<string, string>>) => Record<string, unknown> }): boolean {
   const data = credential.data({});

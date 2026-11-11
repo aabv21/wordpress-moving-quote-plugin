@@ -117,7 +117,7 @@
       "from": "process",
       "to": "google",
       "y": 700,
-      "label": "append row, then email team + customer"
+      "label": "append or update row, then email team + customer"
     },
     {
       "from": "wpdb",

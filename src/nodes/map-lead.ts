@@ -1,5 +1,7 @@
-import type { Extra, Lead, MoveType } from './lead.ts';
-import { normalizeLocale, teamLocaleOrDefault, type Locale } from './locale.ts';
+import { oneLine, type Extra, type Lead, type MoveType } from './lead.ts';
+import { normalizeLocale, TEAM_LOCALE_NOTE, teamLocaleOrDefault, type Locale } from './locale.ts';
+
+export { TEAM_LOCALE_NOTE };
 
 /** The `Moving leads` sheet's header row, in its exact order. */
 export const SHEET_HEADERS = [
@@ -18,6 +20,9 @@ export const SHEET_HEADERS = [
   'estimate_cop',
   'estimate_low_cop',
   'estimate_high_cop',
+  // Last, so an existing sheet only gains a column. The upsert key: unique per lead, unlike
+  // `reference`, which is an 8-hex prefix of it.
+  'request_uuid',
 ] as const;
 
 /** Always English, so the sheet stays one consistent dataset. */
@@ -143,11 +148,6 @@ function estimateDisplay(low: number, high: number, m: Messages): string {
   return `${formatCop(low, m)} – ${formatNumber(high, m)}`;
 }
 
-/** The control-character set `LeadValidator::validate_name()` normalizes, as a space. */
-function oneLine(s: string): string {
-  // eslint-disable-next-line no-control-regex -- the control-character range is the whole point of this check
-  return s.replace(/[\x00-\x1f\x7f\u0085\u2028\u2029]/g, ' ');
-}
 
 /** Parsed in `America/Bogota`, so the bare date reads as the same day everywhere. */
 function longDate(isoDate: string, m: Messages): string {
@@ -159,8 +159,6 @@ interface Config {
   alerts: { error_email: string };
   team_locale?: unknown;
 }
-
-export const TEAM_LOCALE_NOTE = 'Note: config.team_locale is not "en" or "es", so this email is in English. Fix config/config.json.';
 
 type SheetRow = Record<(typeof SHEET_HEADERS)[number], string | number>;
 
@@ -203,6 +201,7 @@ export function run(input: { lead: Lead; config: Config }): MapLeadOutput {
     estimate_cop: estimate.amount,
     estimate_low_cop: estimate.low,
     estimate_high_cop: estimate.high,
+    request_uuid: lead.request_uuid,
   };
 
   const teamExtras = extrasIn(team);

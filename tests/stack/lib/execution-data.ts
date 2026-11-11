@@ -95,3 +95,35 @@ process.stdin.on('end', () => {
   const stdout = await runDockerWithInput(['compose', 'exec', '-T', 'n8n', 'node', '-e', script], raw);
   return JSON.parse(stdout) as ProcessLeadExecutionSummary;
 }
+
+export interface ErrorHandlerExecutionSummary {
+  lastNodeExecuted: string | null;
+  nodesRun: string[];
+  /** Compose alert's output, or null when that node never ran. */
+  alert: { to: string; subject: string; text: string } | null;
+}
+
+/** Decoded like `summarizeProcessLeadExecution()`; returns only the alert, never the raw tree. */
+export async function summarizeErrorHandlerExecution(executionId: number): Promise<ErrorHandlerExecutionSummary> {
+  const raw = await psqlAs(required('N8N_DB_USER'), 'n8n', `SELECT data FROM execution_data WHERE "executionId" = ${String(executionId)}`);
+
+  const script = `
+const { parse } = require('/usr/local/lib/node_modules/n8n/node_modules/flatted/cjs/index.js');
+let raw = '';
+process.stdin.on('data', (chunk) => { raw += chunk; });
+process.stdin.on('end', () => {
+  const resultData = parse(raw).resultData;
+  const runData = resultData.runData;
+  const composeRuns = runData['Compose alert'];
+  let alert = null;
+  if (composeRuns && composeRuns.length > 0 && composeRuns[0].data) {
+    const output = composeRuns[0].data.main[0][0].json;
+    alert = { to: output.to, subject: output.subject, text: output.text };
+  }
+  console.log(JSON.stringify({ lastNodeExecuted: resultData.lastNodeExecuted ?? null, nodesRun: Object.keys(runData), alert }));
+});
+`;
+
+  const stdout = await runDockerWithInput(['compose', 'exec', '-T', 'n8n', 'node', '-e', script], raw);
+  return JSON.parse(stdout) as ErrorHandlerExecutionSummary;
+}

@@ -1,0 +1,152 @@
+<!-- The [moving_quote] markup contract (templates/quote-form.php), rendered in English. tests/stack/wp/quote-page.test.ts checks that every data-* hook here is in the real page. -->
+<form class="moving-quote" data-moving-quote data-config="{&quot;estimateUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/estimate?locale=en_US&quot;,&quot;leadsUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/leads?locale=en_US&quot;,&quot;nonce&quot;:&quot;test-nonce&quot;,&quot;thankYouUrl&quot;:&quot;https://example.com/thank-you/&quot;,&quot;strings&quot;:{&quot;sending&quot;:&quot;Sending…&quot;,&quot;networkError&quot;:&quot;Something went wrong. Please check your connection and try again.&quot;,&quot;rateLimited&quot;:&quot;Too many requests. Please try again later.&quot;,&quot;sessionExpired&quot;:&quot;Your session expired. Reload the page and try again.&quot;,&quot;genericError&quot;:&quot;Please fix the highlighted fields.&quot;}}" novalidate>
+  <ol class="moving-quote__progress" role="list">
+    <li class="moving-quote__progress-step" data-progress-step="0" aria-current="step"><span class="moving-quote__progress-marker" aria-hidden="true">1</span><span class="moving-quote__progress-label">Your move</span></li>
+    <li class="moving-quote__progress-step" data-progress-step="1"><span class="moving-quote__progress-marker" aria-hidden="true">2</span><span class="moving-quote__progress-label">Extra services</span></li>
+    <li class="moving-quote__progress-step" data-progress-step="2"><span class="moving-quote__progress-marker" aria-hidden="true">3</span><span class="moving-quote__progress-label">Your details</span></li>
+  </ol>
+
+  <p class="moving-quote__honeypot moving-quote__offscreen" aria-hidden="true">
+    <label for="mq-website">Leave this field empty</label>
+    <input type="text" id="mq-website" name="website" tabindex="-1" autocomplete="off" />
+  </p>
+
+  <fieldset class="moving-quote__step" data-step="0">
+    <legend class="moving-quote__legend" tabindex="-1">Your move</legend>
+    <div class="moving-quote__fields">
+      <p class="moving-quote__field">
+        <label class="moving-quote__label" for="mq-move-type">What are you moving?</label>
+        <select class="moving-quote__control" id="mq-move-type" name="move_type" required aria-describedby="mq-error-move_type">
+          <option value="apartment">Apartment</option>
+          <option value="house">House</option>
+          <option value="office">Office</option>
+        </select>
+        <span class="moving-quote__error" id="mq-error-move_type" data-error-for="move_type"></span>
+      </p>
+      <p class="moving-quote__field">
+        <label class="moving-quote__label" for="mq-rooms">How many rooms?</label>
+        <select class="moving-quote__control" id="mq-rooms" name="rooms" required aria-describedby="mq-error-rooms">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5+</option>
+        </select>
+        <span class="moving-quote__error" id="mq-error-rooms" data-error-for="rooms"></span>
+      </p>
+      <p class="moving-quote__field">
+        <label class="moving-quote__label" for="mq-origin">Moving from</label>
+        <select class="moving-quote__control" id="mq-origin" name="origin" required aria-describedby="mq-error-origin">
+          <option value="" disabled selected>Choose a city</option>
+          <option value="Barranquilla">Barranquilla</option>
+          <option value="Cartagena">Cartagena</option>
+          <option value="Santa Marta">Santa Marta</option>
+        </select>
+        <span class="moving-quote__error" id="mq-error-origin" data-error-for="origin"></span>
+      </p>
+      <p class="moving-quote__field">
+        <label class="moving-quote__label" for="mq-destination">Moving to</label>
+        <select class="moving-quote__control" id="mq-destination" name="destination" required aria-describedby="mq-error-destination">
+          <option value="" disabled selected>Choose a city</option>
+          <option value="Barranquilla">Barranquilla</option>
+          <option value="Cartagena">Cartagena</option>
+          <option value="Santa Marta">Santa Marta</option>
+        </select>
+        <span class="moving-quote__error" id="mq-error-destination" data-error-for="destination"></span>
+      </p>
+      <p class="moving-quote__field">
+        <label class="moving-quote__label" for="mq-move-date">Move date</label>
+        <input class="moving-quote__control" type="date" id="mq-move-date" name="move_date" required aria-describedby="mq-error-move_date" />
+        <span class="moving-quote__error" id="mq-error-move_date" data-error-for="move_date"></span>
+      </p>
+    </div>
+    <div class="moving-quote__actions">
+      <button type="button" class="moving-quote__button moving-quote__button--primary" data-next>Next</button>
+    </div>
+  </fieldset>
+
+  <fieldset class="moving-quote__step" data-step="1" hidden>
+    <legend class="moving-quote__legend" tabindex="-1">Extra services</legend>
+    <p class="moving-quote__intro">Choose any you need. Each one is added to your estimate.</p>
+    <div class="moving-quote__options">
+      <p class="moving-quote__option">
+        <label class="moving-quote__check" for="mq-extra-packing">
+          <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-packing" name="extras" value="packing" />
+          <span>Packing</span>
+        </label>
+      </p>
+      <p class="moving-quote__option">
+        <label class="moving-quote__check" for="mq-extra-furniture_assembly">
+          <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-furniture_assembly" name="extras" value="furniture_assembly" />
+          <span>Furniture disassembly and assembly</span>
+        </label>
+      </p>
+      <p class="moving-quote__option">
+        <label class="moving-quote__check" for="mq-extra-storage">
+          <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-storage" name="extras" value="storage" />
+          <span>Temporary storage</span>
+        </label>
+      </p>
+      <p class="moving-quote__option">
+        <label class="moving-quote__check" for="mq-extra-piano_fragile">
+          <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-piano_fragile" name="extras" value="piano_fragile" />
+          <span>Piano or fragile items</span>
+        </label>
+      </p>
+    </div>
+    <div class="moving-quote__actions">
+      <button type="button" class="moving-quote__button moving-quote__button--secondary" data-back>Back</button>
+      <button type="button" class="moving-quote__button moving-quote__button--primary" data-next>Next</button>
+    </div>
+  </fieldset>
+
+  <fieldset class="moving-quote__step" data-step="2" hidden>
+    <legend class="moving-quote__legend" tabindex="-1">Your details</legend>
+    <div class="moving-quote__fields">
+      <p class="moving-quote__field moving-quote__field--wide">
+        <label class="moving-quote__label" for="mq-name">Full name</label>
+        <input class="moving-quote__control" type="text" id="mq-name" name="name" required minlength="2" maxlength="100" autocomplete="name" aria-describedby="mq-error-name" />
+        <span class="moving-quote__error" id="mq-error-name" data-error-for="name"></span>
+      </p>
+      <p class="moving-quote__field">
+        <label class="moving-quote__label" for="mq-phone">Phone</label>
+        <input class="moving-quote__control" type="tel" id="mq-phone" name="phone" required autocomplete="tel" aria-describedby="mq-error-phone" />
+        <span class="moving-quote__error" id="mq-error-phone" data-error-for="phone"></span>
+      </p>
+      <p class="moving-quote__field">
+        <label class="moving-quote__label" for="mq-email">Email</label>
+        <input class="moving-quote__control" type="email" id="mq-email" name="email" required autocomplete="email" spellcheck="false" aria-describedby="mq-error-email" />
+        <span class="moving-quote__error" id="mq-error-email" data-error-for="email"></span>
+      </p>
+      <p class="moving-quote__field moving-quote__field--wide">
+        <label class="moving-quote__check moving-quote__check--plain" for="mq-consent">
+          <input class="moving-quote__checkbox" type="checkbox" id="mq-consent" name="consent" value="1" required aria-describedby="mq-error-consent" />
+          <span>I agree to the processing of my data under the privacy policy.</span>
+        </label>
+        <span class="moving-quote__error" id="mq-error-consent" data-error-for="consent"></span>
+      </p>
+    </div>
+    <div class="moving-quote__actions">
+      <button type="button" class="moving-quote__button moving-quote__button--secondary" data-back>Back</button>
+      <button type="submit" class="moving-quote__button moving-quote__button--cta" data-submit>Send my request</button>
+    </div>
+  </fieldset>
+
+  <p class="moving-quote__form-error" data-form-error role="alert"></p>
+
+  <div class="moving-quote__success" data-success tabindex="-1" hidden>
+    <p class="moving-quote__success-title">Request received</p>
+    <p>Thank you! A member of our team will call you to confirm the details and the final price.</p>
+    <p data-success-reference hidden>Your reference number is <strong data-success-reference-value translate="no"></strong>.</p>
+  </div>
+
+  <div class="moving-quote__estimate" data-estimate-state="idle">
+    <div class="moving-quote__estimate-result" data-estimate-result aria-live="polite" aria-atomic="true">
+      <p class="moving-quote__estimate-label">Estimated price</p>
+      <p class="moving-quote__estimate-value" data-estimate-value>&mdash;</p>
+      <p class="moving-quote__estimate-error" data-estimate-error hidden>We couldn’t calculate a price for this move right now. You can still send your request, and we’ll quote it for you.</p>
+    </div>
+    <p class="moving-quote__estimate-hint" data-estimate-hint>Choose what you are moving, the rooms, and both cities to see a price.</p>
+    <p class="moving-quote__disclaimer">This is an estimate. We confirm the final price after a visit or video call.</p>
+  </div>
+</form>

@@ -93,10 +93,46 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  stack:
-    name: Stack
+  # The stack suite runs as two parallel halves, each from a fresh checkout through the README
+  # quick start's own steps. The `Stack` job below is the check the rulesets require.
+  stack-wp:
+    name: Stack (WordPress)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/init-env.ts
+      - run: docker compose up -d --wait db wordpress wpcli
+      # Regenerates the .pot with the stack's own pinned WP-CLI (no network: it reads only the
+      # plugin's PHP), and rebuilds the .mo and .l10n.php from each committed .po; fails when any
+      # of them differs from what's committed, ignoring only the .pot's POT-Creation-Date.
+      - name: Translation files match the plugin's strings
+        run: pnpm run i18n -- --check
+      - run: ./setup.sh
+      - run: pnpm run test:stack:wp
+      - name: Logs on failure
+        if: failure()
+        run: |
+          docker compose logs wordpress
+          docker compose logs wpcli
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  stack-n8n:
+    name: Stack (n8n)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -112,21 +148,28 @@ jobs:
       - run: node scripts/init-env.ts
       - run: cp config/config.example.json config/config.json
       - run: docker compose up -d --wait db wordpress wpcli postgres n8n
-      # Regenerates the .pot with the stack's own pinned WP-CLI (no network: it reads only the
-      # plugin's PHP), and rebuilds the .mo and .l10n.php from each committed .po; fails when any
-      # of them differs from what's committed, ignoring only the .pot's POT-Creation-Date.
-      - name: Translation files match the plugin's strings
-        run: pnpm run i18n -- --check
       - run: ./setup.sh
       - run: pnpm run setup
-      - run: pnpm run test:stack
+      - run: pnpm run test:stack:n8n
       - name: Logs on failure
         if: failure()
         run: |
-          docker compose logs wordpress
-          docker compose logs wpcli
           docker compose logs n8n
           docker compose logs postgres
+          docker compose logs wordpress
       - name: Tear down
         if: always()
         run: docker compose down -v
+
+  stack:
+    name: Stack
+    needs: [stack-wp, stack-n8n]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Both stack halves passed
+        env:
+          WP_RESULT: ${{ needs.stack-wp.result }}
+          N8N_RESULT: ${{ needs.stack-n8n.result }}
+        run: test "$WP_RESULT" = success && test "$N8N_RESULT" = success

@@ -4,6 +4,9 @@ export const LOCALES: readonly Locale[] = ['en', 'es'];
 
 export const DEFAULT_LOCALE: Locale = 'en';
 
+/** The last line of a team email or operator alert when `team_locale` is invalid. */
+export const TEAM_LOCALE_NOTE = 'Note: config.team_locale is not "en" or "es", so this email is in English. Fix config/config.json.';
+
 function isLocale(value: string): value is Locale {
   return (LOCALES as readonly string[]).includes(value);
 }
