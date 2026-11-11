@@ -69,14 +69,14 @@ function shape(step: unknown): unknown {
   ) as unknown;
 }
 
-/** Every `name="value"` line in that `SITE_LOCALE`'s `case` branch of `setup.sh`. */
+/** Every `name="value"` line in that locale's branch of `setup.sh`'s `load_copy()`. */
 function setupCopy(locale: string): Record<string, string> {
   const lines = readFileSync('setup.sh', 'utf8').split('\n');
-  const start = lines.indexOf(`  ${locale})`);
-  if (start === -1) throw new Error(`no ${locale} branch in setup.sh`);
-  const end = lines.indexOf('    ;;', start);
+  const start = lines.indexOf(`    ${locale})`, lines.indexOf('load_copy() {'));
+  if (start === -1) throw new Error(`no ${locale} branch in setup.sh's load_copy()`);
+  const end = lines.indexOf('      ;;', start);
   const branch = lines.slice(start + 1, end).join('\n');
-  return Object.fromEntries([...branch.matchAll(/^ {4}(\w+)="(.*)"$/gm)].map((match) => [match[1]!, match[2]!]));
+  return Object.fromEntries([...branch.matchAll(/^ {6}(\w+)="(.*)"$/gm)].map((match) => [match[1]!, match[2]!]));
 }
 
 it('the Spanish blueprint installs the same plugin, switches the site language, then builds the same site', () => {

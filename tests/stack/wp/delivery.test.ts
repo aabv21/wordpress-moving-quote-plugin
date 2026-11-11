@@ -113,7 +113,7 @@ describe('signed delivery and the outbox', () => {
     expect(typedClaims.body_sha256).toBe(createHash('sha256').update(request.body).digest('hex'));
 
     expect(Object.keys(body)).toEqual(['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'customer', 'move', 'estimate']);
-    // determine_locale() at submit time: the stack's site language.
+    // No locale query arg on this request, so the site language (determine_locale()).
     expect(body.locale).toBe('en_US');
 
     const row = await rowByUuid(requestUuid);

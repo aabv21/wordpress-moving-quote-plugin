@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { deleteCreatedLeads, validLead } from '../lib/leads.ts';
 import { disableDelivery, login, required, resetRateLimits, rest, site, wp, wpJson } from '../lib/stack.ts';
@@ -97,9 +98,22 @@ describe('the quote page', () => {
     const config = readConfig(html);
     expect(typeof config.nonce).toBe('string');
     expect(config.nonce.length).toBeGreaterThan(0);
-    expect(config.estimateUrl).toMatch(/\/wp-json\/moving-quote\/v1\/estimate$/);
-    expect(config.leadsUrl).toMatch(/\/wp-json\/moving-quote\/v1\/leads$/);
+    // Each REST URL carries the page's language, which the route then runs in.
+    expect(config.estimateUrl).toMatch(/\/wp-json\/moving-quote\/v1\/estimate\?locale=en_US$/);
+    expect(config.leadsUrl).toMatch(/\/wp-json\/moving-quote\/v1\/leads\?locale=en_US$/);
     expect(config.thankYouUrl).toMatch(/\/thank-you\/$/);
+  });
+
+  it('the rendered form and the DOM tests\' fixture carry exactly the same data hooks', async () => {
+    const html = await (await fetch(site(QUOTE_PAGE_PATH))).text();
+    const form = /<form\b[^>]*\bdata-moving-quote\b[\s\S]*?<\/form>/.exec(html)?.[0];
+    if (form === undefined) throw new Error('the quote form was not rendered');
+    // Each hook with its value (data-step="1", data-error-for="phone", …); data-config by name only.
+    const hooksIn = (markup: string): string[] =>
+      [...new Set([...markup.matchAll(/\bdata-[a-z-]+="[^"]*"|\bdata-[a-z-]+/g)].map(([hook]) => (hook.startsWith('data-config=') ? 'data-config=' : hook)))].sort();
+    const fixture = hooksIn(readFileSync('tests/dom/fixtures/quote-form.html', 'utf8'));
+    expect(fixture.length).toBeGreaterThan(20);
+    expect(hooksIn(form)).toEqual(fixture);
   });
 
   it("sets the move-date input's min to today in America/Bogota, not the site's own configured timezone", async () => {

@@ -52,6 +52,14 @@ final class LeadController {
 	}
 
 	public static function handle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$locale = RequestLocale::of( $request );
+		return RequestLocale::run( $locale, static fn (): WP_REST_Response|WP_Error => self::respond( $request, $locale ) );
+	}
+
+	/**
+	 * Runs in `$locale`, the page's language, which the lead also stores.
+	 */
+	private static function respond( WP_REST_Request $request, string $locale ): WP_REST_Response|WP_Error {
 		$input = self::json_object( $request );
 
 		if ( '' !== ( $input['website'] ?? '' ) ) {
@@ -81,13 +89,12 @@ final class LeadController {
 			return self::rate_limited( $retry_after );
 		}
 
-		return self::insert( $repository, $draft, $estimate, $now );
+		return self::insert( $repository, $draft, $estimate, $now, $locale );
 	}
 
-	private static function insert( LeadRepository $repository, LeadDraft $draft, Estimate $estimate, int $now ): WP_REST_Response|WP_Error {
+	private static function insert( LeadRepository $repository, LeadDraft $draft, Estimate $estimate, int $now, string $locale ): WP_REST_Response|WP_Error {
 		try {
-			// The request's render language, including a multilingual plugin's filter.
-			$record = $repository->insert( $draft, $estimate, $now, $now + Outbox::LEASE_SECONDS, determine_locale() );
+			$record = $repository->insert( $draft, $estimate, $now, $now + Outbox::LEASE_SECONDS, $locale );
 		} catch ( Throwable $e ) {
 			error_log( 'moving-quote: lead insert failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- no dedicated logging service exists; the message carries no PII.
 			return self::save_failed();

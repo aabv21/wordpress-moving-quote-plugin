@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Frontend;
 
 use Chivabox\MovingQuote\Pricing\DistanceTable;
+use Chivabox\MovingQuote\Rest\LocaleParam;
 use Chivabox\MovingQuote\Settings\Options;
 
 /**
@@ -69,12 +70,30 @@ final class Shortcode {
 	}
 
 	/**
-	 * Null when the page doesn't exist. get_permalink() returns false only for a missing post,
-	 * which the null check already rules out.
+	 * Null when the page doesn't exist. With Polylang active, the slug names any page of a
+	 * translation group, and the URL is the one in the visitor's language. Polylang is optional:
+	 * without it, the slug's own page.
 	 */
 	public static function thank_you_url( string $slug ): ?string {
 		$page = get_page_by_path( $slug );
-		return null !== $page ? get_permalink( $page ) : null;
+		if ( null === $page ) {
+			return null;
+		}
+
+		$page_id = $page->ID;
+		if ( function_exists( 'pll_get_post' ) ) {
+			$page_id = TranslatedPage::id( $page_id, pll_get_post( $page_id ) );
+		}
+
+		$url = get_permalink( $page_id );
+		return false !== $url ? $url : null;
+	}
+
+	/**
+	 * Carries the page's language to the REST route, which runs in it (see `Rest\RequestLocale`).
+	 */
+	private static function rest_url_for_page( string $route ): string {
+		return add_query_arg( LocaleParam::NAME, rawurlencode( determine_locale() ), rest_url( $route ) );
 	}
 
 	/**
@@ -96,8 +115,8 @@ final class Shortcode {
 	 */
 	public static function config( string $thank_you_slug ): array {
 		return [
-			'estimateUrl' => rest_url( 'moving-quote/v1/estimate' ),
-			'leadsUrl'    => rest_url( 'moving-quote/v1/leads' ),
+			'estimateUrl' => self::rest_url_for_page( 'moving-quote/v1/estimate' ),
+			'leadsUrl'    => self::rest_url_for_page( 'moving-quote/v1/leads' ),
 			'nonce'       => wp_create_nonce( 'wp_rest' ),
 			'thankYouUrl' => self::thank_you_url( $thank_you_slug ),
 			'strings'     => [

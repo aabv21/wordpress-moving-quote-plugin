@@ -32,6 +32,10 @@ final class EstimateController {
 	}
 
 	public static function handle( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		return RequestLocale::run( RequestLocale::of( $request ), static fn (): WP_REST_Response|WP_Error => self::respond( $request ) );
+	}
+
+	private static function respond( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		$bucket      = RateLimits::estimate();
 		$limiter     = new RateLimiter();
 		$retry_after = $limiter->hit( 'estimate', $bucket['limit'], $bucket['window_seconds'] );
