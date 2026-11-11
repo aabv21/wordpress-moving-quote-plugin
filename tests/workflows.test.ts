@@ -5,6 +5,7 @@ import { checkWorkflow } from '../scripts/check-workflows.ts';
 import { buildWorkflows } from '../scripts/build-workflows.ts';
 import { listJsonFiles } from '../scripts/lib/list-json-files.ts';
 import { CODE_NODES, CREDENTIALS } from '../scripts/lib/manifest.ts';
+import { SHEET_HEADERS } from '../src/nodes/map-lead.ts';
 import type { WorkflowJson, WorkflowNode } from '../scripts/lib/workflow-types.ts';
 
 // Tests the committed JSON, so a workflow landing without its manifest entries fails here.
@@ -287,10 +288,14 @@ describe('process-lead.json', () => {
     });
   });
 
-  it('pins "Append lead row": append, autoMapInputData, RAW cell format, handlingExtraData error, and the config-driven document/sheet locators', () => {
+  it('pins "Append lead row": appendOrUpdate matched on request_uuid, autoMapInputData, RAW, handlingExtraData error, and the config-driven locators', () => {
     const n = node(wf, 'Append lead row');
     expect(n.parameters.resource).toBe('sheet');
-    expect(n.parameters.operation).toBe('append');
+    // A retry after the row landed updates that row instead of adding a second one. The key is the
+    // full request_uuid (unique in WordPress), never the reference, an 8-hex prefix of a UUID the
+    // visitor's browser chose, which a crafted lead could share with another lead.
+    expect(n.parameters.operation).toBe('appendOrUpdate');
+    expect((n.parameters.columns as { matchingColumns?: string[] }).matchingColumns).toEqual(['request_uuid']);
     expect(n.parameters.documentId).toEqual({
       __rl: true,
       mode: 'id',
@@ -309,6 +314,14 @@ describe('process-lead.json', () => {
     expect(n.retryOnFail).toBe(true);
     expect(n.maxTries).toBe(3);
     expect(n.waitBetweenTries).toBe(1000);
+  });
+
+  it('the matching column is one of the sheet\'s headers, and Map lead fills it', () => {
+    const n = node(wf, 'Append lead row');
+    const [matching] = (n.parameters.columns as { matchingColumns: string[] }).matchingColumns;
+    expect(matching).toBe('request_uuid');
+    expect(SHEET_HEADERS as readonly string[]).toContain(matching);
+    expect(SHEET_HEADERS).toContain('reference');
   });
 
   it('pins "Email team" as plain text, anchored on "Map lead", with no senderName (send-only credential)', () => {
@@ -348,18 +361,37 @@ describe('error-handler.json', () => {
     expect(n.executeOnce).toBe(true);
   });
 
-  it('pins "Email operator" as a plain-text alert anchored on "On workflow error", with optional chaining and fallbacks', () => {
+  it('wires On workflow error → Read config → Parse config → Alert input → Compose alert → Email operator, with no extra fan-out', () => {
+    const connections = wf.connections as Record<string, { main: { node: string; type: string; index: number }[][] }>;
+    expect(connections).toEqual({
+      'On workflow error': { main: [[{ node: 'Read config', type: 'main', index: 0 }]] },
+      'Read config': { main: [[{ node: 'Parse config', type: 'main', index: 0 }]] },
+      'Parse config': { main: [[{ node: 'Alert input', type: 'main', index: 0 }]] },
+      'Alert input': { main: [[{ node: 'Compose alert', type: 'main', index: 0 }]] },
+      'Compose alert': { main: [[{ node: 'Email operator', type: 'main', index: 0 }]] },
+    });
+  });
+
+  it('pins "Alert input" to hand Compose alert the config, the trigger\'s own output and the Bogota time', () => {
+    const n = node(wf, 'Alert input');
+    expect(n.type).toBe('n8n-nodes-base.set');
+    expect(n.parameters.mode).toBe('raw');
+    expect(n.parameters.jsonOutput).toBe(
+      "={{ { config: $json.config, failure: $('On workflow error').first().json, time: $now.setZone('America/Bogota').toFormat('yyyy-LL-dd HH:mm') } }}",
+    );
+  });
+
+  it('pins "Email operator" as plain text over Compose alert\'s to, subject and text', () => {
     const n = node(wf, 'Email operator');
     expect(n.parameters.emailType).toBe('text');
-    expect(n.parameters.sendTo).toBe('={{ $json.config.alerts.error_email }}');
-    expect(n.parameters.subject).toBe(
-      "=[Chivabox demo] Workflow failed: {{ (({ workflow }) => workflow?.name ?? 'unknown workflow')($('On workflow error').first().json) }}",
-    );
-    const message = n.parameters.message as string;
-    expect(message).toContain("$('On workflow error').first().json");
-    expect(message).toContain('execution?.lastNodeExecuted ?? ');
-    expect(message).toContain('execution?.error?.message ?? trigger?.error?.message ?? ');
-    expect(message).toContain("execution?.url ?? 'n/a (activation error)'");
-    expect(message).toContain("America/Bogota");
+    expect(n.parameters.sendTo).toBe('={{ $json.to }}');
+    expect(n.parameters.subject).toBe('={{ $json.subject }}');
+    expect(n.parameters.message).toBe('={{ $json.text }}');
+    const options = n.parameters.options as { appendAttribution?: boolean; senderName?: string };
+    expect(options.appendAttribution).toBe(false);
+    expect(options.senderName).toBeUndefined();
+    expect(n.retryOnFail).toBe(true);
+    expect(n.maxTries).toBe(3);
+    expect(n.waitBetweenTries).toBe(1000);
   });
 });

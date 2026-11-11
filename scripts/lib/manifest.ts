@@ -108,6 +108,12 @@ export const CODE_NODES: readonly CodeNodeEntry[] = [
     source: 'src/nodes/map-lead.ts',
     why: 'one tested function builds the sheet row and both notification emails from the same lead, instead of separate Set and expression nodes for each',
   },
+  {
+    file: 'error-handler.json',
+    node: 'Compose alert',
+    source: 'src/nodes/error-alert.ts',
+    why: "one tested function picks the team's language and builds the alert from either error payload shape, execution or trigger, instead of an inline expression per field",
+  },
 ];
 
 /** Derived from `GOOGLE_OAUTH_CLIENT_ID`, not a hand-maintained id list. */

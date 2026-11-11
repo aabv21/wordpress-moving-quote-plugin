@@ -28,8 +28,8 @@ export default defineConfig([
     },
   },
   {
-    // Enforces AGENTS.md's rule: `stack.ts` loads `.env` at import time, and `execution-data.ts`
-    // and `leads.ts` import it, so none may reach a test outside `tests/stack/**` (CI's quality
+    // Enforces AGENTS.md's rule: `stack.ts` loads `.env` at import time, and `execution-data.ts`,
+    // `leads.ts`, and `signed-lead.ts` import it, so none may reach a test outside `tests/stack/**` (CI's quality
     // job has no `.env`). The modules are listed by name because a `!` pattern can't carve the
     // side-effect-free ones (`poll.ts`, `jwt.ts`, `receiver.ts`) out of a glob. Add any new
     // `tests/stack/lib/` file that loads `.env` or needs a live stack.
@@ -41,7 +41,7 @@ export default defineConfig([
         {
           patterns: [
             {
-              group: ['**/stack/lib/stack.ts', '**/stack/lib/stack', '**/stack/lib/execution-data.ts', '**/stack/lib/execution-data', '**/stack/lib/leads.ts', '**/stack/lib/leads'],
+              group: ['**/stack/lib/stack.ts', '**/stack/lib/stack', '**/stack/lib/execution-data.ts', '**/stack/lib/execution-data', '**/stack/lib/leads.ts', '**/stack/lib/leads', '**/stack/lib/signed-lead.ts', '**/stack/lib/signed-lead'],
               message: 'Only tests/stack/** may import this; it needs a live stack (and, for stack.ts, a loaded .env).',
             },
             {
