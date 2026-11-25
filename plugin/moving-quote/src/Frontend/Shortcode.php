@@ -74,15 +74,6 @@ final class Shortcode {
 		return DistanceTable::from_settings( Options::all() )->cities();
 	}
 
-	/** @return array<string, string> each `Pricing\MoveType` value and its label */
-	public static function move_type_labels(): array {
-		return [
-			'apartment' => __( 'Apartment', 'moving-quote' ),
-			'house'     => __( 'House', 'moving-quote' ),
-			'office'    => __( 'Office', 'moving-quote' ),
-		];
-	}
-
 	/** The thank-you page the form redirects to; see `page_url()`. */
 	public static function thank_you_url( string $slug ): ?string {
 		return self::page_url( $slug );

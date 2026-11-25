@@ -127,14 +127,22 @@ final class LeadRepository {
 	}
 
 	/**
-	 * Deletes every row with this exact `email` in one statement and returns the count. It never
-	 * parses a row, so one with an unparseable `status` is still erased.
+	 * Deletes exactly these rows in one statement and returns the count. It never parses a row, so
+	 * one with an unparseable `status` is still erased.
+	 *
+	 * @param list<string> $uuids
 	 */
-	public function delete_by_email( string $email ): int {
+	public function delete_by_uuids( array $uuids ): int {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
-		$deleted = $wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE email = %s', $this->table(), $email ) );
+		if ( [] === $uuids ) {
+			return 0;
+		}
+
+		$placeholders = implode( ', ', array_fill( 0, count( $uuids ), '%s' ) );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- %i interpolates the table name inside prepare() itself, and the placeholders are one `%s` per UUID.
+		$deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM %i WHERE request_uuid IN ( {$placeholders} )", $this->table(), ...$uuids ) );
 
 		return false === $deleted ? 0 : $deleted;
 	}

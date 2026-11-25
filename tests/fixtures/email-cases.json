@@ -1,0 +1,90 @@
+[
+  {
+    "address": "name@example.com",
+    "valid": true
+  },
+  {
+    "address": "first.last+tag@example.com",
+    "valid": true
+  },
+  {
+    "address": "a@b.co",
+    "valid": true
+  },
+  {
+    "address": "\"a,b\"@example.com",
+    "valid": false
+  },
+  {
+    "address": "a@.com",
+    "valid": false
+  },
+  {
+    "address": "a@example.",
+    "valid": false
+  },
+  {
+    "address": "a@@example.com",
+    "valid": false
+  },
+  {
+    "address": "@example.com",
+    "valid": false
+  },
+  {
+    "address": "a@example",
+    "valid": false
+  },
+  {
+    "address": "a b@example.com",
+    "valid": false
+  },
+  {
+    "address": "a@exa mple.com",
+    "valid": false
+  },
+  {
+    "address": "a;b@example.com",
+    "valid": false
+  },
+  {
+    "address": "a<b@example.com",
+    "valid": false
+  },
+  {
+    "address": "a(b)@example.com",
+    "valid": false
+  },
+  {
+    "address": "a[b]@example.com",
+    "valid": false
+  },
+  {
+    "address": "a\\b@example.com",
+    "valid": false
+  },
+  {
+    "address": "a:b@example.com",
+    "valid": false
+  },
+  {
+    "address": "a@example.com\n",
+    "valid": false
+  },
+  {
+    "address": "a\u0000@example.com",
+    "valid": false
+  },
+  {
+    "address": "",
+    "valid": false
+  },
+  {
+    "address": "a@[127.0.0.1]",
+    "valid": false
+  },
+  {
+    "address": "a@[IPv6:2001:db8::1]",
+    "valid": false
+  }
+]

@@ -88,6 +88,21 @@ final class LeadValidatorTest extends TestCase {
 		];
 	}
 
+	/** @return array<string, array{string}> */
+	public static function names_on_the_length_boundaries(): array {
+		return [
+			'two characters' => [ 'Jo' ],
+			'100 characters' => [ str_repeat( 'a', 100 ) ],
+		];
+	}
+
+	#[DataProvider( 'names_on_the_length_boundaries' )]
+	public function test_a_name_on_either_length_boundary_is_accepted( string $name ): void {
+		$draft = self::lead( self::valid( [ 'name' => $name ] ) );
+		self::assertInstanceOf( LeadDraft::class, $draft );
+		self::assertSame( $name, $draft->name );
+	}
+
 	#[DataProvider( 'invalid_fields' )]
 	public function test_invalid_field( string $field, mixed $value, string $code ): void {
 		$result = self::lead( self::valid( [ $field => $value ] ) );

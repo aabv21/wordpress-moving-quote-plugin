@@ -1,7 +1,7 @@
-import { execFile } from 'node:child_process';
 import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { composeExec } from './lib/compose.ts';
 import { withoutCreationDate } from './lib/gettext.ts';
 
 export interface TextDomain {
@@ -60,12 +60,7 @@ function generateScript(text: TextDomain, outDir: string): string {
 }
 
 function wpcli(args: string[]): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    execFile('docker', ['compose', 'exec', '-T', 'wpcli', ...args], { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) reject(new Error(`${err.message}\n${stderr.toString()}`));
-      else resolve(stdout);
-    });
-  });
+  return composeExec('wpcli', args);
 }
 
 export async function generate(text: TextDomain): Promise<Map<string, Buffer>> {

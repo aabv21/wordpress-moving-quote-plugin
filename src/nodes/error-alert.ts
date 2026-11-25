@@ -1,5 +1,5 @@
 import { oneLine } from './lead.ts';
-import { TEAM_LOCALE_NOTE, teamLocaleOrDefault, type Locale } from './locale.ts';
+import { BUSINESS_TIMEZONE, TEAM_LOCALE_NOTE, teamLocaleOrDefault, type Locale } from './locale.ts';
 
 export interface AlertMessages {
   subject: (workflowName: string) => string;
@@ -83,7 +83,7 @@ export function run(input: AlertInput): Alert {
     `${m.failedNode}: ${text(field(execution, 'lastNodeExecuted'), m.activation)}`,
     `${m.error}: ${errorMessage}`,
     `${m.execution}: ${text(field(execution, 'url'), m.noExecution)}`,
-    `${m.time}: ${time} America/Bogota`,
+    `${m.time}: ${time} ${BUSINESS_TIMEZONE}`,
     ...(teamLocale.valid ? [] : [TEAM_LOCALE_NOTE]),
   ];
 

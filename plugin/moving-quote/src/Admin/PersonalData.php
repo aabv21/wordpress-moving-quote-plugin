@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Admin;
 
+use Chivabox\MovingQuote\Leads\Labels;
 use Chivabox\MovingQuote\Leads\LeadRecord;
 use Chivabox\MovingQuote\Leads\LeadRepository;
+use Chivabox\MovingQuote\Plugin;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -13,6 +15,9 @@ use DateTimeZone;
  * lifecycle, so neither callback checks a capability or nonce of its own.
  */
 final class PersonalData {
+	/** How long n8n keeps a failed run's data: `compose.yaml`'s `EXECUTIONS_DATA_MAX_AGE`, 168 hours. */
+	public const EXECUTION_RETENTION_DAYS = 7;
+
 	public static function register(): void {
 		add_filter( 'wp_privacy_personal_data_exporters', [ self::class, 'register_exporter' ] );
 		add_filter( 'wp_privacy_personal_data_erasers', [ self::class, 'register_eraser' ] );
@@ -65,7 +70,7 @@ final class PersonalData {
 
 	/** @return array{group_id: string, group_label: string, item_id: string, data: list<array{name: string, value: string}>} */
 	private static function export_item( LeadRecord $lead ): array {
-		$tz = new DateTimeZone( 'America/Bogota' );
+		$tz = new DateTimeZone( Plugin::TIMEZONE );
 
 		return [
 			'group_id'    => 'moving-quote-leads',
@@ -78,7 +83,7 @@ final class PersonalData {
 				],
 				[
 					'name'  => __( 'Status', 'moving-quote' ),
-					'value' => LeadsListTable::status_label( $lead->status ),
+					'value' => Labels::status( $lead->status ),
 				],
 				[
 					/* translators: the submission time is converted to America/Bogota */
@@ -104,7 +109,7 @@ final class PersonalData {
 				],
 				[
 					'name'  => __( 'Move type', 'moving-quote' ),
-					'value' => LeadsListTable::move_type_label( $lead->move_type ),
+					'value' => Labels::move_type( $lead->move_type ),
 				],
 				[
 					'name'  => __( 'Rooms', 'moving-quote' ),
@@ -128,7 +133,7 @@ final class PersonalData {
 				],
 				[
 					'name'  => __( 'Extras', 'moving-quote' ),
-					'value' => implode( ', ', array_map( [ LeadsListTable::class, 'extra_label' ], $lead->extras ) ),
+					'value' => implode( ', ', array_map( [ Labels::class, 'extra' ], $lead->extras ) ),
 				],
 				[
 					'name'  => __( 'Estimate amount (COP)', 'moving-quote' ),
@@ -176,7 +181,7 @@ final class PersonalData {
 
 		$repository = new LeadRepository();
 		$uuids      = $repository->uuids_by_email( $email_address );
-		$deleted    = $repository->delete_by_email( $email_address );
+		$deleted    = $repository->delete_by_uuids( $uuids );
 
 		if ( 0 === $deleted ) {
 			return [
@@ -194,9 +199,10 @@ final class PersonalData {
 			'items_retained' => true,
 			'messages'       => [
 				sprintf(
-					/* translators: %s: a comma-separated list of MQ-… lead references */
-					__( 'The database record for %s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the "New lead" emails already sent to the team and the customer, and — for up to 7 days — in a failed delivery\'s stored n8n execution data. Remove those by hand if needed.', 'moving-quote' ),
-					implode( ', ', $references )
+					/* translators: 1: a comma-separated list of MQ-… lead references, 2: a number of days */
+					__( 'The database record for %1$s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the "New lead" emails already sent to the team and the customer, and — for up to %2$d days — in a failed delivery\'s stored n8n execution data. Remove those by hand if needed.', 'moving-quote' ),
+					implode( ', ', $references ),
+					self::EXECUTION_RETENTION_DAYS
 				),
 			],
 			'done'           => true,

@@ -4,6 +4,12 @@ export const LOCALES: readonly Locale[] = ['en', 'es'];
 
 export const DEFAULT_LOCALE: Locale = 'en';
 
+/** The business's time zone: dates and times in emails, alerts and the sheet read in it. */
+export const BUSINESS_TIMEZONE = 'America/Bogota';
+
+/** The only currency a lead's estimate is quoted in. */
+export const CURRENCY = 'COP';
+
 /** The last line of a team email or operator alert when `team_locale` is invalid. */
 export const TEAM_LOCALE_NOTE = 'Note: config.team_locale is not "en" or "es", so this email is in English. Fix config/config.json.';
 

@@ -273,7 +273,7 @@ describe('admin: leads list, status, export, retry', () => {
   });
 
   it('exports every good row across more than one chunk, even with a bad row inside the first chunk', async () => {
-    // EXPORT_CHUNK is 500: a bad row in the first batch makes it parse short (499), which must not
+    // `CsvExporter::CHUNK` is 500: a bad row in the first batch makes it parse short (499), which must not
     // end the export before the second batch.
     const leadsTable = await table();
     const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 12);

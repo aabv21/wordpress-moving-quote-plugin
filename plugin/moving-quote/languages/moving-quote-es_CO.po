@@ -230,10 +230,10 @@ msgstr "Estimado máximo (COP)"
 msgid "Language"
 msgstr "Idioma"
 
-#. translators: %s: a comma-separated list of MQ-… lead references
+#. translators: 1: a comma-separated list of MQ-… lead references, 2: a number of days
 #, php-format
-msgid "The database record for %s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the \"New lead\" emails already sent to the team and the customer, and — for up to 7 days — in a failed delivery's stored n8n execution data. Remove those by hand if needed."
-msgstr "Se eliminó el registro de %s en la base de datos, pero puede quedar una copia en la hoja de Google «Moving leads», en los correos de nueva solicitud ya enviados al equipo y al cliente y, hasta por 7 días, en los datos guardados de un envío fallido en n8n. Elimine esas copias manualmente si es necesario."
+msgid "The database record for %1$s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the \"New lead\" emails already sent to the team and the customer, and — for up to %2$d days — in a failed delivery's stored n8n execution data. Remove those by hand if needed."
+msgstr "Se eliminó el registro de %1$s en la base de datos, pero puede quedar una copia en la hoja de Google «Moving leads», en los correos de nueva solicitud ya enviados al equipo y al cliente y, hasta por %2$d días, en los datos guardados de un envío fallido en n8n. Elimine esas copias manualmente si es necesario."
 
 msgid "Enter a whole amount in COP, such as 150,000."
 msgstr "Ingrese un valor entero en COP, por ejemplo 150.000."

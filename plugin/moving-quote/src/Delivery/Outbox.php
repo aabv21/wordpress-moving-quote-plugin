@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Delivery;
 
 use Chivabox\MovingQuote\Leads\{LeadRecord, LeadRepository};
+use Chivabox\MovingQuote\Plugin;
 use Chivabox\MovingQuote\Settings\Options;
 use DateTimeZone;
 use Throwable;
@@ -30,7 +31,7 @@ final class Outbox {
 			$site_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 			$business  = Options::business();
 			$context   = new PayloadContext( $site_name, Options::team_email(), $business->phone, $business->whatsapp );
-			$body      = LeadPayload::body( $lead, $context, new DateTimeZone( 'America/Bogota' ) );
+			$body      = LeadPayload::body( $lead, $context, new DateTimeZone( Plugin::TIMEZONE ) );
 			$claims    = LeadPayload::claims( $lead->request_uuid, $body, $now );
 			$jwt       = JwtSigner::hs256( $claims, Options::webhook_secret() );
 

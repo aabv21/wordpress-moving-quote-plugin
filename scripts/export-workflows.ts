@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildWorkflows } from './build-workflows.ts';
+import { buildWorkflows } from './lib/build.ts';
 import { compose, loadDotEnv } from './lib/compose.ts';
 import { listJsonFiles } from './lib/list-json-files.ts';
 import { CODE_NODES, WORKFLOWS } from './lib/manifest.ts';

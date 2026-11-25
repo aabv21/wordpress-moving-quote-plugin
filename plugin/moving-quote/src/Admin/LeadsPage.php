@@ -10,8 +10,7 @@ use Chivabox\MovingQuote\Leads\{LeadRepository, LeadStatus};
  * the same error from a handler as from the page.
  */
 final class LeadsPage {
-	private const EXPORT_CHUNK = 500;
-	public const NOTICE_ARG    = 'moving_quote_notice';
+	public const NOTICE_ARG = 'moving_quote_notice';
 
 	public static function register_hooks(): void {
 		add_action( 'admin_post_moving_quote_update_status', [ self::class, 'handle_update_status' ] );
@@ -119,7 +118,7 @@ final class LeadsPage {
 		self::redirect_to_list( 'lead_deleted' );
 	}
 
-	/** Streams every matching lead as CSV: a UTF-8 BOM, the header, then batches of `EXPORT_CHUNK`. */
+	/** Streams every matching lead as CSV through `CsvExporter`. */
 	public static function handle_export(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'moving-quote' ), 403 );
@@ -129,7 +128,7 @@ final class LeadsPage {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- the nonce above already covers this whole request.
 		$raw    = self::string_field( $_GET, 'status' );
 		$status = self::parse_status( $raw );
-		$tz     = new \DateTimeZone( 'America/Bogota' );
+		$tz     = new \DateTimeZone( \Chivabox\MovingQuote\Plugin::TIMEZONE );
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
@@ -140,21 +139,7 @@ final class LeadsPage {
 			exit;
 		}
 
-		fwrite( $out, "\u{FEFF}" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- streaming to php://output, not a filesystem path; WP_Filesystem has no equivalent.
-		fputcsv( $out, LeadCsv::HEADER, ',', '"', '' );
-
-		$repository = new LeadRepository();
-		$after_id   = 0;
-		$raw_count  = self::EXPORT_CHUNK;
-		while ( self::EXPORT_CHUNK === $raw_count ) {
-			$chunk     = $repository->chunk_after( $status, $after_id, self::EXPORT_CHUNK );
-			$raw_count = $chunk['raw_count'];
-			foreach ( $chunk['records'] as $lead ) {
-				fputcsv( $out, LeadCsv::row( $lead, $tz ), ',', '"', '' );
-			}
-			// Loop on raw_count and advance to last_raw_id; see LeadRepository::chunk_after().
-			$after_id = $chunk['last_raw_id'];
-		}
+		CsvExporter::stream( $out, new LeadRepository(), $status, $tz );
 
 		fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming to php://output, not a filesystem path; WP_Filesystem has no equivalent.
 		exit;

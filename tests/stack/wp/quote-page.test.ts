@@ -116,6 +116,23 @@ describe('the quote page', () => {
     expect(hooksIn(form)).toEqual(fixture);
   });
 
+  it("the rendered form and the DOM tests' fixture have the same controls", async () => {
+    const html = await (await fetch(site(QUOTE_PAGE_PATH))).text();
+    const form = /<form\b[^>]*\bdata-moving-quote\b[\s\S]*?<\/form>/.exec(html)?.[0];
+    if (form === undefined) throw new Error('the quote form was not rendered');
+    // Each control's tag, name, type, required flag and aria-describedby, in document order. Option lists and `min` differ by data and by day, so they are left out.
+    const controlsIn = (markup: string): string[] =>
+      [...markup.matchAll(/<(input|select|textarea|button)\b([^>]*)>/g)].map(([, tag, attributes = '']) => {
+        const parsed = new Map([...attributes.matchAll(/(?<=\s)([a-z-]+)="([^"]*)"/g)].map(([, name = '', value = '']) => [name, value]));
+        const attribute = (name: string): string => parsed.get(name) ?? '';
+        const required = /\srequired(?=\s|\/|$)/.test(attributes);
+        return JSON.stringify({ tag, name: attribute('name'), type: attribute('type'), required, describedby: attribute('aria-describedby') });
+      });
+    const fixture = controlsIn(readFileSync('tests/dom/fixtures/quote-form.html', 'utf8'));
+    expect(fixture.length).toBeGreaterThan(10);
+    expect(controlsIn(form)).toEqual(fixture);
+  });
+
   it('renders the summary panel, the required note, each extra\'s price and the phone example', async () => {
     const html = decodeHtmlEntities(await (await fetch(site(QUOTE_PAGE_PATH))).text());
     const summary = /<aside class="moving-quote__summary"[\s\S]*?<\/aside>/.exec(html)?.[0] ?? '';

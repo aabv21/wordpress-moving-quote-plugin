@@ -4,16 +4,13 @@ import {
   BOOTSTRAP_SQL,
   MIGRATION_LOCK_KEY,
   migrationScript,
-  missingEnv,
-  missingEnvError,
-  orderMigrations,
-  pendingMigrations,
   recordMigration,
   requiredEnv,
   RUNTIME_PASSWORD_SQL,
   runtimeRoleClashes,
   transactionControl,
 } from '../scripts/db-migrate.ts';
+import { missingEnv, missingEnvError, orderMigrations, pendingMigrations } from '../scripts/lib/migrations.ts';
 import { psqlArgs, redact, secretValues } from '../scripts/lib/runtime.ts';
 
 describe('orderMigrations', () => {
