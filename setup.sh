@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # Installs and configures WordPress idempotently. Run `docker compose up -d --wait` first.
 #
-# The site is bilingual through Polylang: every page and the header menu exist in English (en_US)
-# and Spanish (es_CO), linked as translations, with an EN | ES switcher in the header. SITE_LOCALE
+# The site runs the Chivabox child theme (site/theme/), whose patterns hold the page copy in both
+# languages. It is bilingual through Polylang: every page and the header menu exist in English
+# (en_US) and Spanish (es_CO), linked as translations, with a language switcher in the header. SITE_LOCALE
 # (.env or the command line) picks the default language, served without a URL prefix: en_US
 # (default) or es_CO. The other one lives under /es/ or /en/. Polylang and WordPress's Spanish core
 # pack download from wordpress.org, so this needs network access. Example: SITE_LOCALE=es_CO ./setup.sh
+#
+# Existing pages are left as they are. SETUP_REFRESH_PAGES=1 replaces the content of the pages this
+# script owns with their pattern reference, which brings an older stack's pages up to date.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 # A SITE_LOCALE given on the command line wins over the one in .env, which is read next.
 site_locale="${SITE_LOCALE:-}"
+refresh_pages="${SETUP_REFRESH_PAGES:-}"
 
 if [ ! -f .env ]; then
   echo "setup.sh: .env not found; run node scripts/init-env.ts first" >&2
@@ -48,6 +53,7 @@ until wp eval "$db_probe" --skip-wordpress >/dev/null 2>&1; do
 done
 
 site_locale="${site_locale:-${SITE_LOCALE:-en_US}}"
+refresh_pages="${refresh_pages:-${SETUP_REFRESH_PAGES:-0}}"
 case "$site_locale" in
   en_US) default_lang="en" ;;
   es_CO) default_lang="es" ;;
@@ -60,56 +66,34 @@ esac
 # Exact, so every stack runs the same Polylang. Bump it deliberately, after reading its changelog.
 polylang_version="3.9.1"
 
-# Sets one language's page copy. Both languages always exist, so every run uses both sets.
+# Sets one language's titles, excerpts (each page's meta description), tagline and menu labels; the
+# page copy lives in the theme's patterns.
+# Both languages always exist, so every run uses both sets.
 load_copy() {
   case "$1" in
     en_US)
       tagline="Moving across Colombia's Caribbean coast"
-      home_title="Home"
-      home_heading="Moving made simple on Colombia's Caribbean coast"
-      home_intro="Chivabox Movers moves homes and offices between Barranquilla, Cartagena, Santa Marta, and the rest of the coast. Get an instant estimate in under a minute."
-      home_button="Get a quote"
-      quote_title="Get a Quote"
-      quote_intro="Tell us about your move and see an estimate right away."
-      thanks_title="Thank You"
-      thanks_intro="We received your moving request."
-      thanks_heading="What happens next"
-      thanks_step_1="We email you a summary of your request and your estimate."
-      thanks_step_2="A member of our team calls you to confirm the details."
-      thanks_step_3="We confirm the final price after a visit or video call, then book your moving day."
-      thanks_button="Back to the home page"
+      home_title="Moving company on Colombia's Caribbean coast"
+      quote_title="Get a quote"
+      thanks_title="Thank you"
       policy_title="Data processing policy"
-      policy_demo="Demo site: Chivabox Movers is a fictional company, and this policy is a sample."
-      policy_owner="Who is responsible: Chivabox Movers, Barranquilla, Colombia."
-      policy_data="What we collect: your name, phone, email, and the details of your move, when you ask for a quote."
-      policy_purpose="Why: to prepare your estimate, contact you about your move, and keep a record of your request. We don't sell your data or use it for advertising."
-      policy_rights="Your rights: under Colombia's Law 1581 of 2012 you can see, correct or delete your data, and withdraw your consent, by writing to us from the email address you used."
-      policy_retention="How long: we keep a request for as long as we need it to answer you and to meet our legal obligations."
+      home_excerpt="Home and office moves between Barranquilla, Cartagena and Santa Marta. See an instant estimate and book a crew."
+      quote_excerpt="Answer three short steps and see your moving estimate in Colombian pesos right away."
+      thanks_excerpt="Your moving request was received. Here is what happens next."
+      policy_excerpt="How Chivabox Movers handles the data you send with a quote request."
       nav_home="Home"
-      nav_quote="Get a Quote"
+      nav_quote="Get a quote"
       ;;
     es_CO)
       tagline="Mudanzas en la costa Caribe colombiana"
-      home_title="Inicio"
-      home_heading="Su mudanza, sin complicaciones, en la costa Caribe de Colombia"
-      home_intro="Chivabox Movers traslada hogares y oficinas entre Barranquilla, Cartagena, Santa Marta y el resto de la costa. Obtenga un precio estimado en menos de un minuto."
-      home_button="Cotizar mi mudanza"
+      home_title="Empresa de mudanzas en la costa Caribe de Colombia"
       quote_title="Cotice su mudanza"
-      quote_intro="Cuéntenos sobre su mudanza y vea un precio estimado al instante."
       thanks_title="Gracias"
-      thanks_intro="Recibimos su solicitud de mudanza."
-      thanks_heading="Qué sigue"
-      thanks_step_1="Le enviamos por correo un resumen de su solicitud y el precio estimado."
-      thanks_step_2="Una persona de nuestro equipo se comunica con usted para confirmar los detalles."
-      thanks_step_3="Confirmamos el precio final después de una visita o una videollamada y agendamos el día de su mudanza."
-      thanks_button="Volver al inicio"
       policy_title="Política de tratamiento de datos"
-      policy_demo="Sitio de demostración: Chivabox Movers es una empresa ficticia y esta política es un ejemplo."
-      policy_owner="Responsable: Chivabox Movers, Barranquilla, Colombia."
-      policy_data="Qué datos recogemos: su nombre, teléfono, correo y los detalles de su mudanza, cuando nos pide una cotización."
-      policy_purpose="Para qué: preparar su cotización, contactarle sobre su mudanza y guardar el registro de su solicitud. No vendemos sus datos ni los usamos para publicidad."
-      policy_rights="Sus derechos: según la Ley 1581 de 2012 usted puede conocer, actualizar, rectificar o suprimir sus datos y revocar su autorización, escribiéndonos desde el correo que usó."
-      policy_retention="Cuánto tiempo: conservamos su solicitud mientras sea necesaria para atenderle y cumplir nuestras obligaciones legales."
+      home_excerpt="Mudanzas de hogares y oficinas entre Barranquilla, Cartagena y Santa Marta. Vea un precio estimado al instante y reserve su cuadrilla."
+      quote_excerpt="Responda tres pasos cortos y vea al instante el precio estimado de su mudanza en pesos colombianos."
+      thanks_excerpt="Recibimos su solicitud de mudanza. Esto es lo que sigue."
+      policy_excerpt="Cómo trata Chivabox Movers los datos que envía con una solicitud de cotización."
       nav_home="Inicio"
       nav_quote="Cotizar"
       ;;
@@ -196,8 +180,16 @@ fi
 wp option update timezone_string "America/Bogota"
 wp option update permalink_structure "/%postname%/"
 
-default_theme=$(wp eval 'echo WP_DEFAULT_THEME;')
-wp theme activate "$default_theme"
+# The Chivabox child theme is mounted from site/theme/; its parent ships with WordPress, but an
+# image without it gets it from wordpress.org.
+if ! wp theme is-installed twentytwentyfive >/dev/null 2>&1; then
+  wp theme install twentytwentyfive >/dev/null
+fi
+if ! wp theme is-installed chivabox >/dev/null 2>&1; then
+  echo "setup.sh: the chivabox theme is missing; recreate the containers (docker compose up -d --wait) so they mount site/theme" >&2
+  exit 1
+fi
+wp theme activate chivabox
 
 if wp post get 1 >/dev/null 2>&1; then
   wp post delete 1 --force >/dev/null
@@ -281,13 +273,14 @@ if ! wp eval 'exit( pll_is_translated_post_type( "wp_navigation" ) ? 0 : 1 );' >
 fi
 
 # Prints the ID of the post with this slug, creating it in that language when it's missing. An
-# existing post is left as is, even if its content differs, since the owner may have edited it;
-# one with no language yet (made before Polylang) gets this one.
-# Arguments: language code, post type, slug, title, content.
+# existing post is left as is, even if its content differs, since the owner may have edited it,
+# unless the refresh flag is 1 (SETUP_REFRESH_PAGES): then its content and excerpt are replaced.
+# One with no language yet (made before Polylang) gets this one.
+# Arguments: language code, post type, slug, title, content, excerpt, refresh flag.
 ensure_post() {
   wp eval-file - "$@" <<'PHP'
 <?php
-[ $lang, $post_type, $slug, $title, $content ] = $args;
+[ $lang, $post_type, $slug, $title, $content, $excerpt, $refresh ] = $args;
 $existing = get_posts(
 	[
 		'post_type'   => $post_type,
@@ -308,6 +301,7 @@ if ( [] === $existing ) {
 				'post_name'    => $slug,
 				'post_title'   => $title,
 				'post_content' => $content,
+				'post_excerpt' => $excerpt,
 			]
 		),
 		$lang
@@ -320,6 +314,13 @@ if ( [] === $existing ) {
 	$id = (int) $existing[0];
 	if ( ! pll_get_post_language( $id ) ) {
 		pll_set_post_language( $id, $lang );
+	}
+	if ( '1' === $refresh && ( get_post_field( 'post_content', $id ) !== $content || get_post_field( 'post_excerpt', $id ) !== $excerpt ) ) {
+		$updated = wp_update_post( wp_slash( [ 'ID' => $id, 'post_content' => $content, 'post_excerpt' => $excerpt ] ), true );
+		if ( is_wp_error( $updated ) ) {
+			fwrite( STDERR, "setup.sh: could not refresh {$slug}: " . $updated->get_error_message() . "\n" );
+			exit( 1 );
+		}
 	}
 }
 echo $id;
@@ -345,7 +346,7 @@ PHP
 }
 
 # Rewrites the links this script wrote under the other default language (an exact `href="…"` or
-# menu `"url":"…"` match), so a changed SITE_LOCALE never leaves a menu or button pointing at the
+# menu `"url":"…"` match), so a changed SITE_LOCALE never leaves a menu pointing at the
 # other language's pages. Any other link, the owner's own included, stays as it is.
 # Arguments: the post's ID, then pairs of old and new paths.
 relink_post() {
@@ -371,6 +372,11 @@ if ( $post instanceof WP_Post ) {
 PHP
 }
 
+# A page's whole content: a reference to one of the theme's patterns.
+pattern_block() {
+  printf '<!-- wp:pattern {"slug":"chivabox/%s"} /-->' "$1"
+}
+
 # Links one post per language as translations of each other. Idempotent.
 # Arguments: the English ID, the Spanish ID.
 link_translations() {
@@ -392,41 +398,26 @@ for locale in en_US es_CO; do
   home_path=$(lang_path "$lang" "")
   quote_path=$(lang_path "$lang" "$quote_slug")
 
-  home_id=$(ensure_post "$lang" page "$home_slug" "$home_title" "<!-- wp:heading --><h2>${home_heading}</h2><!-- /wp:heading -->
-<!-- wp:paragraph --><p>${home_intro}</p><!-- /wp:paragraph -->
-<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"${quote_path}\">${home_button}</a></div><!-- /wp:button --></div><!-- /wp:buttons -->")
-
-  # The English thank_you slug resolves to this language's page through its translation.
-  quote_id=$(ensure_post "$lang" page "$quote_slug" "$quote_title" "<!-- wp:paragraph --><p>${quote_intro}</p><!-- /wp:paragraph -->
-<!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->")
-
-  thanks_id=$(ensure_post "$lang" page "$thanks_slug" "$thanks_title" "<!-- wp:paragraph --><p>${thanks_intro}</p><!-- /wp:paragraph -->
-<!-- wp:shortcode -->[moving_quote_reference]<!-- /wp:shortcode -->
-<!-- wp:heading --><h2 class=\"wp-block-heading\">${thanks_heading}</h2><!-- /wp:heading -->
-<!-- wp:list {\"ordered\":true} --><ol class=\"wp-block-list\"><!-- wp:list-item --><li>${thanks_step_1}</li><!-- /wp:list-item --><!-- wp:list-item --><li>${thanks_step_2}</li><!-- /wp:list-item --><!-- wp:list-item --><li>${thanks_step_3}</li><!-- /wp:list-item --></ol><!-- /wp:list -->
-<!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"${home_path}\">${thanks_button}</a></div><!-- /wp:button --></div><!-- /wp:buttons -->")
-
+  # Each page is one pattern reference; the theme's patterns hold the copy, translated through
+  # gettext, and resolve their links in the visitor's language. Menus aren't pages, so the
+  # refresh flag never applies to them.
+  home_id=$(ensure_post "$lang" page "$home_slug" "$home_title" "$(pattern_block home)" "$home_excerpt" "$refresh_pages")
+  quote_id=$(ensure_post "$lang" page "$quote_slug" "$quote_title" "$(pattern_block quote)" "$quote_excerpt" "$refresh_pages")
+  thanks_id=$(ensure_post "$lang" page "$thanks_slug" "$thanks_title" "$(pattern_block thank-you)" "$thanks_excerpt" "$refresh_pages")
   # Core's own draft "Privacy Policy" (slug privacy-policy) stays untouched; this page is the one
   # the consent line links to.
-  policy_id=$(ensure_post "$lang" page "$policy_slug" "$policy_title" "<!-- wp:paragraph --><p>${policy_demo}</p><!-- /wp:paragraph -->
-<!-- wp:paragraph --><p>${policy_owner}</p><!-- /wp:paragraph -->
-<!-- wp:paragraph --><p>${policy_data}</p><!-- /wp:paragraph -->
-<!-- wp:paragraph --><p>${policy_purpose}</p><!-- /wp:paragraph -->
-<!-- wp:paragraph --><p>${policy_rights}</p><!-- /wp:paragraph -->
-<!-- wp:paragraph --><p>${policy_retention}</p><!-- /wp:paragraph -->")
+  policy_id=$(ensure_post "$lang" page "$policy_slug" "$policy_title" "$(pattern_block data-policy)" "$policy_excerpt" "$refresh_pages")
 
   # The theme's header navigation falls back to listing every page (the thank-you page included)
   # when no navigation menu exists, so each language gets its own: Home, Get a Quote, and the
   # switcher. Polylang filters the theme's menu lookup by language (site/mu-plugins/).
   nav_id=$(ensure_post "$lang" wp_navigation "$nav_slug" "$nav_title" "<!-- wp:navigation-link {\"label\":\"${nav_home}\",\"url\":\"${home_path}\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->
 <!-- wp:navigation-link {\"label\":\"${nav_quote}\",\"url\":\"${quote_path}\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->
-${switcher_block}")
+${switcher_block}" "" 0)
   ensure_switcher "$nav_id" "$switcher_block"
 
   previous_home_path=$(previous_lang_path "$lang" "")
   previous_quote_path=$(previous_lang_path "$lang" "$quote_slug")
-  relink_post "$home_id" "$previous_quote_path" "$quote_path"
-  relink_post "$thanks_id" "$previous_home_path" "$home_path"
   relink_post "$nav_id" "$previous_home_path" "$home_path" "$previous_quote_path" "$quote_path"
 
   if [ "$lang" = "en" ]; then

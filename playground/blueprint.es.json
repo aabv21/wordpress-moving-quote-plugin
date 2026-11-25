@@ -1,6 +1,6 @@
 {
   "$schema": "https://playground.wordpress.net/blueprint-schema.json",
-  "landingPage": "/get-a-quote/",
+  "landingPage": "/",
   "preferredVersions": {
     "php": "8.3",
     "wp": "latest"
@@ -19,6 +19,20 @@
       "options": {
         "activate": true,
         "targetFolderName": "moving-quote"
+      }
+    },
+    {
+      "step": "installTheme",
+      "themeData": {
+        "resource": "git:directory",
+        "url": "https://github.com/aabv21/wordpress-moving-quote-plugin",
+        "ref": "main",
+        "refType": "branch",
+        "path": "site/theme"
+      },
+      "options": {
+        "activate": true,
+        "targetFolderName": "chivabox"
       }
     },
     {
@@ -42,9 +56,10 @@
         "create",
         "--post_type=page",
         "--post_status=publish",
-        "--post_title=Inicio",
+        "--post_title=Empresa de mudanzas en la costa Caribe de Colombia",
         "--post_name=home",
-        "--post_content=<!-- wp:heading --><h2>Su mudanza, sin complicaciones, en la costa Caribe de Colombia</h2><!-- /wp:heading --><!-- wp:paragraph --><p>Chivabox Movers traslada hogares y oficinas entre Barranquilla, Cartagena, Santa Marta y el resto de la costa. Obtenga un precio estimado en menos de un minuto.</p><!-- /wp:paragraph --><!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/get-a-quote/\">Cotizar mi mudanza</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
+        "--post_excerpt=Mudanzas de hogares y oficinas entre Barranquilla, Cartagena y Santa Marta. Vea un precio estimado al instante y reserve su cuadrilla.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/home\"} /-->"
       ]
     },
     {
@@ -57,7 +72,8 @@
         "--post_status=publish",
         "--post_title=Cotice su mudanza",
         "--post_name=get-a-quote",
-        "--post_content=<!-- wp:paragraph --><p>Cuéntenos sobre su mudanza y vea un precio estimado al instante.</p><!-- /wp:paragraph --><!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->"
+        "--post_excerpt=Responda tres pasos cortos y vea al instante el precio estimado de su mudanza en pesos colombianos.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/quote\"} /-->"
       ]
     },
     {
@@ -70,7 +86,8 @@
         "--post_status=publish",
         "--post_title=Gracias",
         "--post_name=thank-you",
-        "--post_content=<!-- wp:paragraph --><p>Recibimos su solicitud de mudanza.</p><!-- /wp:paragraph --><!-- wp:shortcode -->[moving_quote_reference]<!-- /wp:shortcode --><!-- wp:heading --><h2 class=\"wp-block-heading\">Qué sigue</h2><!-- /wp:heading --><!-- wp:list {\"ordered\":true} --><ol class=\"wp-block-list\"><!-- wp:list-item --><li>Le enviamos por correo un resumen de su solicitud y el precio estimado.</li><!-- /wp:list-item --><!-- wp:list-item --><li>Una persona de nuestro equipo se comunica con usted para confirmar los detalles.</li><!-- /wp:list-item --><!-- wp:list-item --><li>Confirmamos el precio final después de una visita o una videollamada y agendamos el día de su mudanza.</li><!-- /wp:list-item --></ol><!-- /wp:list --><!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/\">Volver al inicio</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
+        "--post_excerpt=Recibimos su solicitud de mudanza. Esto es lo que sigue.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/thank-you\"} /-->"
       ]
     },
     {
@@ -83,7 +100,8 @@
         "--post_status=publish",
         "--post_title=Política de tratamiento de datos",
         "--post_name=data-policy",
-        "--post_content=<!-- wp:paragraph --><p>Sitio de demostración: Chivabox Movers es una empresa ficticia y esta política es un ejemplo.</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Responsable: Chivabox Movers, Barranquilla, Colombia.</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Qué datos recogemos: su nombre, teléfono, correo y los detalles de su mudanza, cuando nos pide una cotización.</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Para qué: preparar su cotización, contactarle sobre su mudanza y guardar el registro de su solicitud. No vendemos sus datos ni los usamos para publicidad.</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Sus derechos: según la Ley 1581 de 2012 usted puede conocer, actualizar, rectificar o suprimir sus datos y revocar su autorización, escribiéndonos desde el correo que usó.</p><!-- /wp:paragraph --><!-- wp:paragraph --><p>Cuánto tiempo: conservamos su solicitud mientras sea necesaria para atenderle y cumplir nuestras obligaciones legales.</p><!-- /wp:paragraph -->"
+        "--post_excerpt=Cómo trata Chivabox Movers los datos que envía con una solicitud de cotización.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/data-policy\"} /-->"
       ]
     },
     {
@@ -101,19 +119,38 @@
     },
     {
       "step": "wp-cli",
-      "command": ["wp", "option", "update", "show_on_front", "page"]
+      "command": [
+        "wp",
+        "option",
+        "update",
+        "show_on_front",
+        "page"
+      ]
     },
     {
       "step": "wp-cli",
-      "command": ["wp", "eval", "update_option( 'page_on_front', (int) get_page_by_path( 'home' )->ID );"]
+      "command": [
+        "wp",
+        "eval",
+        "update_option( 'page_on_front', (int) get_page_by_path( 'home' )->ID );"
+      ]
     },
     {
       "step": "wp-cli",
-      "command": ["wp", "eval", "update_option( 'wp_page_for_privacy_policy', (int) get_page_by_path( 'data-policy' )->ID );"]
+      "command": [
+        "wp",
+        "eval",
+        "update_option( 'wp_page_for_privacy_policy', (int) get_page_by_path( 'data-policy' )->ID );"
+      ]
     },
     {
       "step": "wp-cli",
-      "command": ["wp", "rewrite", "flush", "--hard"]
+      "command": [
+        "wp",
+        "rewrite",
+        "flush",
+        "--hard"
+      ]
     }
   ]
 }

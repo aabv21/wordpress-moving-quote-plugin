@@ -1,0 +1,92 @@
+# Spanish (Colombia) translation of the Chivabox theme.
+# Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
+msgid ""
+msgstr ""
+"Project-Id-Version: Chivabox 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
+"POT-Creation-Date: 2026-11-25 00:00-0500\n"
+"PO-Revision-Date: 2026-11-25 00:00-0500\n"
+"Last-Translator: Andrés Buelvas\n"
+"Language-Team: Spanish (Colombia)\n"
+"Language: es_CO\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: chivabox\n"
+
+#. Theme Name of the theme
+msgid "Chivabox"
+msgstr "Chivabox"
+
+#. Description of the theme
+msgid "The Chivabox Movers demo site: a block child theme of Twenty Twenty-Five whose page content lives in translatable patterns."
+msgstr "El sitio de demostración de Chivabox Movers: un tema hijo de bloques de Twenty Twenty-Five cuyo contenido vive en patrones traducibles."
+
+#. Author of the theme
+msgid "Andrés Buelvas"
+msgstr "Andrés Buelvas"
+
+msgctxt "Pattern title"
+msgid "Data processing policy"
+msgstr "Política de tratamiento de datos"
+
+msgid "Demo site: Chivabox Movers is a fictional company, and this policy is a sample."
+msgstr "Sitio de demostración: Chivabox Movers es una empresa ficticia y esta política es un ejemplo."
+
+msgid "Who is responsible: Chivabox Movers, Barranquilla, Colombia."
+msgstr "Responsable: Chivabox Movers, Barranquilla, Colombia."
+
+msgid "What we collect: your name, phone, email, and the details of your move, when you ask for a quote."
+msgstr "Qué datos recogemos: su nombre, teléfono, correo y los detalles de su mudanza, cuando nos pide una cotización."
+
+msgid "Why: to prepare your estimate, contact you about your move, and keep a record of your request. We don't sell your data or use it for advertising."
+msgstr "Para qué: preparar su cotización, contactarle sobre su mudanza y guardar el registro de su solicitud. No vendemos sus datos ni los usamos para publicidad."
+
+msgid "Your rights: under Colombia's Law 1581 of 2012 you can see, correct or delete your data, and withdraw your consent, by writing to us from the email address you used."
+msgstr "Sus derechos: según la Ley 1581 de 2012 usted puede conocer, actualizar, rectificar o suprimir sus datos y revocar su autorización, escribiéndonos desde el correo que usó."
+
+msgid "How long: we keep a request for as long as we need it to answer you and to meet our legal obligations."
+msgstr "Cuánto tiempo: conservamos su solicitud mientras sea necesaria para atenderle y cumplir nuestras obligaciones legales."
+
+msgctxt "Pattern title"
+msgid "Home"
+msgstr "Inicio"
+
+msgid "Moving made simple on Colombia's Caribbean coast"
+msgstr "Su mudanza, sin complicaciones, en la costa Caribe de Colombia"
+
+msgid "Chivabox Movers moves homes and offices between Barranquilla, Cartagena, Santa Marta, and the rest of the coast. Get an instant estimate in under a minute."
+msgstr "Chivabox Movers traslada hogares y oficinas entre Barranquilla, Cartagena, Santa Marta y el resto de la costa. Obtenga un precio estimado en menos de un minuto."
+
+msgid "Get a quote"
+msgstr "Cotizar mi mudanza"
+
+msgctxt "Pattern title"
+msgid "Quote"
+msgstr "Cotización"
+
+msgid "Tell us about your move and see an estimate right away."
+msgstr "Cuéntenos sobre su mudanza y vea un precio estimado al instante."
+
+msgctxt "Pattern title"
+msgid "Thank you"
+msgstr "Gracias"
+
+msgid "We received your moving request."
+msgstr "Recibimos su solicitud de mudanza."
+
+msgid "What happens next"
+msgstr "Qué sigue"
+
+msgid "We email you a summary of your request and your estimate."
+msgstr "Le enviamos por correo un resumen de su solicitud y el precio estimado."
+
+msgid "A member of our team calls you to confirm the details."
+msgstr "Una persona de nuestro equipo se comunica con usted para confirmar los detalles."
+
+msgid "We confirm the final price after a visit or video call, then book your moving day."
+msgstr "Confirmamos el precio final después de una visita o una videollamada y agendamos el día de su mudanza."
+
+msgid "Back to the home page"
+msgstr "Volver al inicio"

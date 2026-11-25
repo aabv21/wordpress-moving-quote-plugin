@@ -115,7 +115,7 @@ describe('the language switcher (Polylang)', () => {
     const home = await page('/es/');
     expect(home).toMatch(/<html[^>]*\blang="es-CO"/);
     expect(home).toContain('Su mudanza, sin complicaciones, en la costa Caribe de Colombia');
-    expect(home).toContain('href="/es/cotizar/"');
+    expect(home).toMatch(/href="[^"]*\/es\/cotizar\/"/);
     // The tagline is one option; Polylang's string translations give each language its own.
     expect(home).toContain('Mudanzas en la costa Caribe colombiana');
 
@@ -140,7 +140,7 @@ describe('the language switcher (Polylang)', () => {
 
   it('puts the menu and an EN | ES switcher in the header, both following the page language', async () => {
     const english = headerNav(await page('/get-a-quote/'));
-    expect(english).toContain('>Get a Quote<');
+    expect(english).toContain('>Get a quote<');
     expect(english).not.toContain('Cotizar');
     expect(switcherHref(english, 'es-CO')).toMatch(/\/es\/cotizar\/$/);
     expect(english).toMatch(/>EN</);
@@ -149,7 +149,7 @@ describe('the language switcher (Polylang)', () => {
     const spanish = headerNav(await page('/es/cotizar/'));
     expect(spanish).toContain('>Inicio<');
     expect(spanish).toContain('>Cotizar<');
-    expect(spanish).not.toContain('Get a Quote');
+    expect(spanish).not.toContain('Get a quote');
     expect(spanish).not.toContain('/es/gracias/');
     expect(switcherHref(spanish, 'en-US')).toMatch(/\/get-a-quote\/$/);
   });

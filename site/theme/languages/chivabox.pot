@@ -1,0 +1,94 @@
+# Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
+msgid ""
+msgstr ""
+"Project-Id-Version: Chivabox 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-11-25T07:56:38+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: chivabox\n"
+
+#. Theme Name of the theme
+msgid "Chivabox"
+msgstr ""
+
+#. Description of the theme
+msgid "The Chivabox Movers demo site: a block child theme of Twenty Twenty-Five whose page content lives in translatable patterns."
+msgstr ""
+
+#. Author of the theme
+msgid "Andrés Buelvas"
+msgstr ""
+
+#: patterns/data-policy.php
+msgctxt "Pattern title"
+msgid "Data processing policy"
+msgstr ""
+
+msgid "Demo site: Chivabox Movers is a fictional company, and this policy is a sample."
+msgstr ""
+
+msgid "Who is responsible: Chivabox Movers, Barranquilla, Colombia."
+msgstr ""
+
+msgid "What we collect: your name, phone, email, and the details of your move, when you ask for a quote."
+msgstr ""
+
+msgid "Why: to prepare your estimate, contact you about your move, and keep a record of your request. We don't sell your data or use it for advertising."
+msgstr ""
+
+msgid "Your rights: under Colombia's Law 1581 of 2012 you can see, correct or delete your data, and withdraw your consent, by writing to us from the email address you used."
+msgstr ""
+
+msgid "How long: we keep a request for as long as we need it to answer you and to meet our legal obligations."
+msgstr ""
+
+#: patterns/home.php
+msgctxt "Pattern title"
+msgid "Home"
+msgstr ""
+
+msgid "Moving made simple on Colombia's Caribbean coast"
+msgstr ""
+
+msgid "Chivabox Movers moves homes and offices between Barranquilla, Cartagena, Santa Marta, and the rest of the coast. Get an instant estimate in under a minute."
+msgstr ""
+
+msgid "Get a quote"
+msgstr ""
+
+#: patterns/quote.php
+msgctxt "Pattern title"
+msgid "Quote"
+msgstr ""
+
+msgid "Tell us about your move and see an estimate right away."
+msgstr ""
+
+#: patterns/thank-you.php
+msgctxt "Pattern title"
+msgid "Thank you"
+msgstr ""
+
+msgid "We received your moving request."
+msgstr ""
+
+msgid "What happens next"
+msgstr ""
+
+msgid "We email you a summary of your request and your estimate."
+msgstr ""
+
+msgid "A member of our team calls you to confirm the details."
+msgstr ""
+
+msgid "We confirm the final price after a visit or video call, then book your moving day."
+msgstr ""
+
+msgid "Back to the home page"
+msgstr ""
