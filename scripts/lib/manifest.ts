@@ -48,6 +48,12 @@ export const WORKFLOWS: readonly WorkflowEntry[] = [
     file: 'error-handler.json',
     publish: true,
   },
+  {
+    id: 'cvbWeeklyDigest1',
+    name: 'Weekly digest',
+    file: 'weekly-digest.json',
+    publish: true,
+  },
 ];
 
 export const CREDENTIALS: readonly CredentialEntry[] = [
@@ -113,6 +119,12 @@ export const CODE_NODES: readonly CodeNodeEntry[] = [
     node: 'Compose alert',
     source: 'src/nodes/error-alert.ts',
     why: "one tested function picks the team's language and builds the alert from either error payload shape, execution or trigger, instead of an inline expression per field",
+  },
+  {
+    file: 'weekly-digest.json',
+    node: 'Compose digest',
+    source: 'src/nodes/weekly-digest.ts',
+    why: 'one tested function keeps the last seven days of sheet rows, counts them by route and move type, and writes the summary in team_locale',
   },
 ];
 

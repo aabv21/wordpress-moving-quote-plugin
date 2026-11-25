@@ -12,6 +12,7 @@ const STRINGS = {
   rateLimited: 'Too many requests. Please try again later.',
   sessionExpired: 'Your session expired. Reload the page and try again.',
   genericError: 'Please fix the highlighted fields.',
+  serverError: 'Something went wrong on our side. Please try again in a few minutes.',
 };
 
 type FetchMock = Mock<(url: string, init?: RequestInit) => Promise<Response>>;
@@ -108,8 +109,10 @@ async function settle(): Promise<void> {
 let fetchMock: FetchMock;
 let assign: Mock<(url: string | URL) => void>;
 
-async function mount(options: { thankYouUrl?: string | null; respond?: (url: string) => Promise<Response> } = {}): Promise<void> {
+async function mount(options: { thankYouUrl?: string | null; respond?: (url: string) => Promise<Response>; prepare?: () => void; lang?: string } = {}): Promise<void> {
+  document.documentElement.lang = options.lang ?? 'en-US';
   document.body.innerHTML = FIXTURE;
+  options.prepare?.();
   if (options.thankYouUrl !== undefined) {
     const config = JSON.parse(form().dataset['config'] ?? '{}') as Record<string, unknown>;
     form().dataset['config'] = JSON.stringify({ ...config, thankYouUrl: options.thankYouUrl });
@@ -128,6 +131,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  sessionStorage.clear();
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -187,6 +191,30 @@ describe('the quote form in a DOM', () => {
     expect(q('[data-estimate-hint]').hidden).toBe(true);
   });
 
+  it('a form rendered with both cities preselected asks for an estimate on load', async () => {
+    // As the template renders a prefilled link: the placeholder loses `selected`, each city gains it.
+    await mount({
+      prepare: () => {
+        for (const [name, city] of [['origin', 'Barranquilla'], ['destination', 'Cartagena']] as const) {
+          field(name).querySelector('option[value=""]')?.removeAttribute('selected');
+          field(name).querySelector(`option[value="${city}"]`)?.setAttribute('selected', '');
+        }
+      },
+    });
+    await vi.advanceTimersByTimeAsync(300);
+    await settle();
+    const calls = fetchMock.mock.calls.filter(([url]) => url === ESTIMATE_URL);
+    expect(calls).toHaveLength(1);
+    expect(JSON.parse(calls[0]?.[1]?.body as string)).toMatchObject({ origin: 'Barranquilla', destination: 'Cartagena' });
+    expect(q('[data-estimate-value]').textContent).toBe('COP 1,017,000 – 1,243,000');
+  });
+
+  it('a form with no city chosen asks for no estimate on load', async () => {
+    await mount();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(estimateCalls(fetchMock)).toBe(0);
+  });
+
   it('typing in name, phone or email schedules no estimate call', async () => {
     await mount();
     fillStepOne();
@@ -243,6 +271,98 @@ describe('the quote form in a DOM', () => {
     expect(q('[data-success-reference-value]').textContent).toBe('MQ-1A2B3C4D');
     expect(document.activeElement).toBe(success);
     expect(step(2).hidden).toBe(true);
+    expect(q('[data-summary]').hidden).toBe(true);
+  });
+
+  it('starts with an empty estimate value and the hint, never a dash', async () => {
+    await mount();
+    expect(q('[data-estimate-value]').textContent).toBe('');
+    expect(q('[data-estimate-hint]').hidden).toBe(false);
+    expect(q('.moving-quote__estimate').dataset['estimateState']).toBe('idle');
+  });
+
+  it('the summary shows the route, date and extras as the visitor fills them', async () => {
+    await mount();
+    expect(q('[data-summary-route]').textContent).toBe('Choose both cities');
+    change('origin', 'Barranquilla');
+    expect(q('[data-summary-route]').textContent).toBe('Choose both cities');
+    change('destination', 'Cartagena');
+    expect(q('[data-summary-route]').textContent).toBe('Barranquilla → Cartagena');
+
+    expect(q('[data-summary-date]').textContent).toBe('No date yet');
+    change('move_date', '2026-12-01');
+    expect(q('[data-summary-date]').textContent).toBe('12/01/2026');
+
+    expect(q('[data-summary-extras]').textContent).toBe('No extra services');
+    for (const value of ['packing', 'storage']) {
+      const box = form().querySelector<HTMLInputElement>(`input[name="extras"][value="${value}"]`);
+      if (!box) throw new Error(`extra ${value} missing`);
+      box.checked = true;
+      box.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    expect(q('[data-summary-extras]').textContent).toBe('Packing, Temporary storage');
+  });
+
+  it('a 201 saves the route, date and estimate for the thank-you page before redirecting', async () => {
+    await mount({ thankYouUrl: 'https://example.com/thank-you/' });
+    const saved: { atRedirect: string | null } = { atRedirect: null };
+    assign.mockImplementation(() => {
+      saved.atRedirect = sessionStorage.getItem('moving-quote:summary');
+    });
+    fillStepOne();
+    change('destination', 'Cartagena');
+    await vi.advanceTimersByTimeAsync(300);
+    await settle();
+    clickNext();
+    clickNext();
+    fillStepThree();
+    submitButton().click();
+    await settle();
+    expect(assign).toHaveBeenCalledOnce();
+    expect(JSON.parse(saved.atRedirect ?? 'null')).toEqual({
+      reference: 'MQ-1A2B3C4D',
+      route: 'Barranquilla → Cartagena',
+      date: '12/01/2026',
+      estimate: 'COP 1,017,000 – 1,243,000',
+    });
+  });
+
+  it('the thank-you summary takes the estimate the server just priced, not the panel on screen', async () => {
+    const priced = { ...ESTIMATE, display: 'COP 1,197,000 – 1,463,000' };
+    await mount({
+      thankYouUrl: 'https://example.com/thank-you/',
+      respond: (url) => Promise.resolve(url === ESTIMATE_URL ? json(200, ESTIMATE) : json(201, { ok: true, reference: 'MQ-1A2B3C4D', estimate: priced })),
+    });
+    goToLastStep();
+    submitButton().click();
+    await settle();
+    expect(q('[data-estimate-value]').textContent).not.toBe(priced.display);
+    expect(JSON.parse(sessionStorage.getItem('moving-quote:summary') ?? 'null')).toMatchObject({ estimate: 'COP 1,197,000 – 1,463,000' });
+  });
+
+  it("writes the summary date in the page's language", async () => {
+    await mount({ lang: 'es-CO' });
+    change('move_date', '2026-12-15');
+    expect(q('[data-summary-date]').textContent).toBe('15/12/2026');
+  });
+
+  it('marks each summary line still showing its placeholder, and clears the mark once filled', async () => {
+    await mount();
+    for (const hook of ['route', 'date', 'extras']) expect(q(`[data-summary-${hook}]`).hasAttribute('data-empty'), hook).toBe(true);
+    change('origin', 'Barranquilla');
+    change('destination', 'Cartagena');
+    change('move_date', '2026-12-15');
+    expect(q('[data-summary-route]').hasAttribute('data-empty')).toBe(false);
+    expect(q('[data-summary-date]').hasAttribute('data-empty')).toBe(false);
+    expect(q('[data-summary-extras]').hasAttribute('data-empty')).toBe(true);
+    change('move_date', '');
+    expect(q('[data-summary-date]').hasAttribute('data-empty')).toBe(true);
+  });
+
+  it('the phone field is described by its example and its error', async () => {
+    await mount();
+    expect(field('phone').getAttribute('aria-describedby')).toBe('mq-hint-phone mq-error-phone');
+    expect(document.getElementById('mq-hint-phone')?.textContent).toBe('Example: +57 300 000 0000');
   });
 
   it('a 422 returns to the first step with an error, marks the field invalid and focuses it', async () => {
@@ -274,6 +394,24 @@ describe('the quote form in a DOM', () => {
     expect(submitButton().disabled).toBe(false);
     expect(submitButton().textContent).toBe('Send my request');
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('a 500 shows the server error, not the connection message, and re-enables the button', async () => {
+    await mount({ respond: (url) => Promise.resolve(url === LEADS_URL ? json(500, { code: 'moving_quote_save_failed', message: 'x' }) : json(200, ESTIMATE)) });
+    goToLastStep();
+    submitButton().click();
+    await settle();
+    expect(q('[data-form-error]').textContent).toBe(STRINGS.serverError);
+    expect(submitButton().disabled).toBe(false);
+    expect(submitButton().textContent).toBe('Send my request');
+  });
+
+  it('any other unexpected status, such as 404, shows the server error too', async () => {
+    await mount({ respond: (url) => Promise.resolve(url === LEADS_URL ? json(404, { code: 'rest_no_route' }) : json(200, ESTIMATE)) });
+    goToLastStep();
+    submitButton().click();
+    await settle();
+    expect(q('[data-form-error]').textContent).toBe(STRINGS.serverError);
   });
 
   it('a retry after a 429 reuses the same submission_id', async () => {

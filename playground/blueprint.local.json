@@ -1,6 +1,6 @@
 {
   "$schema": "https://playground.wordpress.net/blueprint-schema.json",
-  "landingPage": "/get-a-quote/",
+  "landingPage": "/",
   "preferredVersions": {
     "php": "8.3",
     "wp": "latest"
@@ -10,6 +10,10 @@
     {
       "step": "activatePlugin",
       "pluginPath": "moving-quote/moving-quote.php"
+    },
+    {
+      "step": "activateTheme",
+      "themeFolderName": "chivabox"
     },
     {
       "step": "setSiteOptions",
@@ -28,9 +32,10 @@
         "create",
         "--post_type=page",
         "--post_status=publish",
-        "--post_title=Home",
+        "--post_title=Moving company on Colombia's Caribbean coast",
         "--post_name=home",
-        "--post_content=<!-- wp:heading --><h2>Moving made simple on Colombia's Caribbean coast</h2><!-- /wp:heading --><!-- wp:paragraph --><p>Chivabox Movers moves homes and offices between Barranquilla, Cartagena, Santa Marta, and the rest of the coast. Get an instant estimate in under a minute.</p><!-- /wp:paragraph --><!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/get-a-quote/\">Get a quote</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
+        "--post_excerpt=Home and office moves between Barranquilla, Cartagena and Santa Marta. See an instant estimate and book a crew.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/home\"} /-->"
       ]
     },
     {
@@ -41,9 +46,10 @@
         "create",
         "--post_type=page",
         "--post_status=publish",
-        "--post_title=Get a Quote",
+        "--post_title=Get a quote",
         "--post_name=get-a-quote",
-        "--post_content=<!-- wp:paragraph --><p>Tell us about your move and see an estimate right away.</p><!-- /wp:paragraph --><!-- wp:shortcode -->[moving_quote]<!-- /wp:shortcode -->"
+        "--post_excerpt=Answer three short steps and see your moving estimate in Colombian pesos right away.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/quote\"} /-->"
       ]
     },
     {
@@ -54,9 +60,38 @@
         "create",
         "--post_type=page",
         "--post_status=publish",
-        "--post_title=Thank You",
+        "--post_title=Request received",
         "--post_name=thank-you",
-        "--post_content=<!-- wp:paragraph --><p>We received your moving request.</p><!-- /wp:paragraph --><!-- wp:shortcode -->[moving_quote_reference]<!-- /wp:shortcode --><!-- wp:heading --><h2 class=\"wp-block-heading\">What happens next</h2><!-- /wp:heading --><!-- wp:list {\"ordered\":true} --><ol class=\"wp-block-list\"><!-- wp:list-item --><li>We email you a summary of your request and your estimate.</li><!-- /wp:list-item --><!-- wp:list-item --><li>A member of our team calls you to confirm the details.</li><!-- /wp:list-item --><!-- wp:list-item --><li>We confirm the final price after a visit or video call, then book your moving day.</li><!-- /wp:list-item --></ol><!-- /wp:list --><!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"/\">Back to the home page</a></div><!-- /wp:button --></div><!-- /wp:buttons -->"
+        "--post_excerpt=Your moving request was received. Here is what happens next.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/thank-you\"} /-->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Your move",
+        "--post_name=my-move",
+        "--post_excerpt=Follow your moving request.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/status\"} /-->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
+        "--post_title=Data processing policy",
+        "--post_name=data-policy",
+        "--post_excerpt=How Chivabox Movers handles the data you send with a quote request.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/data-policy\"} /-->"
       ]
     },
     {
@@ -69,20 +104,47 @@
         "--post_status=publish",
         "--post_title=Primary navigation",
         "--post_name=primary-navigation",
-        "--post_content=<!-- wp:navigation-link {\"label\":\"Home\",\"url\":\"/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /--><!-- wp:navigation-link {\"label\":\"Get a Quote\",\"url\":\"/get-a-quote/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->"
+        "--post_content=<!-- wp:navigation-link {\"label\":\"Get a quote\",\"url\":\"/get-a-quote/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->"
+      ]
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; $settings = get_option( 'moving_quote_settings' ); $settings = array_merge( is_array( $settings ) ? $settings : [], [ 'business_phone' => '570000000099', 'business_whatsapp' => '570000000099', 'business_street' => 'Calle 00 # 00-00', 'business_city' => 'Barranquilla', 'business_hours_open' => '07:00', 'business_hours_close' => '18:00', 'business_tax_id' => 'NIT 000.000.000-0' ] ); update_option( 'moving_quote_settings', $settings );"
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "option",
+        "update",
+        "show_on_front",
+        "page"
       ]
     },
     {
       "step": "wp-cli",
-      "command": ["wp", "option", "update", "show_on_front", "page"]
+      "command": [
+        "wp",
+        "eval",
+        "update_option( 'page_on_front', (int) get_page_by_path( 'home' )->ID );"
+      ]
     },
     {
       "step": "wp-cli",
-      "command": ["wp", "eval", "update_option( 'page_on_front', (int) get_page_by_path( 'home' )->ID );"]
+      "command": [
+        "wp",
+        "eval",
+        "update_option( 'wp_page_for_privacy_policy', (int) get_page_by_path( 'data-policy' )->ID );"
+      ]
     },
     {
       "step": "wp-cli",
-      "command": ["wp", "rewrite", "flush", "--hard"]
+      "command": [
+        "wp",
+        "rewrite",
+        "flush",
+        "--hard"
+      ]
     }
   ]
 }

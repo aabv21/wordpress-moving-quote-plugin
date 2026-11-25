@@ -24,8 +24,17 @@ describe('verify-request', () => {
     ['expired', { iat: now - 400, exp: now - 100 }, 'token_expired'],
     ['hash of another body', { body_sha256: sha('{}') }, 'body_hash_mismatch'],
     ['jti of another request', { jti: '00000000-0000-4000-8000-000000000000' }, 'jti_mismatch'],
+    ['expiring exactly now', { iat: now - 100, exp: now }, 'token_expired'],
+    ['zero lifetime', { iat: now, exp: now }, 'token_lifetime'],
+    ['a fractional iat', { iat: now - 10.5 }, 'missing_claims'],
+    ['a fractional exp', { exp: now + 289.5 }, 'missing_claims'],
+    ['a numeric jti', { jti: 7 }, 'missing_claims'],
+    ['a numeric body hash', { body_sha256: 1 }, 'missing_claims'],
   ])('rejects %s', (_label, over, reason) => {
     expect(run(input(over), now)).toEqual({ ok: false, status: 401, reason });
+  });
+  it('accepts a lifetime of exactly 300 seconds', () => {
+    expect(run(input({ iat: now - 10, exp: now + 290 }), now).ok).toBe(true);
   });
   it('allows sixty seconds of clock skew', () => {
     expect(run(input({ iat: now + 60, exp: now + 300 }), now).ok).toBe(true);

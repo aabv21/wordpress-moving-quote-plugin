@@ -1,11 +1,17 @@
 <?php
 /**
  * The `[moving_quote]` form markup. Included by Frontend\Shortcode::render(), which sets
- * `$cities` (list<string>) and `$config` (the data-config payload) in this file's scope.
+ * `$cities` (list<string>), `$config` (the data-config payload), `$privacy_url`, `$prefill` (the
+ * link's validated move type and cities), `$extra_prices` (COP per extra) and `$business` in this
+ * file's scope.
  *
  * @package Chivabox\MovingQuote
  *
  * @var list<string> $cities
+ * @var string|null $privacy_url
+ * @var array{move_type: ?string, origin: ?string, destination: ?string} $prefill
+ * @var array<string, int> $extra_prices
+ * @var \Chivabox\MovingQuote\Settings\Business $business
  * @var array{estimateUrl: string, leadsUrl: string, nonce: string, thankYouUrl: string|null, strings: array<string, string>} $config
  */
 
@@ -13,18 +19,8 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
-$move_types = [
-	'apartment' => __( 'Apartment', 'moving-quote' ),
-	'house'     => __( 'House', 'moving-quote' ),
-	'office'    => __( 'Office', 'moving-quote' ),
-];
-
-$extras = [
-	'packing'            => __( 'Packing', 'moving-quote' ),
-	'furniture_assembly' => __( 'Furniture disassembly and assembly', 'moving-quote' ),
-	'storage'            => __( 'Temporary storage', 'moving-quote' ),
-	'piano_fragile'      => __( 'Piano or fragile items', 'moving-quote' ),
-];
+$move_types = \Chivabox\MovingQuote\Leads\Labels::move_types();
+$extras     = \Chivabox\MovingQuote\Leads\Labels::extras();
 
 $steps = [
 	__( 'Your move', 'moving-quote' ),
@@ -32,14 +28,15 @@ $steps = [
 	__( 'Your details', 'moving-quote' ),
 ];
 
-$privacy_url = get_privacy_policy_url();
-// America/Bogota, like LeadValidator::validate_move_date(), not the site timezone, so min always
+// The business time zone, like LeadValidator::validate_move_date(), not the site timezone, so min always
 // matches what the REST API accepts.
-$today        = ( new DateTimeImmutable( 'now', new DateTimeZone( 'America/Bogota' ) ) )->format( 'Y-m-d' );
+$today        = ( new DateTimeImmutable( 'now', new DateTimeZone( \Chivabox\MovingQuote\Plugin::TIMEZONE ) ) )->format( 'Y-m-d' );
 $encoded_json = wp_json_encode( $config );
 $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 ?>
 <form class="moving-quote" data-moving-quote data-config="<?php echo esc_attr( $config_json ); ?>" novalidate>
+<div class="moving-quote__layout">
+<div class="moving-quote__main">
 	<noscript>
 		<p class="moving-quote__noscript"><?php esc_html_e( 'This form needs JavaScript to show a live estimate and submit your request. Please enable JavaScript, or call us for a quote.', 'moving-quote' ); ?></p>
 	</noscript>
@@ -53,6 +50,7 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 			</li>
 		<?php endforeach; ?>
 	</ol>
+	<p class="moving-quote__required-note"><?php esc_html_e( 'Every field is required, except the extra services.', 'moving-quote' ); ?></p>
 
 	<?php // Hidden from sight, Tab order, and assistive technology: only a bot filling fields by DOM access reaches it. ?>
 	<p class="moving-quote__honeypot moving-quote__offscreen" aria-hidden="true">
@@ -68,7 +66,7 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 				<label class="moving-quote__label" for="mq-move-type"><?php esc_html_e( 'What are you moving?', 'moving-quote' ); ?></label>
 				<select class="moving-quote__control" id="mq-move-type" name="move_type" required aria-describedby="mq-error-move_type">
 					<?php foreach ( $move_types as $value => $label ) : ?>
-						<option value="<?php echo esc_attr( $value ); ?>"><?php echo esc_html( $label ); ?></option>
+						<option value="<?php echo esc_attr( $value ); ?>"<?php selected( $prefill['move_type'], $value ); ?>><?php echo esc_html( $label ); ?></option>
 					<?php endforeach; ?>
 				</select>
 				<span class="moving-quote__error" id="mq-error-move_type" data-error-for="move_type"></span>
@@ -87,9 +85,9 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 			<p class="moving-quote__field">
 				<label class="moving-quote__label" for="mq-origin"><?php esc_html_e( 'Moving from', 'moving-quote' ); ?></label>
 				<select class="moving-quote__control" id="mq-origin" name="origin" required aria-describedby="mq-error-origin">
-					<option value="" disabled selected><?php esc_html_e( 'Choose a city', 'moving-quote' ); ?></option>
+					<option value="" disabled<?php selected( $prefill['origin'], null ); ?>><?php esc_html_e( 'Choose a city', 'moving-quote' ); ?></option>
 					<?php foreach ( $cities as $city ) : ?>
-						<option value="<?php echo esc_attr( $city ); ?>"><?php echo esc_html( $city ); ?></option>
+						<option value="<?php echo esc_attr( $city ); ?>"<?php selected( $prefill['origin'], $city ); ?>><?php echo esc_html( $city ); ?></option>
 					<?php endforeach; ?>
 				</select>
 				<span class="moving-quote__error" id="mq-error-origin" data-error-for="origin"></span>
@@ -98,9 +96,9 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 			<p class="moving-quote__field">
 				<label class="moving-quote__label" for="mq-destination"><?php esc_html_e( 'Moving to', 'moving-quote' ); ?></label>
 				<select class="moving-quote__control" id="mq-destination" name="destination" required aria-describedby="mq-error-destination">
-					<option value="" disabled selected><?php esc_html_e( 'Choose a city', 'moving-quote' ); ?></option>
+					<option value="" disabled<?php selected( $prefill['destination'], null ); ?>><?php esc_html_e( 'Choose a city', 'moving-quote' ); ?></option>
 					<?php foreach ( $cities as $city ) : ?>
-						<option value="<?php echo esc_attr( $city ); ?>"><?php echo esc_html( $city ); ?></option>
+						<option value="<?php echo esc_attr( $city ); ?>"<?php selected( $prefill['destination'], $city ); ?>><?php echo esc_html( $city ); ?></option>
 					<?php endforeach; ?>
 				</select>
 				<span class="moving-quote__error" id="mq-error-destination" data-error-for="destination"></span>
@@ -128,7 +126,10 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 				<p class="moving-quote__option">
 					<label class="moving-quote__check" for="mq-extra-<?php echo esc_attr( $value ); ?>">
 						<input class="moving-quote__checkbox" type="checkbox" id="mq-extra-<?php echo esc_attr( $value ); ?>" name="extras" value="<?php echo esc_attr( $value ); ?>" />
-						<span><?php echo esc_html( $label ); ?></span>
+						<span class="moving-quote__option-label"><?php echo esc_html( $label ); ?></span>
+						<?php if ( isset( $extra_prices[ $value ] ) ) : ?>
+							<span class="moving-quote__price"><?php echo esc_html( \Chivabox\MovingQuote\Rest\Messages::added_price( $extra_prices[ $value ] ) ); ?></span>
+						<?php endif; ?>
 					</label>
 				</p>
 			<?php endforeach; ?>
@@ -152,7 +153,8 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 
 			<p class="moving-quote__field">
 				<label class="moving-quote__label" for="mq-phone"><?php esc_html_e( 'Phone', 'moving-quote' ); ?></label>
-				<input class="moving-quote__control" type="tel" id="mq-phone" name="phone" required autocomplete="tel" aria-describedby="mq-error-phone" />
+				<input class="moving-quote__control" type="tel" id="mq-phone" name="phone" required autocomplete="tel" aria-describedby="mq-hint-phone mq-error-phone" />
+				<span class="moving-quote__hint" id="mq-hint-phone"><?php esc_html_e( 'Example: +57 300 000 0000', 'moving-quote' ); ?></span>
 				<span class="moving-quote__error" id="mq-error-phone" data-error-for="phone"></span>
 			</p>
 
@@ -166,19 +168,19 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 				<label class="moving-quote__check moving-quote__check--plain" for="mq-consent">
 					<input class="moving-quote__checkbox" type="checkbox" id="mq-consent" name="consent" value="1" required aria-describedby="mq-error-consent" />
 					<span>
-						<?php if ( '' !== $privacy_url ) : ?>
+						<?php if ( null !== $privacy_url ) : ?>
 							<?php
 							echo wp_kses(
 								sprintf(
-									/* translators: %s: privacy policy URL */
-									__( 'I agree to the processing of my data under the <a href="%s">privacy policy</a>.', 'moving-quote' ),
+									/* translators: %s: data processing policy URL */
+									__( 'I agree to the processing of my data under the <a href="%s">data processing policy</a>.', 'moving-quote' ),
 									esc_url( $privacy_url )
 								),
 								[ 'a' => [ 'href' => true ] ]
 							);
 							?>
 						<?php else : ?>
-							<?php esc_html_e( 'I agree to the processing of my data under the privacy policy.', 'moving-quote' ); ?>
+							<?php esc_html_e( 'I agree to the processing of my data under the data processing policy.', 'moving-quote' ); ?>
 						<?php endif; ?>
 					</span>
 				</label>
@@ -188,8 +190,9 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 
 		<div class="moving-quote__actions">
 			<button type="button" class="moving-quote__button moving-quote__button--secondary" data-back><?php esc_html_e( 'Back', 'moving-quote' ); ?></button>
-			<button type="submit" class="moving-quote__button moving-quote__button--cta" data-submit><?php esc_html_e( 'Send my request', 'moving-quote' ); ?></button>
+			<button type="submit" class="moving-quote__button moving-quote__button--primary moving-quote__button--submit" data-submit><?php esc_html_e( 'Send my request', 'moving-quote' ); ?></button>
 		</div>
+		<p class="moving-quote__next"><?php esc_html_e( 'We call you during business hours. No commitment.', 'moving-quote' ); ?></p>
 	</fieldset>
 
 	<p class="moving-quote__form-error" data-form-error role="alert"></p>
@@ -220,13 +223,49 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 		</p>
 	</div>
 
-	<div class="moving-quote__estimate" data-estimate-state="idle">
-		<div class="moving-quote__estimate-result" data-estimate-result aria-live="polite" aria-atomic="true">
-			<p class="moving-quote__estimate-label"><?php esc_html_e( 'Estimated price', 'moving-quote' ); ?></p>
-			<p class="moving-quote__estimate-value" data-estimate-value>&mdash;</p>
-			<p class="moving-quote__estimate-error" data-estimate-error hidden><?php esc_html_e( 'We couldn’t calculate a price for this move right now. You can still send your request, and we’ll quote it for you.', 'moving-quote' ); ?></p>
+</div>
+
+	<aside class="moving-quote__summary" data-summary aria-labelledby="mq-summary-title">
+		<h2 class="moving-quote__summary-title" id="mq-summary-title"><?php esc_html_e( 'Summary', 'moving-quote' ); ?></h2>
+		<dl class="moving-quote__summary-list">
+			<div>
+				<dt><?php esc_html_e( 'Route', 'moving-quote' ); ?></dt>
+				<dd data-summary-route data-empty><?php esc_html_e( 'Choose both cities', 'moving-quote' ); ?></dd>
+			</div>
+			<div>
+				<dt><?php esc_html_e( 'Move date', 'moving-quote' ); ?></dt>
+				<dd data-summary-date data-empty><?php esc_html_e( 'No date yet', 'moving-quote' ); ?></dd>
+			</div>
+			<div>
+				<dt><?php esc_html_e( 'Extra services', 'moving-quote' ); ?></dt>
+				<dd data-summary-extras data-empty><?php esc_html_e( 'No extra services', 'moving-quote' ); ?></dd>
+			</div>
+		</dl>
+
+		<div class="moving-quote__estimate" data-estimate-state="idle">
+			<div class="moving-quote__estimate-result" data-estimate-result aria-live="polite" aria-atomic="true">
+				<p class="moving-quote__estimate-label"><?php esc_html_e( 'Estimated price', 'moving-quote' ); ?></p>
+				<p class="moving-quote__estimate-value" data-estimate-value></p>
+				<p class="moving-quote__estimate-error" data-estimate-error hidden><?php esc_html_e( 'We couldn’t calculate a price for this move right now. You can still send your request, and we’ll quote it for you.', 'moving-quote' ); ?></p>
+			</div>
+			<p class="moving-quote__estimate-hint" data-estimate-hint><?php esc_html_e( 'Choose what you are moving, the rooms, and both cities to see a price.', 'moving-quote' ); ?></p>
+			<p class="moving-quote__disclaimer"><?php esc_html_e( 'This is an estimate. We confirm the final price after a visit or video call.', 'moving-quote' ); ?></p>
 		</div>
-		<p class="moving-quote__estimate-hint" data-estimate-hint><?php esc_html_e( 'Choose what you are moving, the rooms, and both cities to see a price.', 'moving-quote' ); ?></p>
-		<p class="moving-quote__disclaimer"><?php esc_html_e( 'This is an estimate. We confirm the final price after a visit or video call.', 'moving-quote' ); ?></p>
-	</div>
+
+		<?php if ( $business->has_phone() ) : ?>
+			<p class="moving-quote__summary-call">
+				<?php
+				echo wp_kses(
+					sprintf(
+						/* translators: %s: the business phone number, as a link */
+						__( 'Prefer to talk? Call %s', 'moving-quote' ),
+						'<a href="' . esc_url( $business->tel_href() ) . '">' . esc_html( $business->phone_display() ) . '</a>'
+					),
+					[ 'a' => [ 'href' => true ] ]
+				);
+				?>
+			</p>
+		<?php endif; ?>
+	</aside>
+</div>
 </form>

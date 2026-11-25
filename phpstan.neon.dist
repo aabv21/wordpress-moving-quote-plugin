@@ -5,6 +5,8 @@ parameters:
         - plugin/moving-quote/moving-quote.php
         - plugin/moving-quote/uninstall.php
         - site/mu-plugins
+        - site/theme
         - tests/php
     excludePaths:
         - plugin/moving-quote/vendor/*
+        - site/theme/languages/*

@@ -6,8 +6,8 @@ namespace Chivabox\MovingQuote\Install;
 use Chivabox\MovingQuote\Settings\Defaults;
 
 final class Installer {
-	/** Bumped on every schema change: '2' added the `locale` column. */
-	public const DB_VERSION    = '2';
+	/** Bumped on every schema change; `Schema::sql()` carries each column, newest last (2 `locale`, 3 `notes`, 4 `date_confirmed_at`). */
+	public const DB_VERSION    = '4';
 	public const CRON_HOOK     = 'moving_quote_process_outbox';
 	public const CRON_SCHEDULE = 'moving_quote_every_minute';
 

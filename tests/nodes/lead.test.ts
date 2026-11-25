@@ -28,6 +28,42 @@ describe('parseLead', () => {
     expect(parseLead({ ...valid, locale: 'es-CO' })?.locale).toBe('es');
   });
 
+  it('accepts a lead without contact, from an older plugin, as blank contact numbers', () => {
+    const withoutContact: Record<string, unknown> = { ...valid };
+    delete withoutContact.contact;
+    expect(parseLead(withoutContact)?.contact).toEqual({ phone: '', whatsapp: '' });
+  });
+
+  it('rejects a contact phone that is not 10 to 15 digits', () => {
+    for (const phone of ['123456789', '1234567890123456', '+570000000099', '57 000 000 0099', 570000000099]) {
+      expect(parseLead({ ...valid, contact: { phone, whatsapp: '' } }), String(phone)).toBeNull();
+      expect(parseLead({ ...valid, contact: { phone: '', whatsapp: phone } }), String(phone)).toBeNull();
+    }
+    expect(parseLead({ ...valid, contact: { phone: '', whatsapp: '' } })?.contact).toEqual({ phone: '', whatsapp: '' });
+  });
+
+  it('rejects an extra key in contact', () => {
+    expect(parseLead({ ...valid, contact: { phone: '570000000099', whatsapp: '570000000099', email: 'x@example.com' } })).toBeNull();
+    expect(parseLead({ ...valid, contact: 'x' })).toBeNull();
+  });
+
+  it('accepts a lead without status_url as an empty link', () => {
+    const withoutStatus: Record<string, unknown> = { ...valid };
+    delete withoutStatus.status_url;
+    expect(parseLead(withoutStatus)?.status_url).toBe('');
+    expect(parseLead({ ...valid, status_url: '' })?.status_url).toBe('');
+  });
+
+  it('reads the status_url PHP emits', () => {
+    expect(parseLead(valid)?.status_url).toBe(valid.status_url);
+  });
+
+  it('rejects a status_url with a quote or a javascript: scheme', () => {
+    for (const status_url of ['javascript:alert(1)', 'https://example.com/"onmouseover="x', 'https://example.com/<b>', 'https://example.com/a b', 'ftp://example.com/', '//example.com/', 42, null]) {
+      expect(parseLead({ ...valid, status_url }), String(status_url)).toBeNull();
+    }
+  });
+
   it('falls back to en for an in-flight lead sent by a plugin version without the locale field', () => {
     const withoutLocale: Record<string, unknown> = { ...valid };
     delete withoutLocale.locale;
@@ -99,11 +135,13 @@ describe('parseLead', () => {
     expect(parseLead(withMove({ date: 'not-a-date' }))).toBeNull();
   });
 
-  it('rejects a name shorter than 2 or longer than 100 characters', () => {
-    expect(parseLead(withCustomer({ name: 'A' }))).toBeNull();
-    expect(parseLead(withCustomer({ name: 'A'.repeat(101) }))).toBeNull();
-    expect(parseLead(withCustomer({ name: 'Jo' }))).not.toBeNull();
-    expect(parseLead(withCustomer({ name: 'A'.repeat(100) }))).not.toBeNull();
+  it.each([
+    ['one character', 'A', false],
+    ['two characters', 'Jo', true],
+    ['100 characters', 'A'.repeat(100), true],
+    ['101 characters', 'A'.repeat(101), false],
+  ])('a name of %s is accepted: %s', (_label, name, accepted) => {
+    expect(parseLead(withCustomer({ name })) !== null).toBe(accepted);
   });
 
   it('rejects a phone outside 10-15 digits', () => {
@@ -112,10 +150,39 @@ describe('parseLead', () => {
     expect(parseLead(withCustomer({ phone: '1234567890' }))).not.toBeNull();
   });
 
-  it('rejects an email over 254 characters', () => {
-    const long = `${'a'.repeat(246)}@example.com`;
-    expect(long.length).toBeGreaterThan(254);
-    expect(parseLead(withCustomer({ email: long }))).toBeNull();
+  it.each([
+    [254, true],
+    [255, false],
+  ])('an email of %d characters is accepted: %s', (length, accepted) => {
+    const email = `${'a'.repeat(length - '@example.com'.length)}@example.com`;
+    expect(email).toHaveLength(length);
+    expect(parseLead(withCustomer({ email })) !== null).toBe(accepted);
+  });
+
+  it.each([
+    ['0', 0, true],
+    ['-1', -1, false],
+  ])('a distance of %s km is accepted: %s', (_label, distanceKm, accepted) => {
+    expect(parseLead(withMove({ distance_km: distanceKm })) !== null).toBe(accepted);
+  });
+
+  it.each([
+    ['origin', { origin: '' }],
+    ['destination', { destination: '' }],
+  ])('rejects an empty %s', (_label, overrides) => {
+    expect(parseLead(withMove(overrides))).toBeNull();
+  });
+
+  it.each(['a@.com', 'a@example.', 'a@example'])('rejects %s as team_email', (teamEmail) => {
+    expect(parseLead({ ...valid, team_email: teamEmail })).toBeNull();
+  });
+
+  it.each([
+    ['low equal to high', 0, true],
+    ['low above high by one', 1, false],
+  ])('an estimate with %s is accepted: %s', (_label, excess, accepted) => {
+    const { high } = valid.estimate as { high: number };
+    expect(parseLead(withEstimate({ low: high + excess })) !== null).toBe(accepted);
   });
 
   it('rejects a currency other than COP', () => {
@@ -178,11 +245,14 @@ describe('parseLead', () => {
     expect(parseLead(withEstimate({ amount, low: amount, high: amount }))).toBeNull();
   });
 
-  it('rejects submitted_at with an out-of-range month, hour, or offset that a plain regex would accept', () => {
-    expect(parseLead({ ...valid, submitted_at: '2026-13-01T09:15:00-05:00' })).toBeNull();
-    expect(parseLead({ ...valid, submitted_at: '2026-11-04T25:15:00-05:00' })).toBeNull();
-    expect(parseLead({ ...valid, submitted_at: '2026-11-04T09:15:00-15:00' })).toBeNull();
-    expect(parseLead({ ...valid, submitted_at: '2026-99-99T99:99:99+99:99' })).toBeNull();
+  it.each([
+    ['an out-of-range month', '2026-13-01T09:15:00-05:00'],
+    ['an out-of-range hour', '2026-11-04T25:15:00-05:00'],
+    ['an offset of -15:00', '2026-11-04T09:15:00-15:00'],
+    ['every field out of range', '2026-99-99T99:99:99+99:99'],
+    ['an offset just past the widest, +14:01', '2026-11-04T09:15:00+14:01'],
+  ])('rejects submitted_at with %s, which a plain regex would accept', (_label, submittedAt) => {
+    expect(parseLead({ ...valid, submitted_at: submittedAt })).toBeNull();
   });
 
   it('accepts submitted_at with the widest real UTC offset, +14:00', () => {

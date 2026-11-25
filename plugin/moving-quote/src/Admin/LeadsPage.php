@@ -10,14 +10,23 @@ use Chivabox\MovingQuote\Leads\{LeadRepository, LeadStatus};
  * the same error from a handler as from the page.
  */
 final class LeadsPage {
-	private const EXPORT_CHUNK = 500;
-	public const NOTICE_ARG    = 'moving_quote_notice';
+	public const NOTICE_ARG = 'moving_quote_notice';
 
 	public static function register_hooks(): void {
 		add_action( 'admin_post_moving_quote_update_status', [ self::class, 'handle_update_status' ] );
+		add_action( 'admin_post_moving_quote_update_notes', [ self::class, 'handle_update_notes' ] );
 		add_action( 'admin_post_moving_quote_export_csv', [ self::class, 'handle_export' ] );
 		add_action( 'admin_post_moving_quote_retry_delivery', [ self::class, 'handle_retry' ] );
 		add_action( 'admin_post_moving_quote_delete_lead', [ self::class, 'handle_delete' ] );
+		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue_styles' ] );
+	}
+
+	/** The Leads table's own stylesheet, on that page only. */
+	public static function enqueue_styles( string $hook_suffix ): void {
+		if ( 'toplevel_page_' . Menu::SLUG !== $hook_suffix ) {
+			return;
+		}
+		wp_enqueue_style( 'moving-quote-admin', plugins_url( 'assets/admin.css', \dirname( __DIR__, 2 ) . '/moving-quote.php' ), [], \Chivabox\MovingQuote\Plugin::VERSION );
 	}
 
 	public static function render(): void {
@@ -46,6 +55,7 @@ final class LeadsPage {
 			<h1><?php esc_html_e( 'Moving quotes', 'moving-quote' ); ?></h1>
 			<?php self::render_notice(); ?>
 			<a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'moving-quote' ); ?></a>
+			<?php self::render_stats(); ?>
 			<?php
 			/*
 			 * No wrapping <form method="get">: every row prints its own POST form, and HTML drops a
@@ -60,11 +70,39 @@ final class LeadsPage {
 		<?php
 	}
 
+	/**
+	 * Three tiles under the header, above the views: leads in the last 7 days, leads won (all time),
+	 * and the win rate, whose help line says how it is worked out.
+	 */
+	private static function render_stats(): void {
+		$repository = new LeadRepository();
+		$stats      = FunnelStats::from( $repository->count_by_status(), $repository->count_created_since( gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS ) ) );
+		$tiles      = [
+			[ __( 'Last 7 days', 'moving-quote' ), (string) $stats->last_7_days, '' ],
+			[ __( 'Won (all time)', 'moving-quote' ), (string) $stats->won, '' ],
+			[ __( 'Win rate', 'moving-quote' ), null === $stats->win_rate_percent ? "\u{2014}" : sprintf( '%d%%', $stats->win_rate_percent ), __( 'Won ÷ (won + lost).', 'moving-quote' ) ],
+		];
+		?>
+		<div class="moving-quote-leads__stats">
+			<?php foreach ( $tiles as [ $label, $value, $help ] ) : ?>
+				<div class="moving-quote-leads__stat">
+					<span class="moving-quote-leads__stat-value"><?php echo esc_html( $value ); ?></span>
+					<span class="moving-quote-leads__stat-label"><?php echo esc_html( $label ); ?></span>
+					<?php if ( '' !== $help ) : ?>
+						<span class="moving-quote-leads__stat-help"><?php echo esc_html( $help ); ?></span>
+					<?php endif; ?>
+				</div>
+			<?php endforeach; ?>
+		</div>
+		<?php
+	}
+
 	private static function render_notice(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only, and the notice text itself carries no state change; the handler that redirected here already checked its own nonce.
 		$notice = self::string_field( $_GET, self::NOTICE_ARG );
 		$text   = match ( $notice ) {
 			'status_updated' => __( 'Lead status updated.', 'moving-quote' ),
+			'notes_saved'    => __( 'Notes saved.', 'moving-quote' ),
 			'retry_queued'   => __( 'The lead was queued for delivery.', 'moving-quote' ),
 			'lead_deleted'   => __( 'The lead was deleted.', 'moving-quote' ),
 			default          => '',
@@ -91,6 +129,17 @@ final class LeadsPage {
 		self::redirect_to_list( 'status_updated' );
 	}
 
+	public static function handle_update_notes(): void {
+		$id = self::require_id();
+		check_admin_referer( 'moving_quote_update_notes_' . $id );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the nonce above covers the request; `update_notes()` cleans the text, and every print escapes it.
+		$value = $_POST['notes'] ?? null;
+		( new LeadRepository() )->update_notes( $id, is_string( $value ) ? wp_unslash( $value ) : '' );
+
+		self::redirect_to_list( 'notes_saved' );
+	}
+
 	public static function handle_retry(): void {
 		$id = self::require_id();
 		check_admin_referer( 'moving_quote_retry_delivery_' . $id );
@@ -110,7 +159,7 @@ final class LeadsPage {
 		self::redirect_to_list( 'lead_deleted' );
 	}
 
-	/** Streams every matching lead as CSV: a UTF-8 BOM, the header, then batches of `EXPORT_CHUNK`. */
+	/** Streams every matching lead as CSV through `CsvExporter`. */
 	public static function handle_export(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'moving-quote' ), 403 );
@@ -120,7 +169,7 @@ final class LeadsPage {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- the nonce above already covers this whole request.
 		$raw    = self::string_field( $_GET, 'status' );
 		$status = self::parse_status( $raw );
-		$tz     = new \DateTimeZone( 'America/Bogota' );
+		$tz     = new \DateTimeZone( \Chivabox\MovingQuote\Plugin::TIMEZONE );
 
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
@@ -131,21 +180,7 @@ final class LeadsPage {
 			exit;
 		}
 
-		fwrite( $out, "\u{FEFF}" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- streaming to php://output, not a filesystem path; WP_Filesystem has no equivalent.
-		fputcsv( $out, LeadCsv::HEADER, ',', '"', '' );
-
-		$repository = new LeadRepository();
-		$after_id   = 0;
-		$raw_count  = self::EXPORT_CHUNK;
-		while ( self::EXPORT_CHUNK === $raw_count ) {
-			$chunk     = $repository->chunk_after( $status, $after_id, self::EXPORT_CHUNK );
-			$raw_count = $chunk['raw_count'];
-			foreach ( $chunk['records'] as $lead ) {
-				fputcsv( $out, LeadCsv::row( $lead, $tz ), ',', '"', '' );
-			}
-			// Loop on raw_count and advance to last_raw_id; see LeadRepository::chunk_after().
-			$after_id = $chunk['last_raw_id'];
-		}
+		CsvExporter::stream( $out, new LeadRepository(), $status, $tz );
 
 		fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- streaming to php://output, not a filesystem path; WP_Filesystem has no equivalent.
 		exit;

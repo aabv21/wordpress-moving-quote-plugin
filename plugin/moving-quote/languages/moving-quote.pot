@@ -1,14 +1,14 @@
 # Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
 msgid ""
 msgstr ""
-"Project-Id-Version: Moving Quote 1.2.0\n"
+"Project-Id-Version: Moving Quote 1.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-11T22:14:43+00:00\n"
+"POT-Creation-Date: 2026-11-25T13:37:29+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: moving-quote\n"
@@ -50,8 +50,14 @@ msgstr ""
 msgid "Delivery"
 msgstr ""
 
+msgid "Notes"
+msgstr ""
+
 msgctxt "leads list view"
 msgid "All"
+msgstr ""
+
+msgid "Date confirmed"
 msgstr ""
 
 #. translators: %d: number of rooms
@@ -64,6 +70,9 @@ msgstr[1] ""
 #. translators: %s: distance in kilometres, already formatted for the site language
 #, php-format
 msgid "%s km"
+msgstr ""
+
+msgid "Mark contacted"
 msgstr ""
 
 msgctxt "button: save the selected lead status"
@@ -81,6 +90,17 @@ msgstr ""
 msgid "Status of lead %s"
 msgstr ""
 
+msgid "Edit notes"
+msgstr ""
+
+#. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
+#, php-format
+msgid "Notes for lead %s"
+msgstr ""
+
+msgid "Save notes"
+msgstr ""
+
 #. translators: 1: delivery status label (Pending, Sent, or Failed), 2: attempt count
 #, php-format
 msgid "%1$s (%2$d attempt)"
@@ -89,59 +109,6 @@ msgstr[0] ""
 msgstr[1] ""
 
 msgid "Retry delivery"
-msgstr ""
-
-msgid "Apartment"
-msgstr ""
-
-msgid "House"
-msgstr ""
-
-msgid "Office"
-msgstr ""
-
-msgid "Packing"
-msgstr ""
-
-msgid "Furniture disassembly and assembly"
-msgstr ""
-
-msgid "Temporary storage"
-msgstr ""
-
-msgid "Piano or fragile items"
-msgstr ""
-
-msgctxt "lead status"
-msgid "New"
-msgstr ""
-
-msgctxt "lead status"
-msgid "Contacted"
-msgstr ""
-
-msgctxt "lead status"
-msgid "Quoted"
-msgstr ""
-
-msgctxt "lead status"
-msgid "Won"
-msgstr ""
-
-msgctxt "lead status"
-msgid "Lost"
-msgstr ""
-
-msgctxt "delivery status"
-msgid "Pending"
-msgstr ""
-
-msgctxt "delivery status"
-msgid "Sent"
-msgstr ""
-
-msgctxt "delivery status"
-msgid "Failed"
 msgstr ""
 
 msgid "Sorry, you are not allowed to access this page."
@@ -153,7 +120,22 @@ msgstr ""
 msgid "Export CSV"
 msgstr ""
 
+msgid "Last 7 days"
+msgstr ""
+
+msgid "Won (all time)"
+msgstr ""
+
+msgid "Win rate"
+msgstr ""
+
+msgid "Won ÷ (won + lost)."
+msgstr ""
+
 msgid "Lead status updated."
+msgstr ""
+
+msgid "Notes saved."
 msgstr ""
 
 msgid "The lead was queued for delivery."
@@ -224,13 +206,20 @@ msgstr ""
 msgid "Estimate high (COP)"
 msgstr ""
 
+msgid "Team notes"
+msgstr ""
+
+#. translators: the customer's confirmation of the moving date, converted to America/Bogota
+msgid "Date confirmed (America/Bogota)"
+msgstr ""
+
 #. translators: the site language the request was submitted in, e.g. es_CO
 msgid "Language"
 msgstr ""
 
-#. translators: %s: a comma-separated list of MQ-… lead references
+#. translators: 1: a comma-separated list of MQ-… lead references, 2: a number of days
 #, php-format
-msgid "The database record for %s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the \"New lead\" emails already sent to the team and the customer, and — for up to 7 days — in a failed delivery's stored n8n execution data. Remove those by hand if needed."
+msgid "The database record for %1$s was deleted, but a copy may still exist in the Moving leads Google Sheet, in the \"New lead\" emails already sent to the team and the customer, and — for up to %2$d days — in a failed delivery's stored n8n execution data. Remove those by hand if needed."
 msgstr ""
 
 msgid "Enter a whole amount in COP, such as 150,000."
@@ -263,10 +252,24 @@ msgstr ""
 msgid "Enter a valid email address, or leave it blank."
 msgstr ""
 
+msgid "Use one line of plain text, with no line breaks."
+msgstr ""
+
+msgid "Enter both hours, opening before closing, or leave both blank."
+msgstr ""
+
+#. translators: %d: maximum number of characters
+#, php-format
+msgid "Please use %d characters or fewer."
+msgstr ""
+
 msgid "Rates"
 msgstr ""
 
 msgid "Cities and distances"
+msgstr ""
+
+msgid "Business details"
 msgstr ""
 
 msgid "Per room"
@@ -310,6 +313,27 @@ msgstr ""
 msgid "Delivery is off until the webhook URL, secret, and team email are set."
 msgstr ""
 
+msgid "WhatsApp"
+msgstr ""
+
+msgid "Street address"
+msgstr ""
+
+msgid "City"
+msgstr ""
+
+msgid "Opens at"
+msgstr ""
+
+msgid "Closes at"
+msgstr ""
+
+msgid "Tax ID"
+msgstr ""
+
+msgid "Shown in the site footer, the quote page and the customer email. Leave a field blank to hide it."
+msgstr ""
+
 #. translators: 1: number of stuck leads, 2: link to the Leads page
 #, php-format
 msgid "%1$d lead has not reached n8n yet. %2$s"
@@ -327,15 +351,35 @@ msgid_plural "%d quote submissions were rate-limited in the current 24-hour wind
 msgstr[0] ""
 msgstr[1] ""
 
+#. translators: 1: opening time, 2: closing time, both HH:MM
+#, php-format
+msgid "Monday to Saturday, %1$s to %2$s"
+msgstr ""
+
+msgid "Data processing policy"
+msgstr ""
+
 #. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
 #, php-format
 msgid "Your reference number is %s. Keep it handy if you contact us about your move."
+msgstr ""
+
+msgctxt "route: origin to destination"
+msgid "to"
 msgstr ""
 
 msgid "Sending…"
 msgstr ""
 
 msgid "Something went wrong. Please check your connection and try again."
+msgstr ""
+
+#. translators: %s: the business phone number, e.g. +57 000 000 0099
+#, php-format
+msgid "Something went wrong on our side. Please try again in a few minutes, or call us at %s."
+msgstr ""
+
+msgid "Something went wrong on our side. Please try again in a few minutes."
 msgstr ""
 
 msgid "Too many requests. Please try again later."
@@ -347,6 +391,58 @@ msgstr ""
 msgid "Please fix the highlighted fields."
 msgstr ""
 
+msgid "Start your quote"
+msgstr ""
+
+msgid "What are you moving?"
+msgstr ""
+
+msgid "Moving from"
+msgstr ""
+
+msgid "Moving to"
+msgstr ""
+
+msgid "Choose a city"
+msgstr ""
+
+msgid "See my price"
+msgstr ""
+
+msgid "This link isn't valid. Check the link in your email, or contact us."
+msgstr ""
+
+#. translators: %s: the date and time the customer confirmed, in the business time zone
+#, php-format
+msgid "You confirmed your moving date on %s."
+msgstr ""
+
+msgid "Confirm my moving date"
+msgstr ""
+
+msgid "We received your request"
+msgstr ""
+
+msgid "We sent you a quote"
+msgstr ""
+
+msgid "Your move is booked"
+msgstr ""
+
+msgid "This request is closed"
+msgstr ""
+
+#. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
+#, php-format
+msgid "Hello, my reference is %s."
+msgstr ""
+
+msgid "Request received"
+msgstr ""
+
+msgid "Write to us on WhatsApp"
+msgstr ""
+
 msgid "Chivabox moving quotes doesn't support Multisite."
 msgstr ""
 
@@ -356,7 +452,57 @@ msgstr ""
 msgid "Every minute"
 msgstr ""
 
-msgid "Something went wrong. Please try again."
+msgid "Apartment"
+msgstr ""
+
+msgid "House"
+msgstr ""
+
+msgid "Office"
+msgstr ""
+
+msgid "Packing"
+msgstr ""
+
+msgid "Furniture disassembly and assembly"
+msgstr ""
+
+msgid "Temporary storage"
+msgstr ""
+
+msgid "Piano or fragile items"
+msgstr ""
+
+msgctxt "lead status"
+msgid "New"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Contacted"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Quoted"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Won"
+msgstr ""
+
+msgctxt "lead status"
+msgid "Lost"
+msgstr ""
+
+msgctxt "delivery status"
+msgid "Pending"
+msgstr ""
+
+msgctxt "delivery status"
+msgid "Sent"
+msgstr ""
+
+msgctxt "delivery status"
+msgid "Failed"
 msgstr ""
 
 #. translators: 1: minimum digits, 2: maximum digits
@@ -379,24 +525,38 @@ msgstr ""
 msgid "We don’t have a price for this route yet. Please call us."
 msgstr ""
 
-msgid "Please enter at least 2 characters."
-msgstr ""
-
-msgid "Please use 100 characters or fewer."
+#. translators: %d: minimum number of characters
+#, php-format
+msgid "Please enter at least %d characters."
 msgstr ""
 
 msgid "Choose today or a later date."
 msgstr ""
 
-msgid "Choose a date within the next 12 months."
+#. translators: %d: number of days ahead a move date may be
+#, php-format
+msgid "Choose a date within the next %d days."
 msgstr ""
 
-msgid "Please accept the privacy policy to continue."
+msgid "Please accept the data processing policy to continue."
+msgstr ""
+
+#. translators: %s: an amount in Colombian pesos, e.g. 882,000
+#, php-format
+msgid "from COP %s"
+msgstr ""
+
+#. translators: %s: an amount in Colombian pesos, e.g. 200,000
+#, php-format
+msgid "+ COP %s"
 msgstr ""
 
 #. translators: 1: low estimate, 2: high estimate
 #, php-format
 msgid "COP %1$s – %2$s"
+msgstr ""
+
+msgid "Something went wrong. Please try again."
 msgstr ""
 
 msgid "Your move"
@@ -411,25 +571,16 @@ msgstr ""
 msgid "This form needs JavaScript to show a live estimate and submit your request. Please enable JavaScript, or call us for a quote."
 msgstr ""
 
-msgid "Leave this field empty"
+msgid "Every field is required, except the extra services."
 msgstr ""
 
-msgid "What are you moving?"
+msgid "Leave this field empty"
 msgstr ""
 
 msgid "How many rooms?"
 msgstr ""
 
 msgid "5+"
-msgstr ""
-
-msgid "Moving from"
-msgstr ""
-
-msgid "Choose a city"
-msgstr ""
-
-msgid "Moving to"
 msgstr ""
 
 msgid "Next"
@@ -444,18 +595,21 @@ msgstr ""
 msgid "Full name"
 msgstr ""
 
-#. translators: %s: privacy policy URL
-#, php-format
-msgid "I agree to the processing of my data under the <a href=\"%s\">privacy policy</a>."
+msgid "Example: +57 300 000 0000"
 msgstr ""
 
-msgid "I agree to the processing of my data under the privacy policy."
+#. translators: %s: data processing policy URL
+#, php-format
+msgid "I agree to the processing of my data under the <a href=\"%s\">data processing policy</a>."
+msgstr ""
+
+msgid "I agree to the processing of my data under the data processing policy."
 msgstr ""
 
 msgid "Send my request"
 msgstr ""
 
-msgid "Request received"
+msgid "We call you during business hours. No commitment."
 msgstr ""
 
 msgid "Thank you! A member of our team will call you to confirm the details and the final price."
@@ -464,6 +618,18 @@ msgstr ""
 #. translators: %s: a <strong> placeholder that quote-form.ts fills in with the lead's MQ-… reference
 #, php-format
 msgid "Your reference number is %s."
+msgstr ""
+
+msgid "Summary"
+msgstr ""
+
+msgid "Choose both cities"
+msgstr ""
+
+msgid "No date yet"
+msgstr ""
+
+msgid "No extra services"
 msgstr ""
 
 msgid "Estimated price"
@@ -476,4 +642,9 @@ msgid "Choose what you are moving, the rooms, and both cities to see a price."
 msgstr ""
 
 msgid "This is an estimate. We confirm the final price after a visit or video call."
+msgstr ""
+
+#. translators: %s: the business phone number, as a link
+#, php-format
+msgid "Prefer to talk? Call %s"
 msgstr ""

@@ -17,16 +17,22 @@ final class ReferenceShortcode {
 		add_shortcode( self::TAG, [ self::class, 'render' ] );
 	}
 
-	public static function render(): string {
+	/** The `?reference=` value when it's exactly a reference; null otherwise. */
+	public static function reference(): ?string {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only display of a value validated against a fixed pattern below; nothing changes state.
 		$value = $_GET[ self::QUERY_ARG ] ?? null;
 		if ( ! is_string( $value ) ) {
-			return '';
+			return null;
 		}
 		$raw       = wp_unslash( $value );
 		$reference = sanitize_text_field( $raw );
 		// A value sanitizing changed was never a reference, even if the rest would match.
-		if ( $reference !== $raw || ! LeadRecord::is_reference( $reference ) ) {
+		return $reference === $raw && LeadRecord::is_reference( $reference ) ? $reference : null;
+	}
+
+	public static function render(): string {
+		$reference = self::reference();
+		if ( null === $reference ) {
 			return '';
 		}
 

@@ -219,6 +219,15 @@ describe('quote and lead REST API', () => {
       expect(body.data?.errors?.email).toBe('Enter an email address like name@example.com.');
     });
 
+    it("names the validator's own date window in the too_far message", async () => {
+      const bogota = new Date(Date.now() - 5 * 3_600_000);
+      bogota.setUTCDate(bogota.getUTCDate() + 366);
+      const res = await rest(LEADS_PATH, validLead({ move_date: bogota.toISOString().slice(0, 10) }), { nonce });
+      expect(res.status).toBe(422);
+      const body = res.json as WpErrorBody;
+      expect(body.data?.errors?.move_date).toBe('Choose a date within the next 365 days.');
+    });
+
     it('a duplicate submission (same submission_id) is idempotent: one row, same reference, back to back and in parallel', async () => {
       const first = validLead();
       const res1 = await rest(LEADS_PATH, first, { nonce });
@@ -254,6 +263,32 @@ describe('quote and lead REST API', () => {
       const body = res.json as WpErrorBody;
       expect(body.code).toBe('moving_quote_rate_limited');
       expect(res.headers.get('Retry-After')).not.toBeNull();
+    });
+
+    it('a denied submission neither counts nor moves the window, so a flood never lengthens the lockout', async () => {
+      // The bucket as stored: `a:2:{s:5:"count";i:5;s:5:"reset";i:1234;}`.
+      const bucket = async (): Promise<{ count: number; reset: number }> => {
+        const options = (await table()).replace('moving_quote_leads', 'options');
+        const rows = await sqlWp(`SELECT option_value FROM ${options} WHERE option_name LIKE '_transient_moving_quote_rl_submit_%'`);
+        expect(rows).toHaveLength(1);
+        const stored = rows[0]?.option_value ?? '';
+        return { count: Number(/"count";i:(\d+);/.exec(stored)?.[1]), reset: Number(/"reset";i:(\d+);/.exec(stored)?.[1]) };
+      };
+
+      for (let i = 0; i < 5; i++) expect((await rest(LEADS_PATH, validLead(), { nonce })).status).toBe(201);
+      const spent = await bucket();
+      expect(spent.count).toBe(5);
+
+      const waits: number[] = [];
+      for (let i = 0; i < 4; i++) {
+        const res = await rest(LEADS_PATH, validLead(), { nonce });
+        expect(res.status).toBe(429);
+        waits.push(Number(res.headers.get('Retry-After')));
+      }
+
+      expect(await bucket()).toEqual(spent);
+      for (let i = 1; i < waits.length; i++) expect(waits[i]).toBeLessThanOrEqual(waits[i - 1] as number);
+      expect(waits[0]).toBeLessThanOrEqual(3600);
     });
 
     it('five invalid submissions never count against the submit limit, so a valid one after them still succeeds', async () => {

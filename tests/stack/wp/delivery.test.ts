@@ -112,9 +112,11 @@ describe('signed delivery and the outbox', () => {
     const { createHash } = await import('node:crypto');
     expect(typedClaims.body_sha256).toBe(createHash('sha256').update(request.body).digest('hex'));
 
-    expect(Object.keys(body)).toEqual(['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'customer', 'move', 'estimate']);
+    expect(Object.keys(body)).toEqual(['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'contact', 'status_url', 'customer', 'move', 'estimate']);
     // No locale query arg on this request, so the site language (determine_locale()).
     expect(body.locale).toBe('en_US');
+    // The business numbers from Settings, as setup.sh seeds them.
+    expect(body.contact).toEqual({ phone: '570000000099', whatsapp: '570000000099' });
 
     const row = await rowByUuid(requestUuid);
     expect(row.sync_status).toBe('sent');

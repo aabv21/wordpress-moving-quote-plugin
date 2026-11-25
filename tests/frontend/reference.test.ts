@@ -14,6 +14,8 @@ describe('leadReference', () => {
     ['lowercase hex', { reference: 'MQ-0123abcd' }],
     ['the wrong length', { reference: 'MQ-0123ABC' }],
     ['markup', { reference: 'MQ-<b>1234</b>' }],
+    ['one character too long', { reference: 'MQ-0123ABCDE' }],
+    ['a trailing newline', { reference: 'MQ-0123ABCD\n' }],
   ])('is null for %s', (_label, data) => {
     expect(leadReference(data)).toBeNull();
   });

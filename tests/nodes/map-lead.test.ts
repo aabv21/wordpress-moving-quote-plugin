@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { MESSAGES, run, SHEET_HEADERS, TEAM_LOCALE_NOTE } from '../../src/nodes/map-lead.ts';
+import { formatPhoneDisplay, MESSAGES, run, SHEET_HEADERS, TEAM_LOCALE_NOTE } from '../../src/nodes/map-lead.ts';
 import { parseLead, type Lead } from '../../src/nodes/lead.ts';
 import { LOCALES } from '../../src/nodes/locale.ts';
 
@@ -59,11 +59,65 @@ describe('map-lead', () => {
     expect(team.text).not.toContain('mailto:');
   });
 
+  it('the team email has the WhatsApp line after the phone, in both languages', () => {
+    const english = run({ lead, config }).team.text.split('\n');
+    expect(english.indexOf('WhatsApp: https://wa.me/570000000001')).toBe(english.indexOf('Phone: 570000000001') + 1);
+    const spanish = run({ lead, config: spanishTeamConfig }).team.text.split('\n');
+    expect(spanish.indexOf('WhatsApp: https://wa.me/570000000001')).toBe(spanish.indexOf('Teléfono: 570000000001') + 1);
+    const mobile = run({ lead: { ...lead, customer: { ...lead.customer, phone: '3001234567' } }, config }).team.text;
+    expect(mobile).toContain('WhatsApp: https://wa.me/573001234567');
+    expect(mobile).not.toContain('mailto:');
+  });
+
   it('writes the customer summary', () => {
     const { customer } = run({ lead, config });
     expect([customer.to, customer.reply_to, customer.subject]).toEqual(['jose@example.com', 'team@example.com', 'Your moving estimate from Chivabox Movers']);
     for (const s of ['Hi José Peña', 'COP 1,197,000 – 1,463,000', 'This is an estimate. We confirm the final price after a visit or video call.', 'MQ-6F1C2A9E'])
       expect(customer.html).toContain(s);
+  });
+
+  it('the customer email carries the brand header, the estimate figure and every row', () => {
+    const { html } = run({ lead, config }).customer;
+    expect(html).toMatch(/^<table role="presentation" width="100%" style="max-width:560px;font-family:Arial,Helvetica,sans-serif;color:#111418">/);
+    expect(html).toContain('border-bottom:3px solid #1d4ed8');
+    expect(html).toContain('>Chivabox Movers</td>');
+    expect(html).toContain('Your estimate');
+    expect(html).toMatch(/font-size:24px;font-weight:700[^>]*>COP 1,197,000 – 1,463,000</);
+    const rows: Record<string, string> = Object.fromEntries([...html.matchAll(/>([^<]+)<\/td>\n<td[^>]*>([^<]+)<\/td><\/tr>/g)].map((match) => [match[1] ?? '', match[2] ?? '']));
+    expect(rows).toEqual({
+      Route: 'Barranquilla to Cartagena',
+      'Move date': 'Friday, November 20, 2026',
+      'Move type': 'Apartment, 2 rooms',
+      Extras: 'Packing',
+      Reference: 'MQ-6F1C2A9E',
+    });
+    expect(html).toContain('Chivabox Movers is a fictional company for a portfolio demo.');
+    expect(run({ lead: spanishLead, config }).customer.html).toContain('Chivabox Movers es una empresa ficticia para una demostración de portafolio.');
+  });
+
+  it('adds the call and WhatsApp line only when the business numbers are set', () => {
+    expect(run({ lead, config }).customer.html).toContain(
+      'Questions? Call us at +57 000 000 0099 or write on WhatsApp: <a href="https://wa.me/570000000099">wa.me/570000000099</a>',
+    );
+    const phoneOnly = run({ lead: { ...lead, contact: { phone: '570000000099', whatsapp: '' } }, config }).customer.html;
+    expect(phoneOnly).toContain('Questions? Call us at +57 000 000 0099.');
+    expect(phoneOnly).not.toContain('wa.me');
+    const none = run({ lead: { ...lead, contact: { phone: '', whatsapp: '' } }, config }).customer.html;
+    expect(none).not.toContain('Questions?');
+    expect(none).not.toContain('wa.me');
+    expect(run({ lead: spanishLead, config }).customer.html).toContain('¿Preguntas? Llámenos al +57 000 000 0099 o escríbanos por WhatsApp: <a href="https://wa.me/570000000099">wa.me/570000000099</a>');
+  });
+
+  it('formatPhoneDisplay matches the plugin\'s display', () => {
+    expect(formatPhoneDisplay('570000000099')).toBe('+57 000 000 0099');
+    expect(formatPhoneDisplay('15551234567')).toBe('+15551234567');
+  });
+
+  it('escapes a crafted name inside the table', () => {
+    const name = '<img src=x onerror=alert(1)>"';
+    const { html } = run({ lead: { ...lead, customer: { ...lead.customer, name } }, config }).customer;
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;&quot;');
   });
 
   it('escapes customer text in the customer HTML email', () => {
@@ -130,10 +184,12 @@ describe('map-lead', () => {
     for (const s of [
       'Hola, José Peña:',
       'COP 1.197.000 – 1.463.000',
-      'De Barranquilla a Cartagena, el viernes 20 de noviembre de 2026',
+      'Su estimado',
+      'Barranquilla a Cartagena',
+      'viernes 20 de noviembre de 2026',
       'Este valor es un estimado. Confirmamos el precio final después de una visita o una videollamada.',
       'se comunicará con usted',
-      'Referencia: MQ-6F1C2A9E',
+      '>Referencia</td>',
     ])
       expect(customer.html).toContain(s);
     expect(customer.html).not.toMatch(/\b(Hi|Your moving estimate|This is an estimate|Reference:)/);
@@ -153,6 +209,7 @@ describe('map-lead', () => {
     expect(team.text.split('\n')).toEqual([
       'Nombre: José Peña',
       'Teléfono: 570000000001',
+      'WhatsApp: https://wa.me/570000000001',
       'Correo: jose@example.com',
       'Fecha de la mudanza: viernes 20 de noviembre de 2026',
       'Ruta: Barranquilla a Cartagena (120 km)',

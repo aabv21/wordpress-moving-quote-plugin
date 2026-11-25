@@ -11,8 +11,8 @@ use Chivabox\MovingQuote\Settings\Options;
  * Registers assets on `init` but enqueues them from `render()`, so they load only where used.
  */
 final class Shortcode {
-	public const TAG     = 'moving_quote';
-	private const HANDLE = 'moving-quote-form';
+	public const TAG    = 'moving_quote';
+	public const HANDLE = 'moving-quote-form';
 
 	public static function register(): void {
 		add_action( 'init', [ self::class, 'register_assets' ] );
@@ -53,9 +53,14 @@ final class Shortcode {
 
 		$parsed = shortcode_atts( [ 'thank_you' => 'thank-you' ], is_array( $atts ) ? $atts : [] );
 
-		// Local variables for templates/quote-form.php, included below: $cities and $config.
-		$cities = self::cities();
-		$config = self::config( (string) $parsed['thank_you'] );
+		// Local variables for templates/quote-form.php, included below: $cities, $config, $privacy_url,
+		// $prefill, $extra_prices and $business.
+		$cities       = self::cities();
+		$config       = self::config( (string) $parsed['thank_you'] );
+		$privacy_url  = self::privacy_url();
+		$extra_prices = Options::rates()->extras;
+		$business     = Options::business();
+		$prefill      = Prefill::from_query( wp_unslash( $_GET ), $cities ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only prefill, each value kept only when it's exactly a known type or city.
 
 		ob_start();
 		include self::template_path();
@@ -69,12 +74,18 @@ final class Shortcode {
 		return DistanceTable::from_settings( Options::all() )->cities();
 	}
 
+	/** The thank-you page the form redirects to; see `page_url()`. */
+	public static function thank_you_url( string $slug ): ?string {
+		return self::page_url( $slug );
+	}
+
 	/**
 	 * Null when the page doesn't exist. With Polylang active, the slug names any page of a
 	 * translation group, and the URL is the one in the visitor's language. Polylang is optional:
-	 * without it, the slug's own page.
+	 * without it, the slug's own page. `$language` (a Polylang code such as `es`) names the language
+	 * when there is no visitor, as in the delivery cron.
 	 */
-	public static function thank_you_url( string $slug ): ?string {
+	public static function page_url( string $slug, ?string $language = null ): ?string {
 		$page = get_page_by_path( $slug );
 		if ( null === $page ) {
 			return null;
@@ -82,7 +93,31 @@ final class Shortcode {
 
 		$page_id = $page->ID;
 		if ( function_exists( 'pll_get_post' ) ) {
+			$page_id = TranslatedPage::id( $page_id, pll_get_post( $page_id, $language ?? '' ) );
+		}
+
+		$url = get_permalink( $page_id );
+		return false !== $url ? $url : null;
+	}
+
+	/**
+	 * The published privacy policy page in the visitor's language, or null when none is set or it
+	 * isn't published (core's own draft, for one). With Polylang, the page set in Settings > Privacy
+	 * stands for its whole translation group.
+	 */
+	public static function privacy_url(): ?string {
+		$option  = get_option( 'wp_page_for_privacy_policy' );
+		$page_id = is_numeric( $option ) ? (int) $option : 0;
+		if ( $page_id <= 0 ) {
+			return null;
+		}
+
+		if ( function_exists( 'pll_get_post' ) ) {
 			$page_id = TranslatedPage::id( $page_id, pll_get_post( $page_id ) );
+		}
+
+		if ( 'publish' !== get_post_status( $page_id ) ) {
+			return null;
 		}
 
 		$url = get_permalink( $page_id );
@@ -107,6 +142,7 @@ final class Shortcode {
 	 *     strings: array{
 	 *         sending: string,
 	 *         networkError: string,
+	 *         serverError: string,
 	 *         rateLimited: string,
 	 *         sessionExpired: string,
 	 *         genericError: string,
@@ -114,6 +150,7 @@ final class Shortcode {
 	 * }
 	 */
 	public static function config( string $thank_you_slug ): array {
+		$business = Options::business();
 		return [
 			'estimateUrl' => self::rest_url_for_page( 'moving-quote/v1/estimate' ),
 			'leadsUrl'    => self::rest_url_for_page( 'moving-quote/v1/leads' ),
@@ -122,6 +159,13 @@ final class Shortcode {
 			'strings'     => [
 				'sending'        => __( 'Sending…', 'moving-quote' ),
 				'networkError'   => __( 'Something went wrong. Please check your connection and try again.', 'moving-quote' ),
+				'serverError'    => $business->has_phone()
+					? sprintf(
+						/* translators: %s: the business phone number, e.g. +57 000 000 0099 */
+						__( 'Something went wrong on our side. Please try again in a few minutes, or call us at %s.', 'moving-quote' ),
+						$business->phone_display()
+					)
+					: __( 'Something went wrong on our side. Please try again in a few minutes.', 'moving-quote' ),
 				'rateLimited'    => __( 'Too many requests. Please try again later.', 'moving-quote' ),
 				'sessionExpired' => __( 'Your session expired. Reload the page and try again.', 'moving-quote' ),
 				'genericError'   => __( 'Please fix the highlighted fields.', 'moving-quote' ),

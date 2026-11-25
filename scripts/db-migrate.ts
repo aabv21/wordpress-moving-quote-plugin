@@ -1,12 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MIGRATION_NAME, MIGRATIONS_DIR, missingEnv, missingEnvError, orderMigrations, pendingMigrations } from './lib/migrations.ts';
 import { loadDotEnv, redact, runPsql, secretValues } from './lib/runtime.ts';
-
-export const MIGRATIONS_DIR = 'db/migrations';
-
-/** `NNN_short_name.sql`: a three-digit sequence number, then a lowercase name. */
-const MIGRATION_NAME = /^(\d{3})_[a-z0-9_]+\.sql$/;
 
 /** psql's `\getenv psql_variable ENV_NAME`, the only way a migration reads `.env`. */
 const GETENV = /^\\getenv[ \t]+\w+[ \t]+([A-Za-z_][A-Za-z0-9_]*)[ \t]*$/gm;
@@ -42,38 +38,8 @@ export const MIGRATION_LOCK_KEY = 6_420_001;
 /** The runtime role must never share a name with these. */
 const OTHER_ROLE_NAMES = ['POSTGRES_USER', 'N8N_DB_USER', 'APP_DB_USER'] as const;
 
-/** Throws on a misnamed file or a reused sequence number. */
-export function orderMigrations(fileNames: readonly string[]): string[] {
-  const files = fileNames.filter((name) => name.endsWith('.sql')).sort();
-  const seen = new Map<string, string>();
-  for (const file of files) {
-    const sequence = MIGRATION_NAME.exec(file)?.[1];
-    if (sequence === undefined) throw new Error(`${MIGRATIONS_DIR}/${file}: name it like 001_short_name.sql`);
-    const other = seen.get(sequence);
-    if (other !== undefined) throw new Error(`${MIGRATIONS_DIR}: ${other} and ${file} share ${sequence}; renumber one`);
-    seen.set(sequence, file);
-  }
-  return files;
-}
-
-export function pendingMigrations(files: readonly string[], applied: ReadonlySet<string>): string[] {
-  return files.filter((file) => !applied.has(file));
-}
-
 export function requiredEnv(sql: string): string[] {
   return [...new Set([...sql.matchAll(GETENV)].map((match) => match[1] ?? ''))];
-}
-
-/** Compose turns an unset name into an empty one, so both count as missing. */
-export function missingEnv(names: readonly string[], env: Readonly<Record<string, string | undefined>>): string[] {
-  // eslint-disable-next-line security/detect-object-injection -- name comes from a migration's own \getenv line, not user input
-  return names.filter((name) => !env[name]);
-}
-
-/** Names variables only, never a value. */
-export function missingEnvError(source: string, missing: readonly string[]): Error {
-  const verb = missing.length === 1 ? 'is' : 'are';
-  return new Error(`${source} needs ${missing.join(', ')}, which ${verb} not set in .env; see .env.example and docs/database.md`);
 }
 
 /** A shared name would aim the runtime grants and password at the owner or the superuser. */
@@ -168,6 +134,7 @@ function assertEnv(source: string, sql: string): void {
 
 export async function dbMigrate(): Promise<void> {
   loadDotEnv();
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- MIGRATIONS_DIR is the fixed db/migrations folder
   const files = orderMigrations(readdirSync(MIGRATIONS_DIR));
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- file is a validated name read from MIGRATIONS_DIR
   const sql = new Map(files.map((file) => [file, readFileSync(join(MIGRATIONS_DIR, file), 'utf8')]));

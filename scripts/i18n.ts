@@ -1,16 +1,43 @@
-import { execFile } from 'node:child_process';
 import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { composeExec } from './lib/compose.ts';
 import { withoutCreationDate } from './lib/gettext.ts';
 
-export const LANGUAGES_DIR = 'plugin/moving-quote/languages';
-export const POT_FILE = 'moving-quote.pot';
+export interface TextDomain {
+  domain: string;
+  /** Where the committed `.pot`, `.po`, `.mo` and `.l10n.php` live, relative to the repo root. */
+  languagesDir: string;
+  /** The same folder's parent as `compose.yaml` mounts it, read-only, in `wpcli`. */
+  containerDir: string;
+  potFile: string;
+  /** A plugin's catalogs are `<domain>-<locale>.po`; a theme's are `<locale>.po`. */
+  poPrefix: string;
+  /** Folders `make-pot` skips. */
+  exclude: string;
+}
 
-/** `compose.yaml` mounts the plugin read-only in `wpcli`. */
-const CONTAINER_PLUGIN_DIR = '/var/www/html/wp-content/plugins/moving-quote';
-/** Scratch output inside the container, since the plugin mount is read-only. */
-const CONTAINER_OUT_DIR = '/tmp/moving-quote-i18n';
+export const TEXT_DOMAINS: readonly TextDomain[] = [
+  {
+    domain: 'moving-quote',
+    languagesDir: 'plugin/moving-quote/languages',
+    containerDir: '/var/www/html/wp-content/plugins/moving-quote',
+    potFile: 'moving-quote.pot',
+    poPrefix: 'moving-quote-',
+    exclude: 'vendor,assets,languages',
+  },
+  {
+    domain: 'chivabox',
+    languagesDir: 'site/theme/languages',
+    containerDir: '/var/www/html/wp-content/themes/chivabox',
+    potFile: 'chivabox.pot',
+    poPrefix: '',
+    exclude: 'assets,languages',
+  },
+];
+
+/** Scratch output inside the container, since both mounts are read-only. */
+const CONTAINER_OUT_ROOT = '/tmp/chivabox-i18n';
 
 /**
  * Fixed, so the `.pot` depends only on the sources: make-pot would otherwise point
@@ -23,27 +50,25 @@ const POT_FILE_COMMENT = 'Copyright (C) Andrés Buelvas. This file is distribute
  * PHP only: the bundled JavaScript has no gettext calls. `--no-location` drops `#: file:line`, so
  * the drift check fails on a changed string, not a shifted line.
  */
-const GENERATE_SCRIPT = [
-  `rm -rf ${CONTAINER_OUT_DIR}`,
-  `mkdir -p ${CONTAINER_OUT_DIR}`,
-  `wp i18n make-pot ${CONTAINER_PLUGIN_DIR} ${CONTAINER_OUT_DIR}/${POT_FILE} --slug=moving-quote --domain=moving-quote --skip-js --skip-block-json --skip-theme-json --exclude=vendor,assets,languages --no-location --headers='${POT_HEADERS}' --file-comment='${POT_FILE_COMMENT}' --quiet`,
-  `if ls ${CONTAINER_PLUGIN_DIR}/languages/*.po >/dev/null 2>&1; then wp i18n make-mo ${CONTAINER_PLUGIN_DIR}/languages ${CONTAINER_OUT_DIR} --quiet && wp i18n make-php ${CONTAINER_PLUGIN_DIR}/languages ${CONTAINER_OUT_DIR} --quiet; fi`,
-].join(' && ');
-
-function wpcli(args: string[]): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    execFile('docker', ['compose', 'exec', '-T', 'wpcli', ...args], { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
-      if (err) reject(new Error(`${err.message}\n${stderr.toString()}`));
-      else resolve(stdout);
-    });
-  });
+function generateScript(text: TextDomain, outDir: string): string {
+  return [
+    `rm -rf ${outDir}`,
+    `mkdir -p ${outDir}`,
+    `wp i18n make-pot ${text.containerDir} ${outDir}/${text.potFile} --slug=${text.domain} --domain=${text.domain} --skip-js --skip-block-json --skip-theme-json --exclude=${text.exclude} --no-location --headers='${POT_HEADERS}' --file-comment='${POT_FILE_COMMENT}' --quiet`,
+    `if ls ${text.containerDir}/languages/*.po >/dev/null 2>&1; then wp i18n make-mo ${text.containerDir}/languages ${outDir} --quiet && wp i18n make-php ${text.containerDir}/languages ${outDir} --quiet; fi`,
+  ].join(' && ');
 }
 
-export async function generate(): Promise<Map<string, Buffer>> {
-  await wpcli(['sh', '-c', GENERATE_SCRIPT]);
-  const names = (await wpcli(['ls', CONTAINER_OUT_DIR])).toString('utf8').split('\n').filter(Boolean);
+function wpcli(args: string[]): Promise<Buffer> {
+  return composeExec('wpcli', args);
+}
+
+export async function generate(text: TextDomain): Promise<Map<string, Buffer>> {
+  const outDir = `${CONTAINER_OUT_ROOT}/${text.domain}`;
+  await wpcli(['sh', '-c', generateScript(text, outDir)]);
+  const names = (await wpcli(['ls', outDir])).toString('utf8').split('\n').filter(Boolean);
   const files = new Map<string, Buffer>();
-  for (const name of names) files.set(name, await wpcli(['cat', `${CONTAINER_OUT_DIR}/${name}`]));
+  for (const name of names) files.set(name, await wpcli(['cat', `${outDir}/${name}`]));
   return files;
 }
 
@@ -54,10 +79,10 @@ export function sameContent(name: string, generated: Buffer, committed: Buffer |
   return generated.equals(committed);
 }
 
-function readCommitted(name: string): Buffer | null {
+function readCommitted(dir: string, name: string): Buffer | null {
   try {
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- name comes from the container's own fixed output folder listing, joined under LANGUAGES_DIR
-    return readFileSync(join(LANGUAGES_DIR, name));
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- name comes from the container's own fixed output folder listing, joined under a TEXT_DOMAINS folder
+    return readFileSync(join(dir, name));
   } catch {
     return null;
   }
@@ -68,19 +93,25 @@ function readCommitted(name: string): Buffer | null {
  * counts as stale, and is removed when not checking.
  */
 export async function syncTranslations(opts: { check: boolean }): Promise<string[]> {
-  const generated = await generate();
   const changed: string[] = [];
 
-  for (const [name, content] of generated) {
-    if (sameContent(name, content, readCommitted(name))) continue;
-    changed.push(name);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- name comes from the container's own fixed output folder listing, joined under LANGUAGES_DIR
-    if (!opts.check) writeFileSync(join(LANGUAGES_DIR, name), content);
-  }
+  for (const text of TEXT_DOMAINS) {
+    const dir = text.languagesDir;
+    const generated = await generate(text);
 
-  const orphans = readdirSync(LANGUAGES_DIR).filter((name) => /\.(mo|l10n\.php)$/.test(name) && !generated.has(name));
-  if (!opts.check) for (const name of orphans) rmSync(join(LANGUAGES_DIR, name));
-  return [...changed, ...orphans];
+    for (const [name, content] of generated) {
+      if (sameContent(name, content, readCommitted(dir, name))) continue;
+      changed.push(join(dir, name));
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- name comes from the container's own fixed output folder listing, joined under a TEXT_DOMAINS folder
+      if (!opts.check) writeFileSync(join(dir, name), content);
+    }
+
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- dir is a TEXT_DOMAINS constant
+    const orphans = readdirSync(dir).filter((name) => /\.(mo|l10n\.php)$/.test(name) && !generated.has(name));
+    if (!opts.check) for (const name of orphans) rmSync(join(dir, name));
+    changed.push(...orphans.map((name) => join(dir, name)));
+  }
+  return changed;
 }
 
 async function main(): Promise<void> {

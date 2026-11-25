@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Admin;
 
+use Chivabox\MovingQuote\Leads\Labels;
 use Chivabox\MovingQuote\Pricing\DistanceTable;
+use Chivabox\MovingQuote\Rest\Messages;
 use Chivabox\MovingQuote\Settings\{Options, SettingsSanitizer};
 
 /**
@@ -47,7 +49,8 @@ final class SettingsPage {
 		$messages = self::error_messages();
 
 		foreach ( $result->errors as $key => $code ) {
-			add_settings_error( Options::NAME, str_replace( '.', '-', $key ), $messages[ $code ] ?? $code );
+			$message = 'too_long' === $code ? self::too_long_message( $key ) : ( $messages[ $code ] ?? $code );
+			add_settings_error( Options::NAME, str_replace( '.', '-', $key ), $message );
 		}
 
 		$settings = $result->settings;
@@ -71,7 +74,19 @@ final class SettingsPage {
 			'invalid_url'     => __( 'Enter a valid http:// or https:// URL, or leave it blank.', 'moving-quote' ),
 			'short_secret'    => __( 'The webhook secret must be at least 32 characters.', 'moving-quote' ),
 			'invalid_email'   => __( 'Enter a valid email address, or leave it blank.', 'moving-quote' ),
+			'invalid_phone'   => Messages::field( 'invalid', 'phone' ),
+			'invalid'         => __( 'Use one line of plain text, with no line breaks.', 'moving-quote' ),
+			'invalid_hours'   => __( 'Enter both hours, opening before closing, or leave both blank.', 'moving-quote' ),
 		];
+	}
+
+	/** Names the field's own limit, which differs per business field. */
+	private static function too_long_message( string $key ): string {
+		return sprintf(
+			/* translators: %d: maximum number of characters */
+			__( 'Please use %d characters or fewer.', 'moving-quote' ),
+			SettingsSanitizer::BUSINESS_TEXT_MAX_LEN[ $key ] ?? 0
+		);
 	}
 
 	/**
@@ -92,7 +107,25 @@ final class SettingsPage {
 			'webhook_secret' => is_string( $input['webhook_secret'] ?? null ) ? trim( $input['webhook_secret'] ) : '',
 			// trim() only: sanitize_email() turns an invalid address into '', a blank, not invalid_email.
 			'team_email'     => is_string( $input['team_email'] ?? null ) ? trim( $input['team_email'] ) : '',
+			// trim() only, inside the pure sanitizer: sanitize_text_field() would silently drop a line
+			// break instead of reporting it. Every place that prints these escapes them.
+			...self::wp_strings( $input, [ 'business_phone', 'business_whatsapp', 'business_street', 'business_city', 'business_hours_open', 'business_hours_close', 'business_tax_id' ] ),
 		];
+	}
+
+	/**
+	 * Each key's posted string, or `''` when it's missing or not a string.
+	 *
+	 * @param array<string, mixed> $input
+	 * @param list<string>         $keys
+	 * @return array<string, string>
+	 */
+	private static function wp_strings( array $input, array $keys ): array {
+		$out = [];
+		foreach ( $keys as $key ) {
+			$out[ $key ] = is_string( $input[ $key ] ?? null ) ? $input[ $key ] : '';
+		}
+		return $out;
 	}
 
 	/** @return array<string, string> */
@@ -156,6 +189,9 @@ final class SettingsPage {
 				<h2><?php esc_html_e( 'Delivery', 'moving-quote' ); ?></h2>
 				<?php self::render_delivery_section( $settings ); ?>
 
+				<h2><?php esc_html_e( 'Business details', 'moving-quote' ); ?></h2>
+				<?php self::render_business_section( $settings ); ?>
+
 				<?php submit_button(); ?>
 			</form>
 		</div>
@@ -164,20 +200,9 @@ final class SettingsPage {
 
 	/** @param SettingsShape $settings */
 	private static function render_rates_section( array $settings ): void {
-		$move_type_labels = [
-			'apartment' => __( 'Apartment', 'moving-quote' ),
-			'house'     => __( 'House', 'moving-quote' ),
-			'office'    => __( 'Office', 'moving-quote' ),
-		];
-		$extra_labels     = [
-			'packing'            => __( 'Packing', 'moving-quote' ),
-			'furniture_assembly' => __( 'Furniture disassembly and assembly', 'moving-quote' ),
-			'storage'            => __( 'Temporary storage', 'moving-quote' ),
-			'piano_fragile'      => __( 'Piano or fragile items', 'moving-quote' ),
-		];
 		?>
 		<table class="form-table" role="presentation">
-			<?php foreach ( $move_type_labels as $key => $label ) : ?>
+			<?php foreach ( Labels::move_types() as $key => $label ) : ?>
 				<tr>
 					<th scope="row"><label for="mq-base-rate-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
 					<td>
@@ -193,7 +218,7 @@ final class SettingsPage {
 				<th scope="row"><label for="mq-per-km"><?php esc_html_e( 'Per km', 'moving-quote' ); ?></label></th>
 				<td><input type="text" id="mq-per-km" name="<?php echo esc_attr( Options::NAME ); ?>[per_km]" value="<?php echo esc_attr( (string) $settings['per_km'] ); ?>" class="regular-text" /></td>
 			</tr>
-			<?php foreach ( $extra_labels as $key => $label ) : ?>
+			<?php foreach ( Labels::extras() as $key => $label ) : ?>
 				<tr>
 					<th scope="row"><label for="mq-extra-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
 					<td>
@@ -284,6 +309,31 @@ final class SettingsPage {
 				<strong><?php esc_html_e( 'Delivery is off until the webhook URL, secret, and team email are set.', 'moving-quote' ); ?></strong>
 			<?php endif; ?>
 		</p>
+		<?php
+	}
+
+	/** @param SettingsShape $settings */
+	private static function render_business_section( array $settings ): void {
+		$fields = [
+			'business_phone'       => [ __( 'Phone', 'moving-quote' ), 'tel', 'regular-text' ],
+			'business_whatsapp'    => [ __( 'WhatsApp', 'moving-quote' ), 'tel', 'regular-text' ],
+			'business_street'      => [ __( 'Street address', 'moving-quote' ), 'text', 'regular-text' ],
+			'business_city'        => [ __( 'City', 'moving-quote' ), 'text', 'regular-text' ],
+			'business_hours_open'  => [ __( 'Opens at', 'moving-quote' ), 'time', '' ],
+			'business_hours_close' => [ __( 'Closes at', 'moving-quote' ), 'time', '' ],
+			'business_tax_id'      => [ __( 'Tax ID', 'moving-quote' ), 'text', 'regular-text' ],
+		];
+		?>
+		<p class="description"><?php esc_html_e( 'Shown in the site footer, the quote page and the customer email. Leave a field blank to hide it.', 'moving-quote' ); ?></p>
+		<table class="form-table" role="presentation">
+			<?php foreach ( $fields as $key => [ $label, $type, $class ] ) : ?>
+				<?php $field_id = 'mq-' . str_replace( '_', '-', $key ); ?>
+				<tr>
+					<th scope="row"><label for="<?php echo esc_attr( $field_id ); ?>"><?php echo esc_html( $label ); ?></label></th>
+					<td><input type="<?php echo esc_attr( $type ); ?>" id="<?php echo esc_attr( $field_id ); ?>" name="<?php echo esc_attr( Options::NAME ); ?>[<?php echo esc_attr( $key ); ?>]" value="<?php echo esc_attr( $settings[ $key ] ); ?>" class="<?php echo esc_attr( $class ); ?>" /></td>
+				</tr>
+			<?php endforeach; ?>
+		</table>
 		<?php
 	}
 }

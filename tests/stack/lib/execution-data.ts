@@ -1,16 +1,6 @@
-import { execFile } from 'node:child_process';
+import { compose } from '../../../scripts/lib/compose.ts';
 import { psqlAs, required } from './stack.ts';
 import { pollForExecutionId } from './poll.ts';
-
-function runDockerWithInput(args: string[], input: string): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const child = execFile('docker', args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
-      if (err) reject(err instanceof Error ? err : new Error(err.message));
-      else resolve(stdout);
-    });
-    child.stdin?.end(input);
-  });
-}
 
 /**
  * Found by searching `execution_data` for `needle` (a `request_uuid`, never a token). Polled: the
@@ -92,7 +82,7 @@ process.stdin.on('end', () => {
 });
 `;
 
-  const stdout = await runDockerWithInput(['compose', 'exec', '-T', 'n8n', 'node', '-e', script], raw);
+  const { stdout } = await compose(['exec', '-T', 'n8n', 'node', '-e', script], { input: raw });
   return JSON.parse(stdout) as ProcessLeadExecutionSummary;
 }
 
@@ -124,6 +114,6 @@ process.stdin.on('end', () => {
 });
 `;
 
-  const stdout = await runDockerWithInput(['compose', 'exec', '-T', 'n8n', 'node', '-e', script], raw);
+  const { stdout } = await compose(['exec', '-T', 'n8n', 'node', '-e', script], { input: raw });
   return JSON.parse(stdout) as ErrorHandlerExecutionSummary;
 }

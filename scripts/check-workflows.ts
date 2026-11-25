@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
+import { BUSINESS_TIMEZONE } from '../src/nodes/locale.ts';
 import { listJsonFiles } from './lib/list-json-files.ts';
 import { CODE_NODES, CREDENTIALS, ERROR_WORKFLOW_ID, type CodeNodeEntry } from './lib/manifest.ts';
 import type { WorkflowJson, WorkflowNode } from './lib/workflow-types.ts';
@@ -57,7 +58,7 @@ export function checkWorkflow(
   if (settings !== null && typeof settings === 'object') {
     const s = settings as Record<string, unknown>;
     if (s.executionOrder !== 'v1') errors.push('settings.executionOrder must be v1');
-    if (s.timezone !== 'America/Bogota') errors.push('settings.timezone must be America/Bogota');
+    if (s.timezone !== BUSINESS_TIMEZONE) errors.push(`settings.timezone must be ${BUSINESS_TIMEZONE}`);
     if (s.callerPolicy !== 'workflowsFromSameOwner') errors.push('settings.callerPolicy must be workflowsFromSameOwner');
     const isHandler = wf.id === ERROR_WORKFLOW_ID;
     if (!isHandler && s.errorWorkflow !== ERROR_WORKFLOW_ID) {

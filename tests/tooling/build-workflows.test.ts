@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, it } from 'vitest';
-import { buildCodeNode, buildWorkflows, hardenAgainstFrozenDefineProperty } from '../../scripts/build-workflows.ts';
+import { buildCodeNode, buildWorkflows, hardenAgainstFrozenDefineProperty } from '../../scripts/lib/build.ts';
 import { runJsCode } from '../lib/code-node.ts';
 
 const entry = { file: 'clean.json', node: 'Double value', source: 'tests/fixtures/nodes/double.ts', why: 'fixture' };
@@ -25,7 +25,7 @@ it('check mode reports drift without writing, then a build clears it', async () 
 it('skips entries whose workflow file does not exist yet', async () =>
   expect((await buildWorkflows({ check: true, workflowsDir: 'tests/fixtures/does-not-exist', entries: [entry] })).skipped).toEqual(['clean.json']));
 it('generated code still exports run when Object.defineProperty is frozen, like the real n8n Task Runner sandbox', async () => {
-  // See hardenAgainstFrozenDefineProperty in scripts/build-workflows.ts.
+  // See hardenAgainstFrozenDefineProperty in scripts/lib/build.ts.
   const js = await buildCodeNode(entry);
   expect(runJsCode(js, { n: 2 })).toEqual([{ json: { n: 4 } }]);
 });

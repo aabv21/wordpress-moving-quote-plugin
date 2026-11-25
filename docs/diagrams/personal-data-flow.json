@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Where a lead's personal data goes",
+    "output": "docs/diagrams/personal-data-flow.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1000,
+      640
+    ]
+  },
+  "stages": [
+    {
+      "label": "Visitor"
+    },
+    {
+      "label": "WordPress"
+    },
+    {
+      "label": "n8n"
+    },
+    {
+      "label": "Stores and email"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Quote form",
+      "stage": 0,
+      "row": 0,
+      "width": 110
+    },
+    {
+      "id": "validator",
+      "type": "backend",
+      "label": "LeadValidator",
+      "stage": 1,
+      "row": 0,
+      "width": 110
+    },
+    {
+      "id": "leads-table",
+      "type": "database",
+      "label": "Leads table",
+      "stage": 1,
+      "row": 1,
+      "brand": "mysql",
+      "width": 110
+    },
+    {
+      "id": "csv-export",
+      "type": "backend",
+      "label": "CSV export",
+      "stage": 1,
+      "row": 2,
+      "width": 110
+    },
+    {
+      "id": "eraser",
+      "type": "security",
+      "label": "Data eraser",
+      "stage": 1,
+      "row": 3,
+      "width": 110
+    },
+    {
+      "id": "lead-intake",
+      "type": "backend",
+      "label": "lead-intake",
+      "stage": 2,
+      "row": 1,
+      "width": 110
+    },
+    {
+      "id": "process-lead",
+      "type": "backend",
+      "label": "process-lead",
+      "stage": 2,
+      "row": 2,
+      "width": 110
+    },
+    {
+      "id": "processed-events",
+      "type": "database",
+      "label": "processed_events",
+      "stage": 2,
+      "row": 0,
+      "brand": "postgresql",
+      "width": 125
+    },
+    {
+      "id": "sheets",
+      "type": "external",
+      "label": "Google Sheets",
+      "stage": 3,
+      "row": 2,
+      "width": 110
+    },
+    {
+      "id": "executions",
+      "type": "database",
+      "label": "Failed executions",
+      "stage": 3,
+      "row": 1,
+      "width": 125
+    },
+    {
+      "id": "gmail",
+      "type": "external",
+      "label": "Gmail",
+      "stage": 3,
+      "row": 3,
+      "width": 110
+    }
+  ],
+  "flows": [
+    {
+      "id": "submit",
+      "from": "browser",
+      "to": "validator",
+      "label": "form fields",
+      "variant": "emphasis"
+    },
+    {
+      "id": "store",
+      "from": "validator",
+      "to": "leads-table",
+      "label": "lead row",
+      "variant": "emphasis",
+      "labelAt": [
+        315,
+        201
+      ]
+    },
+    {
+      "id": "signed",
+      "from": "leads-table",
+      "to": "lead-intake",
+      "label": "signed JWT",
+      "variant": "emphasis"
+    },
+    {
+      "id": "event-id",
+      "from": "lead-intake",
+      "to": "processed-events",
+      "label": "event id"
+    },
+    {
+      "id": "hand-off",
+      "from": "lead-intake",
+      "to": "process-lead",
+      "label": "lead",
+      "variant": "emphasis",
+      "labelAt": [
+        530,
+        315
+      ]
+    },
+    {
+      "id": "row",
+      "from": "process-lead",
+      "to": "sheets",
+      "label": "row",
+      "labelAt": [
+        662,
+        373
+      ]
+    },
+    {
+      "id": "emails",
+      "from": "process-lead",
+      "to": "gmail",
+      "label": "two emails"
+    },
+    {
+      "id": "kept",
+      "from": "process-lead",
+      "to": "executions",
+      "label": "failed runs, 168 h",
+      "variant": "dashed"
+    },
+    {
+      "id": "export",
+      "from": "leads-table",
+      "to": "csv-export",
+      "label": "all rows",
+      "labelAt": [
+        315,
+        315
+      ]
+    },
+    {
+      "id": "erase",
+      "from": "eraser",
+      "to": "leads-table",
+      "label": "deletes rows",
+      "variant": "security",
+      "fromSide": "left",
+      "toSide": "left",
+      "via": [
+        [
+          212,
+          499
+        ],
+        [
+          212,
+          271
+        ]
+      ]
+    },
+    {
+      "id": "kept-intake",
+      "from": "lead-intake",
+      "to": "executions",
+      "label": "token + PII, 168 h",
+      "variant": "dashed",
+      "route": "straight",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Where PII lives",
+      "items": [
+        "The leads table holds every field, the team's notes and the date confirmation, until an eraser request or uninstall; notes never leave WordPress",
+        "The sheet row and both emails keep copies outside WordPress",
+        "Postgres keeps only the lead's event id, never a name, phone or email",
+        "The status page shows the move summary only, never a name, phone or email; the weekly summary carries counts and routes, not people"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Erasing and retention",
+      "items": [
+        "A failed lead-intake run keeps the raw signed token and the lead's name, phone and email for 168 h; a failed process-lead run keeps the lead",
+        "A successful run is purged within hours",
+        "The eraser deletes WordPress rows and lists each MQ- reference to remove by hand",
+        "The CSV export carries every field, so treat the file as personal data"
+      ]
+    }
+  ]
+}

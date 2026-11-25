@@ -36,7 +36,7 @@ function scrapeHref(html: string, linkText: string): string {
 
 /** Matched by `action=moving_quote_delete_lead` and `id=$leadId` in the URL. */
 function scrapeDeleteHref(html: string, leadId: string): string {
-  const linkPattern = /<a href=(["'])(.*?)\1[^>]*class="submitdelete"[^>]*>/g;
+  const linkPattern = /<a href=(["'])(.*?)\1[^>]*class="submitdelete[ "][^>]*>/g;
   for (const match of html.matchAll(linkPattern)) {
     const href = match[2]!.replaceAll('&#038;', '&').replaceAll('&amp;', '&');
     if (href.includes('action=moving_quote_delete_lead') && href.includes(`id=${leadId}`)) return href;
@@ -53,6 +53,26 @@ function scrapeStatusNonce(html: string, leadId: string): string {
     if (nonceMatch?.[1] !== undefined) return nonceMatch[1];
   }
   throw new Error(`no status-update form with a _wpnonce input found for lead id ${leadId}`);
+}
+
+/** The `_wpnonce` inside the notes `<form>` of lead `$leadId`. */
+function scrapeNotesNonce(html: string, leadId: string): string {
+  const formPattern = /<form method="post"[^>]*>[\s\S]*?<\/form>/g;
+  for (const form of html.matchAll(formPattern)) {
+    if (!form[0].includes('value="moving_quote_update_notes"') || !form[0].includes(`name="id" value="${leadId}"`)) continue;
+    const nonceMatch = /name="_wpnonce" value="([^"]+)"/.exec(form[0]);
+    if (nonceMatch?.[1] !== undefined) return nonceMatch[1];
+  }
+  throw new Error(`no notes form with a _wpnonce input found for lead id ${leadId}`);
+}
+
+/** The "Mark contacted" form of lead `$leadId`, or null when the row has none. */
+function markContactedForm(html: string, leadId: string): string | null {
+  const formPattern = /<form method="post"[^>]*>[\s\S]*?<\/form>/g;
+  for (const form of html.matchAll(formPattern)) {
+    if (form[0].includes('name="status" value="contacted"') && form[0].includes(`name="id" value="${leadId}"`)) return form[0];
+  }
+  return null;
 }
 
 async function countLeadRows(): Promise<number> {
@@ -148,6 +168,16 @@ describe('admin: leads list, status, export, retry', () => {
     expect(html).not.toContain('<form method="get">');
   });
 
+  it('loads the Leads stylesheet on the Leads page only, and marks the email and Delete link', async () => {
+    const leads = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(leads).toMatch(/<link[^>]*\bhref=["'][^"']*\/plugins\/moving-quote\/assets\/admin\.css[^"']*["']/);
+    expect(leads).toMatch(/<span class="moving-quote-leads__email">[^<]+@example\.com<\/span>/);
+    expect(leads).toContain('class="submitdelete moving-quote-leads__delete"');
+
+    const settings = await (await fetch(site('/wp-admin/admin.php?page=moving-quote-settings'), { headers: { Cookie: adminCookies } })).text();
+    expect(settings).not.toContain('assets/admin.css');
+  });
+
   it('updates a lead status through the scraped per-row form, rejects a wrong nonce, filters by status, and blocks a subscriber', async () => {
     const leadId = (await rowByUuid(plainLeadUuid)).id;
     const page = await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } });
@@ -224,7 +254,7 @@ describe('admin: leads list, status, export, retry', () => {
     const buffer = Buffer.from(await res.arrayBuffer());
     expect(buffer.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
     const body = stripBom(buffer.toString('utf8'));
-    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status,locale')).toBe(true);
+    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status,locale,notes,date_confirmed_at')).toBe(true);
     expect(body).toContain('"\'=HYPERLINK(""http://example.com"",""x"")"');
 
     const contactedHref = exportHref.includes('?') ? `${exportHref}&status=contacted` : `${exportHref}?status=contacted`;
@@ -263,7 +293,7 @@ describe('admin: leads list, status, export, retry', () => {
   });
 
   it('exports every good row across more than one chunk, even with a bad row inside the first chunk', async () => {
-    // EXPORT_CHUNK is 500: a bad row in the first batch makes it parse short (499), which must not
+    // `CsvExporter::CHUNK` is 500: a bad row in the first batch makes it parse short (499), which must not
     // end the export before the second batch.
     const leadsTable = await table();
     const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
@@ -458,6 +488,139 @@ echo 'ok';
       // Restore both rows, so a later test never inherits a closed status.
       await sqlWp(`UPDATE ${leadsTable} SET sync_status = 'sent', status = 'new' WHERE request_uuid IN ('${formulaLeadUuid}', '${scriptLeadUuid}')`);
     }
+  });
+
+  it('saves notes through the scraped per-row form, escapes them, and rejects a wrong nonce or a subscriber', async () => {
+    const lead = validLead({ name: 'Notes Customer' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    const uuid = lead.submission_id as string;
+    const leadId = (await rowByUuid(uuid)).id;
+    const leadsTable = await table();
+    const html = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    const notesNonce = scrapeNotesNonce(html, leadId);
+    expect(html).toContain(`<label class="screen-reader-text" for="moving-quote-notes-${leadId}">Notes for lead ${referenceFor(uuid)}</label>`);
+    expect(html).toContain('<textarea id="moving-quote-notes-' + leadId + '" name="notes" maxlength="2000" rows="4">');
+
+    const post = (cookies: string, fields: Record<string, string>) =>
+      fetch(site('/wp-admin/admin-post.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: cookies },
+        body: new URLSearchParams({ action: 'moving_quote_update_notes', id: leadId, ...fields }),
+        redirect: 'manual',
+      });
+    const storedNotes = async () => (await sqlWp(`SELECT notes FROM ${leadsTable} WHERE request_uuid = '${uuid}'`))[0]?.notes;
+
+    expect((await post(adminCookies, { notes: 'nope', _wpnonce: 'not-a-real-nonce' })).status).toBe(403);
+    expect(await storedNotes()).toBe('');
+
+    const saved = await post(adminCookies, { notes: '  Call after 5 <script>alert(1)</script>\nAsk about the piano ', _wpnonce: notesNonce });
+    expect(saved.status).toBe(302);
+    expect(await storedNotes()).toBe('Call after 5 <script>alert(1)</script>\nAsk about the piano');
+
+    const after = await (await fetch(site(saved.headers.get('location')!), { headers: { Cookie: adminCookies } })).text();
+    expect(after).toContain('Notes saved.');
+    expect(after).toContain('Call after 5 &lt;script&gt;alert(1)&lt;/script&gt;<br />\nAsk about the piano');
+    expect(after).not.toContain('<script>alert(1)</script>');
+
+    // A markup-looking note already stored is escaped when it is printed.
+    await sqlWp(`UPDATE ${leadsTable} SET notes = '<b>bold</b> & "quoted"' WHERE request_uuid = '${uuid}'`);
+    const escaped = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(escaped).toContain('&lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot;');
+    expect(escaped).not.toContain('<b>bold</b>');
+
+    const password = randomBytes(18).toString('hex');
+    await wp(['user', 'create', SUBSCRIBER_LOGIN, `${SUBSCRIBER_LOGIN}@example.com`, '--role=subscriber', `--user_pass=${password}`]);
+    try {
+      const subscriberCookies = await login(SUBSCRIBER_LOGIN, password);
+      expect((await post(subscriberCookies, { notes: 'subscriber', _wpnonce: notesNonce })).status).toBe(403);
+      expect(await storedNotes()).toBe('<b>bold</b> & "quoted"');
+    } finally {
+      await wp(['user', 'delete', SUBSCRIBER_LOGIN, '--yes']);
+    }
+  });
+
+  it('marks a new lead contacted in one click, and shows the button only on new leads', async () => {
+    const lead = validLead({ name: 'Quick Status Customer' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    const uuid = lead.submission_id as string;
+    const leadId = (await rowByUuid(uuid)).id;
+
+    const html = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    const form = markContactedForm(html, leadId);
+    expect(form).not.toBeNull();
+    expect(form).toContain('Mark contacted');
+    const quickNonce = /name="_wpnonce" value="([^"]+)"/.exec(form!)![1]!;
+
+    const res = await fetch(site('/wp-admin/admin-post.php'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: adminCookies },
+      body: new URLSearchParams({ action: 'moving_quote_update_status', id: leadId, status: 'contacted', _wpnonce: quickNonce }),
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(302);
+    expect((await rowByUuid(uuid)).status).toBe('contacted');
+
+    const afterHtml = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(markContactedForm(afterHtml, leadId)).toBeNull();
+  });
+
+  it('shows the last-7-days, won and win-rate numbers above the list', async () => {
+    const leadsTable = await table();
+    const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const uuids = [0, 1, 2].map((i) => `00000000-0000-4000-a000-${marker.slice(0, 10)}0${String(i)}`);
+    const insert = (uuid: string, status: string, createdAt: string) =>
+      sqlWp(
+        `INSERT INTO ${leadsTable} (request_uuid, created_at, status, move_type, rooms, origin_city, destination_city, distance_km, move_date, extras, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, sync_status, attempts, next_attempt_at, last_error, sent_at)
+         VALUES ('${uuid}', ${createdAt}, '${status}', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', '', 'Funnel ${marker}', '570000000006', 'funnel-${marker}@example.com', UTC_TIMESTAMP(), 1130000, 1017000, 1243000, 'sent', 0, 0, '', NULL)`,
+      );
+    await insert(uuids[0]!, 'won', 'UTC_TIMESTAMP()');
+    await insert(uuids[1]!, 'won', 'UTC_TIMESTAMP()');
+    await insert(uuids[2]!, 'lost', 'DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)');
+
+    try {
+      const [recent] = await sqlWp(`SELECT COUNT(*) AS n FROM ${leadsTable} WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)`);
+      const [won] = await sqlWp(`SELECT COUNT(*) AS n FROM ${leadsTable} WHERE status = 'won'`);
+      const [lost] = await sqlWp(`SELECT COUNT(*) AS n FROM ${leadsTable} WHERE status = 'lost'`);
+      const rate = Math.round((100 * Number(won?.n)) / (Number(won?.n) + Number(lost?.n)));
+
+      const html = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+      const tile = (label: string): string | undefined => {
+        const labelAt = html.indexOf(`<span class="moving-quote-leads__stat-label">${label}</span>`);
+        const open = '<span class="moving-quote-leads__stat-value">';
+        const valueAt = html.lastIndexOf(open, labelAt);
+        // The value span holds escaped text only, so slicing to its closing tag reads it without stripping markup.
+        return valueAt === -1 || labelAt === -1 ? undefined : html.slice(valueAt + open.length, html.indexOf('</span>', valueAt)).trim();
+      };
+      expect(tile('Last 7 days')).toBe(String(recent?.n));
+      expect(tile('Won (all time)')).toBe(String(won?.n));
+      expect(tile('Win rate')).toBe(`${String(rate)}%`);
+      // The help line belongs to the Win rate tile, and the tiles sit after the header's Export CSV action.
+      const rateTile = html.slice(html.indexOf('moving-quote-leads__stat-label">Win rate'));
+      expect(rateTile.indexOf('Won ÷ (won + lost).')).toBeGreaterThan(-1);
+      expect(rateTile.indexOf('Won ÷ (won + lost).')).toBeLessThan(rateTile.indexOf('</div>') + 300);
+      expect(html.indexOf('>Export CSV<')).toBeLessThan(html.indexOf('moving-quote-leads__stats'));
+      expect(html.indexOf('moving-quote-leads__stats')).toBeLessThan(html.indexOf('<table class="wp-list-table'));
+    } finally {
+      await sqlWp(`DELETE FROM ${leadsTable} WHERE customer_name = 'Funnel ${marker}'`);
+    }
+  });
+
+  it('shows a "Date confirmed" badge in the Move column once the customer confirmed, and exports the time', async () => {
+    const lead = validLead({ name: 'Confirmed Customer' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    const uuid = lead.submission_id as string;
+    const leadsTable = await table();
+
+    const before = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(before).not.toContain('moving-quote-leads__confirmed');
+
+    await sqlWp(`UPDATE ${leadsTable} SET date_confirmed_at = '2026-11-05 15:30:00' WHERE request_uuid = '${uuid}'`);
+    const after = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(after).toContain('<span class="moving-quote-leads__confirmed">Date confirmed</span>');
+
+    const exportHref = scrapeHref(after, 'Export CSV');
+    const body = stripBom(await (await fetch(new URL(exportHref, site('/')), { headers: { Cookie: adminCookies } })).text());
+    expect(body).toContain(',"2026-11-05 10:30"');
   });
 
   it('logs nothing from the plugin', async () => {

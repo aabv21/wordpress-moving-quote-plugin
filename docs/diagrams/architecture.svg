@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg viewBox="0 0 1230 680" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-diagram-type="architecture" data-reader-fit="authored-height" style="--flow-cycle: 5.239s; width: 1230px; height: 680px; min-width: 0px;" width="1230" height="680" xmlns="http://www.w3.org/2000/svg"><style>
+<svg viewBox="0 0 1142 480" role="img" lang="en" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-diagram-type="architecture" data-reader-fit="authored-height" style="--flow-cycle: 5.021s; width: 1142px; height: 480px; min-width: 0px;" width="1142" height="480" xmlns="http://www.w3.org/2000/svg"><style>
 /*
 JetBrains Mono variable WOFF2 subsets from Google Fonts service revision v24.
 These fixed bytes are shared by the viewer and its SVG/raster exports.
@@ -399,216 +399,284 @@ svg[data-preset="editorial"] { --flow-halo-peak: 0.07; --flow-glow-peak: 0.28; -
 }
 @keyframes archify-relay-ripple { 
   0% { r: 2px; opacity: var(--flow-peak, 0.6); }
-  14.315%, 100% { r: 20px; opacity: 0; }
+  14.937%, 100% { r: 20px; opacity: 0; }
 }
 @keyframes archify-relay-comet-0 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  15.95% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  19.004%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.673% { opacity: var(--flow-peak, 0.9); }
+  8.365% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.551%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-0 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  15.95% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  33.128%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  8.365% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  26.289%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-1 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.854% { opacity: var(--flow-peak, 0.9); }
-  9.271% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  12.325%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  17.28% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  20.467%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-1 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  9.271% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  26.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  17.28% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  35.204%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-2 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  20.311% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  23.365%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  19.416% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  22.602%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-2 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  20.311% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  37.49%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  19.416% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  37.34%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-3 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.603% { opacity: var(--flow-peak, 0.9); }
-  8.017% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  11.071%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.673% { opacity: var(--flow-peak, 0.9); }
+  8.365% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.551%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-3 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  8.017% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  25.195%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  8.365% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  26.289%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-4 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  17.86% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  20.914%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  15.221% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  18.408%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-4 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  17.86% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  35.039%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  15.221% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  33.146%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-5 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  15.064% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  18.118%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  12.304% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  15.491%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-5 { 
-  0%, 4.519% { opacity: 0; }
-  15.064% { opacity: var(--flow-peak, 0.3); }
-  32.243%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 3.691% { opacity: 0; }
+  12.304% { opacity: var(--flow-peak, 0.3); }
+  30.228%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-6 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.854% { opacity: var(--flow-peak, 0.9); }
-  9.271% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  12.325%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.935% { opacity: var(--flow-peak, 0.9); }
+  9.673% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  12.86%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-6 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  9.271% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  26.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  9.673% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  27.598%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-7 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  13.693% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  16.747%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  14.288% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  17.474%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-7 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  13.693% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  30.872%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  14.288% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  32.212%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-8 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  12.338% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  15.392%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  12.873% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  16.06%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-8 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  12.338% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  29.516%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  12.873% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  30.797%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-9 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.649% { opacity: var(--flow-peak, 0.9); }
-  8.247% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  11.301%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.721% { opacity: var(--flow-peak, 0.9); }
+  8.605% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.792%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-9 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  8.247% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  25.426%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  8.605% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  26.53%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-10 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  1.854% { opacity: var(--flow-peak, 0.9); }
-  9.271% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  12.325%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  1.935% { opacity: var(--flow-peak, 0.9); }
+  9.673% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  12.86%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-10 { 
-  0%, 2.781% { opacity: 0; }
-  9.271% { opacity: var(--flow-peak, 0.3); }
-  26.45%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 2.902% { opacity: 0; }
+  9.673% { opacity: var(--flow-peak, 0.3); }
+  27.598%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-11 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  20.79% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  23.844%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  21.692% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  24.879%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-11 { 
-  0%, 6.237% { opacity: 0; }
-  20.79% { opacity: var(--flow-peak, 0.3); }
-  37.968%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  0%, 6.508% { opacity: 0; }
+  21.692% { opacity: var(--flow-peak, 0.3); }
+  39.616%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-comet-12 { 
   0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  2.29% { opacity: var(--flow-peak, 0.9); }
-  16.428% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
-  19.482%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  16.214% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  19.401%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
 }
 @keyframes archify-relay-wake-12 { 
   0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
-  16.428% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
-  33.606%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+  16.214% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  34.138%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
+@keyframes archify-relay-comet-13 { 
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  2.39% { opacity: var(--flow-peak, 0.9); }
+  13.584% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  16.771%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-13 { 
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  13.584% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  31.509%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
+@keyframes archify-relay-comet-14 { 
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  1.673% { opacity: var(--flow-peak, 0.9); }
+  8.365% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.551%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-14 { 
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  8.365% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  26.289%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
+@keyframes archify-relay-comet-15 { 
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  1.673% { opacity: var(--flow-peak, 0.9); }
+  8.365% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.551%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-15 { 
+  0% { stroke-dashoffset: var(--flow-len, 0px); opacity: var(--flow-peak, 0.3); animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  8.365% { stroke-dashoffset: 0px; opacity: var(--flow-peak, 0.3); }
+  26.289%, 100% { stroke-dashoffset: 0px; opacity: 0; }
+}
+@keyframes archify-relay-comet-16 { 
+  0% { stroke-dashoffset: calc(var(--flow-len, 0px) + var(--flow-shift, 0px)); opacity: 0; animation-timing-function: cubic-bezier(0.45, 0.05, 0.35, 1); }
+  1.673% { opacity: var(--flow-peak, 0.9); }
+  8.365% { stroke-dashoffset: var(--flow-shift, 0px); opacity: var(--flow-peak, 0.9); }
+  11.551%, 100% { stroke-dashoffset: var(--flow-shift, 0px); opacity: 0; }
+}
+@keyframes archify-relay-wake-16 { 
+  0%, 2.509% { opacity: 0; }
+  8.365% { opacity: var(--flow-peak, 0.3); }
+  26.289%, 100% { stroke-dashoffset: 0px; opacity: 0; }
 }
 @keyframes archify-relay-node-0 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
-  2.29%, 8.017% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  22.905% { filter: var(--ambient-node-base-filter, none); }
+  2.39%, 8.365% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  23.899% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-1 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
-  2.29%, 8.017% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  22.905% { filter: var(--ambient-node-base-filter, none); }
+  2.39%, 8.365% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  23.899% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-2 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
   0% { filter: var(--ambient-node-base-filter, none); }
-  2.29%, 8.017% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  22.905% { filter: var(--ambient-node-base-filter, none); }
+  2.39%, 8.365% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  23.899% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-3 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  15.95% { filter: var(--ambient-node-base-filter, none); }
-  18.24%, 23.966% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  38.854% { filter: var(--ambient-node-base-filter, none); }
+  0% { filter: var(--ambient-node-base-filter, none); }
+  2.39%, 8.365% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  23.899% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-4 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  8.017% { filter: var(--ambient-node-base-filter, none); }
-  10.307%, 16.033% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  30.921% { filter: var(--ambient-node-base-filter, none); }
+  0% { filter: var(--ambient-node-base-filter, none); }
+  2.39%, 8.365% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  23.899% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-5 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  15.064% { filter: var(--ambient-node-base-filter, none); }
-  17.355%, 23.081% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  37.969% { filter: var(--ambient-node-base-filter, none); }
+  0% { filter: var(--ambient-node-base-filter, none); }
+  2.39%, 8.365% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  23.899% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-6 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  26.244% { filter: var(--ambient-node-base-filter, none); }
-  28.535%, 34.261% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  49.149% { filter: var(--ambient-node-base-filter, none); }
+  13.584% { filter: var(--ambient-node-base-filter, none); }
+  15.974%, 21.949% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  37.483% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-7 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  30.666% { filter: var(--ambient-node-base-filter, none); }
-  32.957%, 38.683% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  53.571% { filter: var(--ambient-node-base-filter, none); }
+  8.365% { filter: var(--ambient-node-base-filter, none); }
+  10.755%, 16.729% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  32.264% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-8 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  37.763% { filter: var(--ambient-node-base-filter, none); }
-  40.053%, 45.779% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  60.667% { filter: var(--ambient-node-base-filter, none); }
+  12.304% { filter: var(--ambient-node-base-filter, none); }
+  14.694%, 20.669% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  36.203% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-9 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  44.913% { filter: var(--ambient-node-base-filter, none); }
-  47.203%, 52.929% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  67.817% { filter: var(--ambient-node-base-filter, none); }
+  8.365% { filter: var(--ambient-node-base-filter, none); }
+  10.755%, 16.729% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  32.264% { filter: var(--ambient-node-base-filter, none); }
 }
 @keyframes archify-relay-node-10 { 
   0%, 100% { filter: var(--ambient-node-base-filter, none); }
-  40.823% { filter: var(--ambient-node-base-filter, none); }
-  43.113%, 48.839% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
-  63.727% { filter: var(--ambient-node-base-filter, none); }
+  8.365% { filter: var(--ambient-node-base-filter, none); }
+  10.755%, 16.729% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  32.264% { filter: var(--ambient-node-base-filter, none); }
+}
+@keyframes archify-relay-node-11 { 
+  0%, 100% { filter: var(--ambient-node-base-filter, none); }
+  23.969% { filter: var(--ambient-node-base-filter, none); }
+  26.359%, 32.334% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  47.868% { filter: var(--ambient-node-base-filter, none); }
+}
+@keyframes archify-relay-node-12 { 
+  0%, 100% { filter: var(--ambient-node-base-filter, none); }
+  28.583% { filter: var(--ambient-node-base-filter, none); }
+  30.973%, 36.948% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  52.482% { filter: var(--ambient-node-base-filter, none); }
+}
+@keyframes archify-relay-node-13 { 
+  0%, 100% { filter: var(--ambient-node-base-filter, none); }
+  35.988% { filter: var(--ambient-node-base-filter, none); }
+  38.378%, 44.352% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  59.887% { filter: var(--ambient-node-base-filter, none); }
+}
+@keyframes archify-relay-node-14 { 
+  0%, 100% { filter: var(--ambient-node-base-filter, none); }
+  43.448% { filter: var(--ambient-node-base-filter, none); }
+  45.838%, 51.813% { filter: var(--ambient-node-base-filter,) drop-shadow(0 0 10px var(--arrow-emphasis)); }
+  67.347% { filter: var(--ambient-node-base-filter, none); }
 }
 svg[data-node-ui] [data-node-id] &gt; rect:not(.c-mask) { stroke-width: 1.25px; }
 :is([data-theme="dark"] svg[data-node-ui], svg[data-node-ui][data-theme="dark"]) [data-node-id] &gt; rect:not(.c-mask).c-frontend { fill: color-mix(in srgb, var(--frontend-stroke) 13%, var(--mask)); stroke: color-mix(in srgb, var(--frontend-stroke) 72%, var(--mask)); }
@@ -634,7 +702,7 @@ svg[data-node-ui][data-preset="editorial"] :is([data-graph-role="structural-fram
 svg[data-theme="light"] { --bg: #f4f5f7; --grid: #e9edf2; --canvas-dot: #e2e7ec; --text: #111827; --text-muted: #5b6474; --text-dim: #9aa3b2; --text-faint: #6b7280; --panel: #ffffff; --panel-border: #e5e7eb; --lane-fill: rgba(248, 250, 252, 0.65); --lane-stroke: #cbd5e1; --arrow: #64748b; --arrow-emphasis: #059669; --mask: #ffffff; --frontend-fill: rgba(34, 211, 238, 0.15); --frontend-stroke: #0891b2; --backend-fill: rgba(52, 211, 153, 0.18); --backend-stroke: #059669; --database-fill: rgba(167, 139, 250, 0.2); --database-stroke: #7c3aed; --cloud-fill: rgba(251, 191, 36, 0.18); --cloud-stroke: #d97706; --security-fill: rgba(251, 113, 133, 0.15); --security-stroke: #e11d48; --messagebus-fill: rgba(251, 146, 60, 0.15); --messagebus-stroke: #ea580c; --external-fill: rgba(148, 163, 184, 0.18); --external-stroke: #64748b; --toolbar-bg: rgba(255, 255, 255, 0.92); --toolbar-border: #cbd5e1; --toolbar-text: #334155; --toolbar-hover: #ffffff; --toolbar-menu-bg: #ffffff; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 svg[data-theme="dark"] { --bg: #020617; --grid: #1e293b; --canvas-dot: rgba(148, 163, 184, 0.16); --text: #ffffff; --text-muted: #94a3b8; --text-dim: #475569; --text-faint: #7d8da1; --panel: rgba(15, 23, 42, 0.5); --panel-border: #1e293b; --lane-fill: rgba(15, 23, 42, 0.22); --lane-stroke: #334155; --arrow: #94a3b8; --arrow-emphasis: #34d399; --mask: #0f172a; --frontend-fill: rgba(8, 51, 68, 0.4); --frontend-stroke: #22d3ee; --backend-fill: rgba(6, 78, 59, 0.4); --backend-stroke: #34d399; --database-fill: rgba(76, 29, 149, 0.4); --database-stroke: #a78bfa; --cloud-fill: rgba(120, 53, 15, 0.3); --cloud-stroke: #fbbf24; --security-fill: rgba(136, 19, 55, 0.4); --security-stroke: #fb7185; --messagebus-fill: rgba(251, 146, 60, 0.3); --messagebus-stroke: #fb923c; --external-fill: rgba(30, 41, 59, 0.5); --external-stroke: #94a3b8; --toolbar-bg: rgba(15, 23, 42, 0.8); --toolbar-border: #334155; --toolbar-text: #e2e8f0; --toolbar-hover: rgba(15, 23, 42, 0.95); --toolbar-menu-bg: #0f172a; --flow-cycle: ; --flow-halo-peak: ; --flow-glow-peak: ; --flow-tail-peak: ; --flow-head-peak: ; --flow-wake-peak: ; --flow-ripple-peak: ; --flow-peak: ; }
 rect.c-bg-rect { fill: var(--bg); }
-</style><rect x="0" y="0" width="1230" height="680" class="c-bg-rect"/>
+</style><rect x="0" y="0" width="1142" height="480" class="c-bg-rect"/>
         <title id="archify-diagram-title">Chivabox Movers Lead Pipeline</title>
         <desc id="archify-diagram-description">An architecture diagram generated by Archify.</desc>
         <!-- Definitions -->
@@ -685,63 +753,79 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <!-- Connection paths (before components for correct z-order) -->
         <g data-graph-role="automatic-crossover" style="--step:0">
-          <path data-graph-role="automatic-crossover-underlay" d="M 100 174 L 100 190 Q 100 198 108 198 L 284 198 Q 292 198 292 190 L 292 174" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="browser" data-edge-to="rest" data-edge-label="estimate · submit" data-edge-key="0" data-edge-id="estimate" data-composition-points="100,174;100,198;292,198;292,174" data-composition-crossover="halo" data-composition-independent="true" d="M 100 174 L 100 190 Q 100 198 108 198 L 284 198 Q 292 198 292 190 L 292 174" class="a-default" data-animate="edge" style="--step: 0;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 160 135 L 246 135" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="browser" data-edge-to="rest" data-edge-label="form calls" data-edge-key="0" data-edge-id="estimate" data-composition-points="160,135;246,135" data-composition-crossover="halo" data-composition-independent="true" d="M 160 135 L 246 135" class="a-default" data-animate="edge" style="--step: 0;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:1">
-          <path data-graph-role="automatic-crossover-underlay" d="M 306 174 L 306 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="rest" data-edge-to="leads-table" data-edge-label="insert · apply_sync" data-edge-key="1" data-edge-id="insert" data-composition-points="306,174;306,310" data-composition-crossover="halo" data-composition-independent="true" d="M 306 174 L 306 310" class="a-default" data-animate="edge" style="--step: 1;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 306 174 L 306 190 Q 306 198 298 198 L 251 198 Q 243 198 243 206 L 243 278 Q 243 286 251 286 L 291 286 Q 299 286 299 294 L 299 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="rest" data-edge-to="leads-table" data-edge-label="insert · apply_sync" data-edge-key="1" data-edge-id="insert" data-composition-points="306,174;306,198;243,198;243,286;299,286;299,310" data-composition-crossover="halo" data-composition-independent="true" d="M 306 174 L 306 190 Q 306 198 298 198 L 251 198 Q 243 198 243 206 L 243 278 Q 243 286 251 286 L 291 286 Q 299 286 299 294 L 299 310" class="a-default" data-animate="edge" style="--step: 1;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:2">
-          <path data-graph-role="automatic-crossover-underlay" d="M 100 310 L 100 205 Q 100 197 108 197 L 214 197 Q 222 197 222 189 L 222 157 Q 222 149 230 149 L 246 149" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="settings" data-edge-to="rest" data-edge-label="Options::all()" data-edge-key="2" data-edge-id="configure" data-composition-points="100,310;100,197;222,197;222,149;246,149" data-composition-crossover="halo" data-composition-independent="true" d="M 100 310 L 100 205 Q 100 197 108 197 L 214 197 Q 222 197 222 189 L 222 157 Q 222 149 230 149 L 246 149" class="a-default" data-animate="edge" style="--step: 2;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 160 342 L 195 342 Q 203 342 203 334 L 203 157 Q 203 149 211 149 L 246 149" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="settings" data-edge-to="rest" data-edge-label="Options::all()" data-edge-key="2" data-edge-id="configure" data-composition-points="160,342;203,342;203,149;246,149" data-composition-crossover="halo" data-composition-independent="true" d="M 160 342 L 195 342 Q 203 342 203 334 L 203 157 Q 203 149 211 149 L 246 149" class="a-default" data-animate="edge" style="--step: 2;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:3">
           <path data-graph-role="automatic-crossover-underlay" d="M 452 342 L 366 342" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
           <path data-edge-from="cron" data-edge-to="leads-table" data-edge-label="claim due rows" data-edge-key="3" data-edge-id="outbox-claim" data-composition-points="452,342;366,342" data-composition-crossover="halo" data-composition-independent="true" d="M 452 342 L 366 342" class="a-default" data-animate="edge" style="--step: 3;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:4">
-          <path data-graph-role="automatic-crossover-underlay" d="M 366 142 L 628 142" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="rest" data-edge-to="lead-intake" data-edge-label="signed JWT POST" data-edge-key="4" data-edge-id="inline-deliver" data-composition-points="366,142;628,142" data-composition-crossover="halo" data-composition-independent="true" d="M 366 142 L 628 142" class="a-emphasis" data-animate="edge" style="--step: 4;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 366 142 L 580 142" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="rest" data-edge-to="lead-intake" data-edge-label="signed JWT POST" data-edge-key="4" data-edge-id="inline-deliver" data-composition-points="366,142;580,142" data-composition-crossover="halo" data-composition-independent="true" d="M 366 142 L 580 142" class="a-emphasis" data-animate="edge" style="--step: 4;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:5">
-          <path data-graph-role="automatic-crossover-underlay" d="M 556 310 L 556 166 Q 556 158 564 158 L 628 158" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="cron" data-edge-to="lead-intake" data-edge-label="retry with backoff" data-edge-key="5" data-edge-id="cron-deliver" data-composition-points="556,310;556,158;628,158" data-composition-crossover="halo" data-composition-independent="true" d="M 556 310 L 556 166 Q 556 158 564 158 L 628 158" class="a-dashed" data-animate="edge" style="--step: 5;" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 556 310 L 556 166 Q 556 158 564 158 L 580 158" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="cron" data-edge-to="lead-intake" data-edge-label="retry with backoff" data-edge-key="5" data-edge-id="cron-deliver" data-composition-points="556,310;556,158;580,158" data-composition-crossover="halo" data-composition-independent="true" d="M 556 310 L 556 166 Q 556 158 564 158 L 580 158" class="a-dashed" data-animate="edge" style="--step: 5;" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:6">
-          <path data-graph-role="automatic-crossover-underlay" d="M 688 174 L 688 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="lead-intake" data-edge-to="postgres" data-edge-label="record once" data-edge-key="6" data-edge-id="record-once" data-composition-points="688,174;688,310" data-composition-crossover="halo" data-composition-independent="true" d="M 688 174 L 688 310" class="a-default" data-animate="edge" style="--step: 6;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 640 174 L 640 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="lead-intake" data-edge-to="postgres" data-edge-label="record once" data-edge-key="6" data-edge-id="record-once" data-composition-points="640,174;640,310" data-composition-crossover="halo" data-composition-independent="true" d="M 640 174 L 640 310" class="a-default" data-animate="edge" style="--step: 6;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:7">
-          <path data-graph-role="automatic-crossover-underlay" d="M 717.05 174 L 717.05 190 Q 717.05 198 725.05 198 L 867.95 198 Q 875.95 198 875.95 190 L 875.95 174" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="lead-intake" data-edge-to="process-lead" data-edge-label="accepted · fire-and-forget" data-edge-key="7" data-edge-id="handoff" data-composition-points="717.05,174;717.05,198;875.95,198;875.95,174" data-composition-crossover="halo" data-composition-independent="true" d="M 717.05 174 L 717.05 190 Q 717.05 198 725.05 198 L 867.95 198 Q 875.95 198 875.95 190 L 875.95 174" class="a-emphasis" data-animate="edge" style="--step: 7;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 669.05 174 L 669.05 190 Q 669.05 198 677.05 198 L 819.95 198 Q 827.95 198 827.95 190 L 827.95 174" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="lead-intake" data-edge-to="process-lead" data-edge-label="accepted · fire-and-forget" data-edge-key="7" data-edge-id="handoff" data-composition-points="669.05,174;669.05,198;827.95,198;827.95,174" data-composition-crossover="halo" data-composition-independent="true" d="M 669.05 174 L 669.05 190 Q 669.05 198 677.05 198 L 819.95 198 Q 827.95 198 827.95 190 L 827.95 174" class="a-emphasis" data-animate="edge" style="--step: 7;" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:8">
-          <path data-graph-role="automatic-crossover-underlay" d="M 884 110 L 884 80 Q 884 72 892 72 L 1030 72" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="process-lead" data-edge-to="sheets" data-edge-label="append or update row by request_uuid (RAW)" data-edge-key="8" data-edge-id="append" data-composition-points="884,110;884,72;1030,72" data-composition-crossover="halo" data-composition-independent="true" d="M 884 110 L 884 80 Q 884 72 892 72 L 1030 72" class="a-default" data-animate="edge" style="--step: 8;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 836 110 L 836 80 Q 836 72 844 72 L 982 72" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="process-lead" data-edge-to="sheets" data-edge-label="append or update row by request_uuid (RAW)" data-edge-key="8" data-edge-id="append" data-composition-points="836,110;836,72;982,72" data-composition-crossover="halo" data-composition-independent="true" d="M 836 110 L 836 80 Q 836 72 844 72 L 982 72" class="a-default" data-animate="edge" style="--step: 8;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:9">
-          <path data-graph-role="automatic-crossover-underlay" d="M 928 174 L 928 188 Q 928 196 936 196 L 1030 196" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="process-lead" data-edge-to="gmail" data-edge-label="team + customer" data-edge-key="9" data-edge-id="notify" data-composition-points="928,174;928,196;1030,196" data-composition-crossover="halo" data-composition-independent="true" d="M 928 174 L 928 188 Q 928 196 936 196 L 1030 196" class="a-default" data-animate="edge" style="--step: 9;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 880 174 L 880 188 Q 880 196 888 196 L 982 196" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="process-lead" data-edge-to="gmail" data-edge-label="team + customer" data-edge-key="9" data-edge-id="notify" data-composition-points="880,174;880,196;982,196" data-composition-crossover="halo" data-composition-independent="true" d="M 880 174 L 880 188 Q 880 196 888 196 L 982 196" class="a-default" data-animate="edge" style="--step: 9;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:10">
-          <path data-graph-role="automatic-crossover-underlay" d="M 891 174 L 891 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="process-lead" data-edge-to="error-handler" data-edge-label="on failure" data-edge-key="10" data-edge-id="alert-trigger" data-composition-points="891,174;891,310" data-composition-crossover="halo" data-composition-independent="true" d="M 891 174 L 891 310" class="a-dashed" data-animate="edge" style="--step: 10;" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 843 174 L 843 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="process-lead" data-edge-to="error-handler" data-edge-label="on failure" data-edge-key="10" data-edge-id="alert-trigger" data-composition-points="843,174;843,310" data-composition-crossover="halo" data-composition-independent="true" d="M 843 174 L 843 310" class="a-dashed" data-animate="edge" style="--step: 10;" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:11">
-          <path data-graph-role="automatic-crossover-underlay" d="M 702 174 L 702 278 Q 702 286 710 286 L 869 286 Q 877 286 877 294 L 877 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="lead-intake" data-edge-to="error-handler" data-edge-label="on failure" data-edge-key="11" data-edge-id="intake-alert-trigger" data-composition-points="702,174;702,286;877,286;877,310" data-composition-crossover="halo" data-composition-independent="true" d="M 702 174 L 702 278 Q 702 286 710 286 L 869 286 Q 877 286 877 294 L 877 310" class="a-dashed" data-animate="edge" style="--step: 11;" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 654 174 L 654 278 Q 654 286 662 286 L 821 286 Q 829 286 829 294 L 829 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="lead-intake" data-edge-to="error-handler" data-edge-label="on failure" data-edge-key="11" data-edge-id="intake-alert-trigger" data-composition-points="654,174;654,286;829,286;829,310" data-composition-crossover="halo" data-composition-independent="true" d="M 654 174 L 654 278 Q 654 286 662 286 L 821 286 Q 829 286 829 294 L 829 310" class="a-dashed" data-animate="edge" style="--step: 11;" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:12">
-          <path data-graph-role="automatic-crossover-underlay" d="M 944 342 L 1082 342 Q 1090 342 1090 334 L 1090 244" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="error-handler" data-edge-to="gmail" data-edge-label="operator alert" data-edge-key="12" data-edge-id="alert-send" data-composition-points="944,342;1090,342;1090,244" data-composition-crossover="halo" data-composition-independent="true" d="M 944 342 L 1082 342 Q 1090 342 1090 334 L 1090 244" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 896 342 L 912 342 Q 920 342 920 334 L 920 276 Q 920 268 928 268 L 1027 268 Q 1035 268 1035 260 L 1035 244" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="error-handler" data-edge-to="gmail" data-edge-label="operator alert" data-edge-key="12" data-edge-id="alert-send" data-composition-points="896,342;920,342;920,268;1035,268;1035,244" data-composition-crossover="halo" data-composition-independent="true" d="M 896 342 L 912 342 Q 920 342 920 334 L 920 276 Q 920 268 928 268 L 1027 268 Q 1035 268 1035 260 L 1035 244" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:13">
+          <path data-graph-role="automatic-crossover-underlay" d="M 452 62 L 314 62 Q 306 62 306 70 L 306 110" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="polylang" data-edge-to="rest" data-edge-label="page language → ?locale=" data-edge-key="13" data-edge-id="page-language" data-composition-points="452,62;306,62;306,110" data-composition-crossover="halo" data-composition-independent="true" d="M 452 62 L 314 62 Q 306 62 306 70 L 306 110" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:14">
+          <path data-graph-role="automatic-crossover-underlay" d="M 100 84 L 100 110" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="theme" data-edge-to="browser" data-edge-label="serves the page" data-edge-key="14" data-edge-id="serve-page" data-composition-points="100,84;100,110" data-composition-crossover="halo" d="M 100 84 L 100 110" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:15">
+          <path data-graph-role="automatic-crossover-underlay" d="M 1049 310 L 1049 244" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="weekly-digest" data-edge-to="gmail" data-edge-label="weekly summary" data-edge-key="15" data-edge-id="digest-send" data-composition-points="1049,310;1049,244" data-composition-crossover="halo" data-composition-independent="true" d="M 1049 310 L 1049 244" class="a-default" data-animate="edge" style="--step: 12;" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:16">
+          <path data-graph-role="automatic-crossover-underlay" d="M 313 274 L 313 310" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="status-page" data-edge-to="leads-table" data-edge-label="reads · confirms date" data-edge-key="16" data-edge-id="status-read" data-composition-points="313,274;313,310" data-composition-crossover="halo" data-composition-independent="true" d="M 313 274 L 313 310" class="a-dashed" data-animate="edge" style="--step: 12;" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         </g>
 
         <!-- Components -->
         <g id="node-browser" data-node-id="browser" data-node-label="Browser" tabindex="0" role="button" aria-label="Focus Browser, three-step form, Architecture component" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="three-step form" data-node-context="Architecture component">
           <title>Browser · three-step form · Architecture component</title>
           <rect x="40" y="110" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="40" y="110" width="120" height="64" rx="8" class="c-frontend" data-animate="node" style="--step: 0; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
+          <rect x="40" y="110" width="120" height="64" rx="8" class="c-frontend" data-animate="node" style="--step: 0; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(46 116) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
@@ -755,7 +839,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-rest" data-node-id="rest" data-node-label="REST API" tabindex="0" role="button" aria-label="Focus REST API, estimate · leads, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="estimate · leads" data-node-context="Architecture component">
           <title>REST API · estimate · leads · Architecture component</title>
           <rect x="246" y="110" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="246" y="110" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
+          <rect x="246" y="110" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 1; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(252 116) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -766,7 +850,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-leads-table" data-node-id="leads-table" data-node-label="Leads table" tabindex="0" role="button" aria-label="Focus Leads table, MySQL · outbox, Architecture component, MySQL" aria-pressed="false" data-node-kind="database" data-node-sublabel="MySQL · outbox" data-node-context="Architecture component" data-node-brand="MySQL" data-node-brand-id="mysql" data-node-brand-status="preset" data-node-brand-source="https://www.mysql.com/about/legal/logos.html">
           <title>Leads table · MySQL · outbox · Architecture component · MySQL</title>
           <rect x="246" y="310" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="246" y="310" width="120" height="64" rx="8" class="c-database" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
+          <rect x="246" y="310" width="120" height="64" rx="8" class="c-database" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(252 316) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
@@ -783,7 +867,7 @@ rect.c-bg-rect { fill: var(--bg); }
         <g id="node-cron" data-node-id="cron" data-node-label="Cron sidecar" tabindex="0" role="button" aria-label="Focus Cron sidecar, outbox every 60 s, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="outbox every 60 s" data-node-context="Architecture component">
           <title>Cron sidecar · outbox every 60 s · Architecture component</title>
           <rect x="452" y="310" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="452" y="310" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
+          <rect x="452" y="310" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 3; --flow-node-name: archify-relay-node-1;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(458 316) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -793,82 +877,82 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <g id="node-lead-intake" data-node-id="lead-intake" data-node-label="lead-intake" tabindex="0" role="button" aria-label="Focus lead-intake, JWT verify · gate, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="JWT verify · gate" data-node-context="Architecture component">
           <title>lead-intake · JWT verify · gate · Architecture component</title>
-          <rect x="628" y="110" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="628" y="110" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 5; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(634 116) scale(0.6875)">
+          <rect x="580" y="110" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="580" y="110" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 5; --flow-node-name: archify-relay-node-8;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(586 116) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="688" y="140" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">lead-intake</text>
-        <text x="688" y="156" class="t-muted" font-size="9" text-anchor="middle">JWT verify · gate</text>
+          <text data-node-label="" x="640" y="140" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">lead-intake</text>
+        <text x="640" y="156" class="t-muted" font-size="9" text-anchor="middle">JWT verify · gate</text>
         </g>
 
         <g id="node-process-lead" data-node-id="process-lead" data-node-label="process-lead" tabindex="0" role="button" aria-label="Focus process-lead, row · 2 emails, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="row · 2 emails" data-node-context="Architecture component">
           <title>process-lead · row · 2 emails · Architecture component</title>
-          <rect x="824" y="110" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="824" y="110" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-7;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(830 116) scale(0.6875)">
+          <rect x="776" y="110" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="776" y="110" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 8; --flow-node-name: archify-relay-node-12;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(782 116) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="884" y="140" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">process-lead</text>
-        <text x="884" y="156" class="t-muted" font-size="9" text-anchor="middle">row · 2 emails</text>
+          <text data-node-label="" x="836" y="140" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">process-lead</text>
+        <text x="836" y="156" class="t-muted" font-size="9" text-anchor="middle">row · 2 emails</text>
         </g>
 
         <g id="node-error-handler" data-node-id="error-handler" data-node-label="error-handler" tabindex="0" role="button" aria-label="Focus error-handler, plain-text alert, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="plain-text alert" data-node-context="Architecture component">
           <title>error-handler · plain-text alert · Architecture component</title>
-          <rect x="824" y="310" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="824" y="310" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-8;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(830 316) scale(0.6875)">
+          <rect x="776" y="310" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="776" y="310" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 11; --flow-node-name: archify-relay-node-13;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(782 316) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" x="884" y="340" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">error-handler</text>
-        <text x="884" y="356" class="t-muted" font-size="9" text-anchor="middle">plain-text alert</text>
+          <text data-node-label="" x="836" y="340" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">error-handler</text>
+        <text x="836" y="356" class="t-muted" font-size="9" text-anchor="middle">plain-text alert</text>
         </g>
 
         <g id="node-postgres" data-node-id="postgres" data-node-label="Postgres 17" tabindex="0" role="button" aria-label="Focus Postgres 17, processed_events, Architecture component, PostgreSQL" aria-pressed="false" data-node-kind="database" data-node-sublabel="processed_events" data-node-context="Architecture component" data-node-brand="PostgreSQL" data-node-brand-id="postgresql" data-node-brand-status="preset" data-node-brand-source="https://wiki.postgresql.org/wiki/Logo">
           <title>Postgres 17 · processed_events · Architecture component · PostgreSQL</title>
-          <rect x="628" y="310" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="628" y="310" width="120" height="64" rx="8" class="c-database" data-animate="node" style="--step: 7; --flow-node-name: archify-relay-node-6;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(634 316) scale(0.6875)">
+          <rect x="580" y="310" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="580" y="310" width="120" height="64" rx="8" class="c-database" data-animate="node" style="--step: 7; --flow-node-name: archify-relay-node-11;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(586 316) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <g aria-hidden="true" data-brand-mark="postgresql" data-brand-title="PostgreSQL" data-brand-status="preset" data-brand-source="https://wiki.postgresql.org/wiki/Logo" class="brand-mark" transform="translate(726 316)">
+          <g aria-hidden="true" data-brand-mark="postgresql" data-brand-title="PostgreSQL" data-brand-status="preset" data-brand-source="https://wiki.postgresql.org/wiki/Logo" class="brand-mark" transform="translate(678 316)">
             <rect width="16" height="16" rx="4" class="brand-mark-badge"/>
             <path d="M23.5594 14.7228a.5269.5269 0 0 0-.0563-.1191c-.139-.2632-.4768-.3418-1.0074-.2321-1.6533.3411-2.2935.1312-2.5256-.0191 1.342-2.0482 2.445-4.522 3.0411-6.8297.2714-1.0507.7982-3.5237.1222-4.7316a1.5641 1.5641 0 0 0-.1509-.235C21.6931.9086 19.8007.0248 17.5099.0005c-1.4947-.0158-2.7705.3461-3.1161.4794a9.449 9.449 0 0 0-.5159-.0816 8.044 8.044 0 0 0-1.3114-.1278c-1.1822-.0184-2.2038.2642-3.0498.8406-.8573-.3211-4.7888-1.645-7.2219.0788C.9359 2.1526.3086 3.8733.4302 6.3043c.0409.818.5069 3.334 1.2423 5.7436.4598 1.5065.9387 2.7019 1.4334 3.582.553.9942 1.1259 1.5933 1.7143 1.7895.4474.1491 1.1327.1441 1.8581-.7279.8012-.9635 1.5903-1.8258 1.9446-2.2069.4351.2355.9064.3625 1.39.3772a.0569.0569 0 0 0 .0004.0041 11.0312 11.0312 0 0 0-.2472.3054c-.3389.4302-.4094.5197-1.5002.7443-.3102.064-1.1344.2339-1.1464.8115-.0025.1224.0329.2309.0919.3268.2269.4231.9216.6097 1.015.6331 1.3345.3335 2.5044.092 3.3714-.6787-.017 2.231.0775 4.4174.3454 5.0874.2212.5529.7618 1.9045 2.4692 1.9043.2505 0 .5263-.0291.8296-.0941 1.7819-.3821 2.5557-1.1696 2.855-2.9059.1503-.8707.4016-2.8753.5388-4.1012.0169-.0703.0357-.1207.057-.1362.0007-.0005.0697-.0471.4272.0307a.3673.3673 0 0 0 .0443.0068l.2539.0223.0149.001c.8468.0384 1.9114-.1426 2.5312-.4308.6438-.2988 1.8057-1.0323 1.5951-1.6698zM2.371 11.8765c-.7435-2.4358-1.1779-4.8851-1.2123-5.5719-.1086-2.1714.4171-3.6829 1.5623-4.4927 1.8367-1.2986 4.8398-.5408 6.108-.13-.0032.0032-.0066.0061-.0098.0094-2.0238 2.044-1.9758 5.536-1.9708 5.7495-.0002.0823.0066.1989.0162.3593.0348.5873.0996 1.6804-.0735 2.9184-.1609 1.1504.1937 2.2764.9728 3.0892.0806.0841.1648.1631.2518.2374-.3468.3714-1.1004 1.1926-1.9025 2.1576-.5677.6825-.9597.5517-1.0886.5087-.3919-.1307-.813-.5871-1.2381-1.3223-.4796-.839-.9635-2.0317-1.4155-3.5126zm6.0072 5.0871c-.1711-.0428-.3271-.1132-.4322-.1772.0889-.0394.2374-.0902.4833-.1409 1.2833-.2641 1.4815-.4506 1.9143-1.0002.0992-.126.2116-.2687.3673-.4426a.3549.3549 0 0 0 .0737-.1298c.1708-.1513.2724-.1099.4369-.0417.156.0646.3078.26.3695.4752.0291.1016.0619.2945-.0452.4444-.9043 1.2658-2.2216 1.2494-3.1676 1.0128zm2.094-3.988-.0525.141c-.133.3566-.2567.6881-.3334 1.003-.6674-.0021-1.3168-.2872-1.8105-.8024-.6279-.6551-.9131-1.5664-.7825-2.5004.1828-1.3079.1153-2.4468.079-3.0586-.005-.0857-.0095-.1607-.0122-.2199.2957-.2621 1.6659-.9962 2.6429-.7724.4459.1022.7176.4057.8305.928.5846 2.7038.0774 3.8307-.3302 4.7363-.084.1866-.1633.3629-.2311.5454zm7.3637 4.5725c-.0169.1768-.0358.376-.0618.5959l-.146.4383a.3547.3547 0 0 0-.0182.1077c-.0059.4747-.054.6489-.115.8693-.0634.2292-.1353.4891-.1794 1.0575-.11 1.4143-.8782 2.2267-2.4172 2.5565-1.5155.3251-1.7843-.4968-2.0212-1.2217a6.5824 6.5824 0 0 0-.0769-.2266c-.2154-.5858-.1911-1.4119-.1574-2.5551.0165-.5612-.0249-1.9013-.3302-2.6462.0044-.2932.0106-.5909.019-.8918a.3529.3529 0 0 0-.0153-.1126 1.4927 1.4927 0 0 0-.0439-.208c-.1226-.4283-.4213-.7866-.7797-.9351-.1424-.059-.4038-.1672-.7178-.0869.067-.276.1831-.5875.309-.9249l.0529-.142c.0595-.16.134-.3257.213-.5012.4265-.9476 1.0106-2.2453.3766-5.1772-.2374-1.0981-1.0304-1.6343-2.2324-1.5098-.7207.0746-1.3799.3654-1.7088.5321a5.6716 5.6716 0 0 0-.1958.1041c.0918-1.1064.4386-3.1741 1.7357-4.4823a4.0306 4.0306 0 0 1 .3033-.276.3532.3532 0 0 0 .1447-.0644c.7524-.5706 1.6945-.8506 2.802-.8325.4091.0067.8017.0339 1.1742.081 1.939.3544 3.2439 1.4468 4.0359 2.3827.8143.9623 1.2552 1.9315 1.4312 2.4543-1.3232-.1346-2.2234.1268-2.6797.779-.9926 1.4189.543 4.1729 1.2811 5.4964.1353.2426.2522.4522.2889.5413.2403.5825.5515.9713.7787 1.2552.0696.087.1372.1714.1885.245-.4008.1155-1.1208.3825-1.0552 1.717-.0123.1563-.0423.4469-.0834.8148-.0461.2077-.0702.4603-.0994.7662zm.8905-1.6211c-.0405-.8316.2691-.9185.5967-1.0105a2.8566 2.8566 0 0 0 .135-.0406 1.202 1.202 0 0 0 .1342.103c.5703.3765 1.5823.4213 3.0068.1344-.2016.1769-.5189.3994-.9533.6011-.4098.1903-1.0957.333-1.7473.3636-.7197.0336-1.0859-.0807-1.1721-.151zm.5695-9.2712c-.0059.3508-.0542.6692-.1054 1.0017-.055.3576-.112.7274-.1264 1.1762-.0142.4368.0404.8909.0932 1.3301.1066.887.216 1.8003-.2075 2.7014a3.5272 3.5272 0 0 1-.1876-.3856c-.0527-.1276-.1669-.3326-.3251-.6162-.6156-1.1041-2.0574-3.6896-1.3193-4.7446.3795-.5427 1.3408-.5661 2.1781-.463zm.2284 7.0137a12.3762 12.3762 0 0 0-.0853-.1074l-.0355-.0444c.7262-1.1995.5842-2.3862.4578-3.4385-.0519-.4318-.1009-.8396-.0885-1.2226.0129-.4061.0666-.7543.1185-1.0911.0639-.415.1288-.8443.1109-1.3505.0134-.0531.0188-.1158.0118-.1902-.0457-.4855-.5999-1.938-1.7294-3.253-.6076-.7073-1.4896-1.4972-2.6889-2.0395.5251-.1066 1.2328-.2035 2.0244-.1859 2.0515.0456 3.6746.8135 4.8242 2.2824a.908.908 0 0 1 .0667.1002c.7231 1.3556-.2762 6.2751-2.9867 10.5405zm-8.8166-6.1162c-.025.1794-.3089.4225-.6211.4225a.5821.5821 0 0 1-.0809-.0056c-.1873-.026-.3765-.144-.5059-.3156-.0458-.0605-.1203-.178-.1055-.2844.0055-.0401.0261-.0985.0925-.1488.1182-.0894.3518-.1226.6096-.0867.3163.0441.6426.1938.6113.4186zm7.9305-.4114c.0111.0792-.049.201-.1531.3102-.0683.0717-.212.1961-.4079.2232a.5456.5456 0 0 1-.075.0052c-.2935 0-.5414-.2344-.5607-.3717-.024-.1765.2641-.3106.5611-.352.297-.0414.6111.0088.6356.1851z" transform="translate(3 3) scale(0.4166666666666667)" fill="#4169E1"/>
             <rect width="16" height="16" rx="4" class="brand-mark-frame"/>
           </g>
-          <text data-node-label="" x="688" y="340" class="t-primary" font-size="9.6" font-weight="600" text-anchor="middle">Postgres 17</text>
-        <text x="688" y="356" class="t-muted" font-size="9" text-anchor="middle">processed_events</text>
+          <text data-node-label="" x="640" y="340" class="t-primary" font-size="9.6" font-weight="600" text-anchor="middle">Postgres 17</text>
+        <text x="640" y="356" class="t-muted" font-size="9" text-anchor="middle">processed_events</text>
         </g>
 
         <g id="node-sheets" data-node-id="sheets" data-node-label="Google Sheets" tabindex="0" role="button" aria-label="Focus Google Sheets, Moving leads tab, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="Moving leads tab" data-node-context="Architecture component">
           <title>Google Sheets · Moving leads tab · Architecture component</title>
-          <rect x="1030" y="40" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="1030" y="40" width="120" height="64" rx="8" class="c-external" data-animate="node" style="--step: 9; --flow-node-name: archify-relay-node-9;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(1036 46) scale(0.6875)">
+          <rect x="982" y="40" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="982" y="40" width="120" height="64" rx="8" class="c-external" data-animate="node" style="--step: 9; --flow-node-name: archify-relay-node-14;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(988 46) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" x="1090" y="70" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Google Sheets</text>
-        <text x="1090" y="86" class="t-muted" font-size="9" text-anchor="middle">Moving leads tab</text>
+          <text data-node-label="" x="1042" y="70" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Google Sheets</text>
+        <text x="1042" y="86" class="t-muted" font-size="9" text-anchor="middle">Moving leads tab</text>
         </g>
 
         <g id="node-gmail" data-node-id="gmail" data-node-label="Gmail" tabindex="0" role="button" aria-label="Focus Gmail, team · customer, Architecture component" aria-pressed="false" data-node-kind="external" data-node-sublabel="team · customer" data-node-context="Architecture component">
           <title>Gmail · team · customer · Architecture component</title>
-          <rect x="1030" y="180" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="1030" y="180" width="120" height="64" rx="8" class="c-external" data-animate="node" style="--step: 10; --flow-node-name: archify-relay-node-10;" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(1036 186) scale(0.6875)">
+          <rect x="982" y="180" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="982" y="180" width="120" height="64" rx="8" class="c-external" data-animate="node" style="--step: 10; --flow-node-name: archify-relay-node-10;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(988 186) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" x="1090" y="210" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Gmail</text>
-        <text x="1090" y="226" class="t-muted" font-size="9" text-anchor="middle">team · customer</text>
+          <text data-node-label="" x="1042" y="210" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Gmail</text>
+        <text x="1042" y="226" class="t-muted" font-size="9" text-anchor="middle">team · customer</text>
         </g>
 
         <g id="node-settings" data-node-id="settings" data-node-label="Admin settings" tabindex="0" role="button" aria-label="Focus Admin settings, rates · delivery, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="rates · delivery" data-node-context="Architecture component">
           <title>Admin settings · rates · delivery · Architecture component</title>
           <rect x="40" y="310" width="120" height="64" rx="8" class="c-mask"/>
-          <rect x="40" y="310" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-1;" stroke-width="1.5"/>
+          <rect x="40" y="310" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 2; --flow-node-name: archify-relay-node-0;" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 316) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
@@ -876,58 +960,124 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="100" y="356" class="t-muted" font-size="9" text-anchor="middle">rates · delivery</text>
         </g>
 
+        <g id="node-polylang" data-node-id="polylang" data-node-label="Polylang" tabindex="0" role="button" aria-label="Focus Polylang, English | Español, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="English | Español" data-node-context="Architecture component">
+          <title>Polylang · English | Español · Architecture component</title>
+          <rect x="452" y="30" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="452" y="30" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-2;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(458 36) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="512" y="60" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Polylang</text>
+        <text x="512" y="76" class="t-muted" font-size="9" text-anchor="middle">English | Español</text>
+        </g>
+
+        <g id="node-theme" data-node-id="theme" data-node-label="Chivabox theme" tabindex="0" role="button" aria-label="Focus Chivabox theme, patterns · JSON-LD, Architecture component" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="patterns · JSON-LD" data-node-context="Architecture component">
+          <title>Chivabox theme · patterns · JSON-LD · Architecture component</title>
+          <rect x="40" y="20" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="40" y="20" width="120" height="64" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-3;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(46 26) scale(0.6875)">
+            <rect x="2" y="3" width="12" height="10" rx="2"/>
+            <path d="M2 6.5h12"/>
+            <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
+            <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
+          </g>
+          <text data-node-label="" x="100" y="50" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Chivabox theme</text>
+        <text x="100" y="66" class="t-muted" font-size="9" text-anchor="middle">patterns · JSON-LD</text>
+        </g>
+
+        <g id="node-weekly-digest" data-node-id="weekly-digest" data-node-label="weekly-digest" tabindex="0" role="button" aria-label="Focus weekly-digest, Mondays · sheet, Architecture component" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Mondays · sheet" data-node-context="Architecture component">
+          <title>weekly-digest · Mondays · sheet · Architecture component</title>
+          <rect x="982" y="310" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="982" y="310" width="120" height="64" rx="8" class="c-backend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-4;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(988 316) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="1042" y="340" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">weekly-digest</text>
+        <text x="1042" y="356" class="t-muted" font-size="9" text-anchor="middle">Mondays · sheet</text>
+        </g>
+
+        <g id="node-status-page" data-node-id="status-page" data-node-label="Status page" tabindex="0" role="button" aria-label="Focus Status page, signed link, Architecture component" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="signed link" data-node-context="Architecture component">
+          <title>Status page · signed link · Architecture component</title>
+          <rect x="246" y="210" width="120" height="64" rx="8" class="c-mask"/>
+          <rect x="246" y="210" width="120" height="64" rx="8" class="c-frontend" data-animate="node" style="--step: 12; --flow-node-name: archify-relay-node-5;" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(252 216) scale(0.6875)">
+            <rect x="2" y="3" width="12" height="10" rx="2"/>
+            <path d="M2 6.5h12"/>
+            <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
+            <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
+          </g>
+          <text data-node-label="" x="306" y="240" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Status page</text>
+        <text x="306" y="256" class="t-muted" font-size="9" text-anchor="middle">signed link</text>
+        </g>
+
         <!-- Connection labels -->
-        <g data-edge-from="browser" data-edge-to="rest" data-edge-label="estimate · submit" data-edge-key="0" data-edge-id="estimate">
-          <rect x="150.2" y="208" width="91.6" height="14" rx="3" class="c-mask"/>
-          <text x="196" y="218" class="t-edge-default" font-size="8" text-anchor="middle">estimate · submit</text>
+        <g data-edge-from="browser" data-edge-to="rest" data-edge-label="form calls" data-edge-key="0" data-edge-id="estimate">
+          <rect x="174" y="115" width="58" height="14" rx="3" class="c-mask"/>
+          <text x="203" y="125" class="t-edge-default" font-size="8" text-anchor="middle">form calls</text>
         </g>
         <g data-edge-from="rest" data-edge-to="leads-table" data-edge-label="insert · apply_sync" data-edge-key="1" data-edge-id="insert">
-          <rect x="198.8" y="235" width="101.2" height="14" rx="3" class="c-mask"/>
-          <text x="249.4" y="245" class="t-edge-default" font-size="8" text-anchor="middle">insert · apply_sync</text>
+          <rect x="223.9" y="178" width="101.2" height="14" rx="3" class="c-mask"/>
+          <text x="274.5" y="188" class="t-edge-default" font-size="8" text-anchor="middle">insert · apply_sync</text>
         </g>
         <g data-edge-from="settings" data-edge-to="rest" data-edge-label="Options::all()" data-edge-key="2" data-edge-id="configure">
-          <rect x="122.4" y="177" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="161" y="187" class="t-edge-default" font-size="8" text-anchor="middle">Options::all()</text>
+          <rect x="119.80000000000001" y="238.5" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="158.4" y="248.5" class="t-edge-default" font-size="8" text-anchor="middle">Options::all()</text>
         </g>
         <g data-edge-from="cron" data-edge-to="leads-table" data-edge-label="claim due rows" data-edge-key="3" data-edge-id="outbox-claim">
           <rect x="370.4" y="322" width="77.2" height="14" rx="3" class="c-mask"/>
           <text x="409" y="332" class="t-edge-default" font-size="8" text-anchor="middle">claim due rows</text>
         </g>
         <g data-edge-from="rest" data-edge-to="lead-intake" data-edge-label="signed JWT POST" data-edge-key="4" data-edge-id="inline-deliver">
-          <rect x="456" y="122" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="497" y="132" class="t-edge-emphasis" font-size="8" text-anchor="middle">signed JWT POST</text>
+          <rect x="432" y="122" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="473" y="132" class="t-edge-emphasis" font-size="8" text-anchor="middle">signed JWT POST</text>
         </g>
         <g data-edge-from="cron" data-edge-to="lead-intake" data-edge-label="retry with backoff" data-edge-key="5" data-edge-id="cron-deliver">
           <rect x="453.6" y="227" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
           <text x="501.8" y="237" class="t-edge-dashed" font-size="8" text-anchor="middle">retry with backoff</text>
         </g>
         <g data-edge-from="lead-intake" data-edge-to="postgres" data-edge-label="record once" data-edge-key="6" data-edge-id="record-once">
-          <rect x="619.2" y="235" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="650.6" y="245" class="t-edge-default" font-size="8" text-anchor="middle">record once</text>
+          <rect x="571.2" y="235" width="62.8" height="14" rx="3" class="c-mask"/>
+          <text x="602.6" y="245" class="t-edge-default" font-size="8" text-anchor="middle">record once</text>
         </g>
         <g data-edge-from="lead-intake" data-edge-to="process-lead" data-edge-label="accepted · fire-and-forget" data-edge-key="7" data-edge-id="handoff">
-          <rect x="729.1" y="178" width="134.8" height="14" rx="3" class="c-mask"/>
-          <text x="796.5" y="188" class="t-edge-emphasis" font-size="8" text-anchor="middle">accepted · fire-and-forget</text>
+          <rect x="681.1" y="178" width="134.8" height="14" rx="3" class="c-mask"/>
+          <text x="748.5" y="188" class="t-edge-emphasis" font-size="8" text-anchor="middle">accepted · fire-and-forget</text>
         </g>
         <g data-edge-from="process-lead" data-edge-to="sheets" data-edge-label="append or update row by request_uuid (RAW)" data-edge-key="8" data-edge-id="append">
-          <rect x="666.4000000000001" y="84" width="211.6" height="14" rx="3" class="c-mask"/>
-          <text x="772.2" y="94" class="t-edge-default" font-size="8" text-anchor="middle">append or update row by request_uuid (RAW)</text>
+          <rect x="618.4000000000001" y="84" width="211.6" height="14" rx="3" class="c-mask"/>
+          <text x="724.2" y="94" class="t-edge-default" font-size="8" text-anchor="middle">append or update row by request_uuid (RAW)</text>
         </g>
         <g data-edge-from="process-lead" data-edge-to="gmail" data-edge-label="team + customer" data-edge-key="9" data-edge-id="notify">
-          <rect x="938" y="176" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="979" y="186" class="t-edge-default" font-size="8" text-anchor="middle">team + customer</text>
+          <rect x="890" y="176" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="931" y="186" class="t-edge-default" font-size="8" text-anchor="middle">team + customer</text>
         </g>
         <g data-edge-from="process-lead" data-edge-to="error-handler" data-edge-label="on failure" data-edge-key="10" data-edge-id="alert-trigger">
-          <rect x="827" y="235" width="58" height="14" rx="3" class="c-mask"/>
-          <text x="856" y="245" class="t-edge-dashed" font-size="8" text-anchor="middle">on failure</text>
+          <rect x="779" y="235" width="58" height="14" rx="3" class="c-mask"/>
+          <text x="808" y="245" class="t-edge-dashed" font-size="8" text-anchor="middle">on failure</text>
         </g>
         <g data-edge-from="lead-intake" data-edge-to="error-handler" data-edge-label="on failure" data-edge-key="11" data-edge-id="intake-alert-trigger">
-          <rect x="760.5" y="266" width="58" height="14" rx="3" class="c-mask"/>
-          <text x="789.5" y="276" class="t-edge-dashed" font-size="8" text-anchor="middle">on failure</text>
+          <rect x="712.5" y="266" width="58" height="14" rx="3" class="c-mask"/>
+          <text x="741.5" y="276" class="t-edge-dashed" font-size="8" text-anchor="middle">on failure</text>
         </g>
         <g data-edge-from="error-handler" data-edge-to="gmail" data-edge-label="operator alert" data-edge-key="12" data-edge-id="alert-send">
-          <rect x="1051.4" y="273" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="1090" y="283" class="t-edge-default" font-size="8" text-anchor="middle">operator alert</text>
+          <rect x="881.4" y="285" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="920" y="295" class="t-edge-default" font-size="8" text-anchor="middle">operator alert</text>
+        </g>
+        <g data-edge-from="polylang" data-edge-to="rest" data-edge-label="page language → ?locale=" data-edge-key="13" data-edge-id="page-language">
+          <rect x="243.4" y="66" width="125.19999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="306" y="76" class="t-edge-default" font-size="8" text-anchor="middle">page language → ?locale=</text>
+        </g>
+        <g data-edge-from="theme" data-edge-to="browser" data-edge-label="serves the page" data-edge-key="14" data-edge-id="serve-page">
+          <rect x="82" y="82" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="123" y="92" class="t-edge-default" font-size="8" text-anchor="middle">serves the page</text>
+        </g>
+        <g data-edge-from="weekly-digest" data-edge-to="gmail" data-edge-label="weekly summary" data-edge-key="15" data-edge-id="digest-send">
+          <rect x="1010.4" y="290" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="1049" y="300" class="t-edge-default" font-size="8" text-anchor="middle">weekly summary</text>
+        </g>
+        <g data-edge-from="status-page" data-edge-to="leads-table" data-edge-label="reads · confirms date" data-edge-key="16" data-edge-id="status-read">
+          <rect x="319" y="285" width="110.8" height="14" rx="3" class="c-mask"/>
+          <text x="374.4" y="295" class="t-edge-dashed" font-size="8" text-anchor="middle">reads · confirms date</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
@@ -935,22 +1085,22 @@ rect.c-bg-rect { fill: var(--bg); }
 
         <!-- Legend -->
         <g data-legend="">
-          <text x="40" y="644" class="t-primary" font-size="12" font-weight="650">Legend</text>
-          <g data-legend-semantic-kind="frontend" data-legend-x="40" data-legend-baseline="664" data-legend-width="93">
-            <rect x="40" y="655" width="16" height="10" rx="2.5" class="c-frontend" stroke-width="1"/>
-            <text x="62" y="664" class="t-muted" font-size="10" font-weight="500">Frontend</text>
+          <text x="40" y="444" class="t-primary" font-size="12" font-weight="650">Legend</text>
+          <g data-legend-semantic-kind="frontend" data-legend-x="40" data-legend-baseline="464" data-legend-width="93">
+            <rect x="40" y="455" width="16" height="10" rx="2.5" class="c-frontend" stroke-width="1"/>
+            <text x="62" y="464" class="t-muted" font-size="10" font-weight="500">Frontend</text>
           </g>
-          <g data-legend-semantic-kind="backend" data-legend-x="155" data-legend-baseline="664" data-legend-width="87">
-            <rect x="155" y="655" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
-            <text x="177" y="664" class="t-muted" font-size="10" font-weight="500">Backend</text>
+          <g data-legend-semantic-kind="backend" data-legend-x="155" data-legend-baseline="464" data-legend-width="87">
+            <rect x="155" y="455" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="177" y="464" class="t-muted" font-size="10" font-weight="500">Backend</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-x="264" data-legend-baseline="664" data-legend-width="93">
-            <rect x="264" y="655" width="16" height="10" rx="2.5" class="c-database" stroke-width="1"/>
-            <text x="286" y="664" class="t-muted" font-size="10" font-weight="500">Database</text>
+          <g data-legend-semantic-kind="database" data-legend-x="264" data-legend-baseline="464" data-legend-width="93">
+            <rect x="264" y="455" width="16" height="10" rx="2.5" class="c-database" stroke-width="1"/>
+            <text x="286" y="464" class="t-muted" font-size="10" font-weight="500">Database</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-x="379" data-legend-baseline="664" data-legend-width="93">
-            <rect x="379" y="655" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
-            <text x="401" y="664" class="t-muted" font-size="10" font-weight="500">External</text>
+          <g data-legend-semantic-kind="external" data-legend-x="379" data-legend-baseline="464" data-legend-width="93">
+            <rect x="379" y="455" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
+            <text x="401" y="464" class="t-muted" font-size="10" font-weight="500">External</text>
           </g>
         </g>
       </svg>

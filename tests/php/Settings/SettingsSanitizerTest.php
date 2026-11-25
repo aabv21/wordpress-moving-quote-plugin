@@ -156,6 +156,16 @@ final class SettingsSanitizerTest extends TestCase {
 		self::assertSame( str_repeat( 'b', 64 ), $saved->settings['webhook_secret'] );
 	}
 
+	public function test_secret_length_boundary_is_32_characters(): void {
+		$too_short = self::sanitize_form( self::form( [ 'webhook_secret' => str_repeat( 'c', 31 ) ] ) );
+		self::assertSame( 'short_secret', $too_short->errors['webhook_secret'] );
+		self::assertSame( str_repeat( 'a', 64 ), $too_short->settings['webhook_secret'] );
+
+		$exact = self::sanitize_form( self::form( [ 'webhook_secret' => str_repeat( 'c', 32 ) ] ) );
+		self::assertArrayNotHasKey( 'webhook_secret', $exact->errors );
+		self::assertSame( str_repeat( 'c', 32 ), $exact->settings['webhook_secret'] );
+	}
+
 	public function test_secret_survives_unchanged_with_tricky_characters(): void {
 		$tricky = str_repeat( 'x', 20 ) . ' %41 <tag> \\ ' . str_repeat( 'y', 20 );
 		$r      = self::sanitize_form( self::form( [ 'webhook_secret' => $tricky ] ) );
@@ -173,7 +183,7 @@ final class SettingsSanitizerTest extends TestCase {
 	}
 
 	/**
-	 * A saved team address must pass `LeadValidator::is_simple_email()`, or delivery fails later.
+	 * A saved team address must pass `EmailRule::is_simple()`, or delivery fails later.
 	 */
 	public function test_team_email_rejects_a_quoted_local_part_filter_validate_email_alone_would_accept(): void {
 		$result = self::sanitize_form( self::form( [ 'team_email' => '"a,b"@example.com' ] ) );
@@ -190,5 +200,106 @@ final class SettingsSanitizerTest extends TestCase {
 	public function test_drops_unknown_keys(): void {
 		$r = self::sanitize_form( self::form( [ 'evil' => '1' ] ) );
 		self::assertArrayNotHasKey( 'evil', $r->settings );
+	}
+
+	public function test_business_phone_keeps_digits_and_rejects_short_numbers(): void {
+		$r = self::sanitize_form(
+			self::form(
+				[
+					'business_phone'    => '+57 000 000 0099',
+					'business_whatsapp' => '(57) 000-000-0099',
+				]
+			)
+		);
+		self::assertSame( [], $r->errors );
+		self::assertSame( '570000000099', $r->settings['business_phone'] );
+		self::assertSame( '570000000099', $r->settings['business_whatsapp'] );
+
+		$current = [ ...self::current(), 'business_phone' => '570000000099' ];
+		$r       = SettingsSanitizer::sanitize( self::form( [ 'business_phone' => '12345' ] ), $current );
+		self::assertSame( [ 'business_phone' => 'invalid_phone' ], $r->errors );
+		self::assertSame( '570000000099', $r->settings['business_phone'] );
+
+		$r = self::sanitize_form( self::form( [ 'business_whatsapp' => '57 000 000 0099 ext' ] ) );
+		self::assertSame( [ 'business_whatsapp' => 'invalid_phone' ], $r->errors );
+	}
+
+	#[DataProvider( 'business_hours' )]
+	public function test_business_hours_need_both_ends_in_order( string $open, string $close, bool $valid ): void {
+		$r = self::sanitize_form(
+			self::form(
+				[
+					'business_hours_open'  => $open,
+					'business_hours_close' => $close,
+				]
+			)
+		);
+		self::assertSame( $valid ? [] : [ 'business_hours' => 'invalid_hours' ], $r->errors );
+		self::assertSame( $valid ? [ $open, $close ] : [ '', '' ], [ $r->settings['business_hours_open'], $r->settings['business_hours_close'] ] );
+	}
+
+	/** @return array<string, array{string, string, bool}> */
+	public static function business_hours(): array {
+		return [
+			'closing before opening' => [ '18:00', '07:00', false ],
+			'no closing time'        => [ '07:00', '', false ],
+			'no opening time'        => [ '', '18:00', false ],
+			'one-digit hour'         => [ '7:00', '18:00', false ],
+			'24:00'                  => [ '07:00', '24:00', false ],
+			'opening equals closing' => [ '07:00', '07:00', false ],
+			'both blank'             => [ '', '', true ],
+			'in order'               => [ '07:00', '18:00', true ],
+		];
+	}
+
+	public function test_business_street_over_120_characters_is_too_long(): void {
+		$r = self::sanitize_form( self::form( [ 'business_street' => str_repeat( 'a', 121 ) ] ) );
+		self::assertSame( [ 'business_street' => 'too_long' ], $r->errors );
+		self::assertSame( '', $r->settings['business_street'] );
+
+		$r = self::sanitize_form(
+			self::form(
+				[
+					'business_street' => str_repeat( 'á', 120 ),
+					'business_city'   => 'Barranquilla',
+					'business_tax_id' => 'NIT 000.000.000-0 (fictional)',
+				]
+			)
+		);
+		self::assertSame( [], $r->errors );
+		self::assertSame( 'NIT 000.000.000-0 (fictional)', $r->settings['business_tax_id'] );
+	}
+
+	public function test_business_text_rejects_control_characters_and_long_values(): void {
+		$r = self::sanitize_form(
+			self::form(
+				[
+					'business_city'   => "Barran\nquilla",
+					'business_tax_id' => str_repeat( '0', 41 ),
+				]
+			)
+		);
+		self::assertSame(
+			[
+				'business_city'   => 'invalid',
+				'business_tax_id' => 'too_long',
+			],
+			$r->errors
+		);
+	}
+
+	public function test_a_stored_option_without_business_keys_reads_as_blank(): void {
+		$stored = self::form();
+		$r      = SettingsSanitizer::sanitize( $stored, Defaults::settings() );
+		foreach ( [ 'business_phone', 'business_whatsapp', 'business_street', 'business_city', 'business_hours_open', 'business_hours_close', 'business_tax_id' ] as $key ) {
+			self::assertSame( '', $r->settings[ $key ], $key );
+		}
+	}
+
+	public function test_a_business_number_stored_as_an_integer_reads_back_as_its_digits(): void {
+		// WP-CLI and a JSON round trip can store a long digit string as a number.
+		$r = self::sanitize_form( self::form( [ 'business_phone' => 570000000099 ] ) );
+		self::assertSame( [], $r->errors );
+		self::assertSame( '570000000099', $r->settings['business_phone'] );
 	}
 }

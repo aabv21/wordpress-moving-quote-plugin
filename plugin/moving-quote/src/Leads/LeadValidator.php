@@ -10,14 +10,14 @@ use Chivabox\MovingQuote\Pricing\{DistanceTable, Extra, MoveType, QuoteInput};
  * display text by `Rest\Messages`.
  */
 final class LeadValidator {
-	private const ROOMS_MIN                = 1;
-	private const ROOMS_MAX                = 5;
-	private const NAME_MIN_LEN             = 2;
-	private const NAME_MAX_LEN             = 100;
-	private const EMAIL_MAX_LEN            = 254;
-	public const PHONE_MIN_LEN             = 10;
-	public const PHONE_MAX_LEN             = 15;
-	private const MOVE_DATE_MAX_DAYS_AHEAD = 365;
+	private const ROOMS_MIN               = 1;
+	private const ROOMS_MAX               = 5;
+	public const NAME_MIN_LEN             = 2;
+	public const NAME_MAX_LEN             = 100;
+	private const EMAIL_MAX_LEN           = 254;
+	public const PHONE_MIN_LEN            = 10;
+	public const PHONE_MAX_LEN            = 15;
+	public const MOVE_DATE_MAX_DAYS_AHEAD = 365;
 
 	/**
 	 * Only the fields that affect price, for the estimate endpoint.
@@ -304,32 +304,17 @@ final class LeadValidator {
 		return $digits;
 	}
 
-	/** See `is_simple_email()`. */
-	private const FORBIDDEN_EMAIL_CHARACTER_PATTERN = '/[\s\x{0000}-\x{001F}\x{007F}"(),;:<>[\]\\\\]/u';
-
 	/** @param array<string, string> $errors */
 	private static function validate_email( mixed $value, array &$errors ): string {
 		if ( null === $value ) {
 			$errors['email'] = 'required';
 			return '';
 		}
-		if ( ! is_string( $value ) || mb_strlen( $value ) > self::EMAIL_MAX_LEN || ! self::is_simple_email( $value ) ) {
+		if ( ! is_string( $value ) || mb_strlen( $value ) > self::EMAIL_MAX_LEN || ! EmailRule::is_simple( $value ) ) {
 			$errors['email'] = 'invalid';
 			return '';
 		}
 		return $value;
-	}
-
-	/**
-	 * `FILTER_VALIDATE_EMAIL`, minus whitespace, controls, and `" , ; < > ( ) [ ] : \`. The filter
-	 * alone accepts `"a,b"@example.com`, which n8n's Gmail node splits into two recipients. Shared
-	 * with `Settings\SettingsSanitizer`; matches `isSimpleEmail()` in `src/nodes/lead.ts`.
-	 */
-	public static function is_simple_email( string $value ): bool {
-		if ( false === filter_var( $value, FILTER_VALIDATE_EMAIL ) ) {
-			return false;
-		}
-		return 1 !== preg_match( self::FORBIDDEN_EMAIL_CHARACTER_PATTERN, $value );
 	}
 
 	/** @param array<string, string> $errors */

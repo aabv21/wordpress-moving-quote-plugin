@@ -1,0 +1,236 @@
+# Spanish (Colombia) translation of the Chivabox theme.
+# Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
+msgid ""
+msgstr ""
+"Project-Id-Version: Chivabox 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
+"POT-Creation-Date: 2026-11-25 00:00-0500\n"
+"PO-Revision-Date: 2026-11-25 00:00-0500\n"
+"Last-Translator: Andrés Buelvas\n"
+"Language-Team: Spanish (Colombia)\n"
+"Language: es_CO\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: chivabox\n"
+
+#. Theme Name of the theme
+msgid "Chivabox"
+msgstr "Chivabox"
+
+#. Description of the theme
+msgid "The Chivabox Movers demo site: a block child theme of Twenty Twenty-Five whose page content lives in translatable patterns."
+msgstr "El sitio de demostración de Chivabox Movers: un tema hijo de bloques de Twenty Twenty-Five cuyo contenido vive en patrones traducibles."
+
+#. Author of the theme
+msgid "Andrés Buelvas"
+msgstr "Andrés Buelvas"
+
+msgid "A mover pushing a tall stack of moving boxes on a hand truck"
+msgstr "Una persona de la cuadrilla empuja una pila alta de cajas de mudanza en una carretilla"
+
+msgctxt "Pattern title"
+msgid "Data processing policy"
+msgstr "Política de tratamiento de datos"
+
+msgid "Demo site: Chivabox Movers is a fictional company, and this policy is a sample."
+msgstr "Sitio de demostración: Chivabox Movers es una empresa ficticia y esta política es un ejemplo."
+
+msgid "Who is responsible: Chivabox Movers, Barranquilla, Colombia."
+msgstr "Responsable: Chivabox Movers, Barranquilla, Colombia."
+
+msgid "What we collect: your name, phone, email, and the details of your move, when you ask for a quote."
+msgstr "Qué datos recogemos: su nombre, teléfono, correo y los detalles de su mudanza, cuando nos pide una cotización."
+
+msgid "Why: to prepare your estimate, contact you about your move, and keep a record of your request. We don't sell your data or use it for advertising."
+msgstr "Para qué: preparar su cotización, contactarle sobre su mudanza y guardar el registro de su solicitud. No vendemos sus datos ni los usamos para publicidad."
+
+msgid "Your rights: under Colombia's Law 1581 of 2012 you can see, correct or delete your data, and withdraw your consent, by writing to us from the email address you used."
+msgstr "Sus derechos: según la Ley 1581 de 2012 usted puede conocer, actualizar, rectificar o suprimir sus datos y revocar su autorización, escribiéndonos desde el correo que usó."
+
+msgid "How long: we keep a request for as long as we need it to answer you and to meet our legal obligations."
+msgstr "Cuánto tiempo: conservamos su solicitud mientras sea necesaria para atenderle y cumplir nuestras obligaciones legales."
+
+msgctxt "Pattern title"
+msgid "Footer"
+msgstr "Pie de página"
+
+msgid "Demo site, fictional company and tax ID."
+msgstr "Sitio de demostración, empresa y NIT ficticios."
+
+msgctxt "Pattern title"
+msgid "Header"
+msgstr "Encabezado"
+
+msgctxt "Pattern title"
+msgid "Home"
+msgstr "Inicio"
+
+msgid "Moving on the Caribbean coast, done right"
+msgstr "Su mudanza en la costa Caribe, bien hecha"
+
+msgid "Homes and offices between Barranquilla, Cartagena and Santa Marta. See your price in under a minute."
+msgstr "Hogares y oficinas entre Barranquilla, Cartagena y Santa Marta. Vea su precio en menos de un minuto."
+
+msgid "Cargo insurance on every move"
+msgstr "Póliza de carga en cada mudanza"
+
+msgid "Final price in writing after a visit"
+msgstr "Precio final por escrito después de la visita"
+
+msgid "Reply within one business hour"
+msgstr "Respuesta en menos de una hora hábil"
+
+msgid "Trained, uniformed crews"
+msgstr "Cuadrillas capacitadas y uniformadas"
+
+msgid "How it works"
+msgstr "Cómo funciona"
+
+msgid "Get your estimate"
+msgstr "Reciba su estimado"
+
+msgid "Answer three short steps and see a price range right away."
+msgstr "Responda tres pasos cortos y vea un rango de precio al instante."
+
+msgid "Confirm the details"
+msgstr "Confirme los detalles"
+
+msgid "We call you, or meet by video call, and send the final price in writing."
+msgstr "Le llamamos o hacemos una videollamada, y le enviamos el precio final por escrito."
+
+msgid "Move day"
+msgstr "Día de la mudanza"
+
+msgid "Our crew packs, loads and delivers on the date you booked."
+msgstr "Nuestra cuadrilla empaca, carga y entrega en la fecha acordada."
+
+msgid "What we move"
+msgstr "Qué movemos"
+
+msgid "Labeled moving boxes stacked by a living room window"
+msgstr "Cajas de mudanza rotuladas, apiladas junto a la ventana de una sala"
+
+msgid "Homes"
+msgstr "Hogares"
+
+msgid "Apartments and houses, from a studio to five rooms and more."
+msgstr "Apartamentos y casas, desde un apartaestudio hasta cinco habitaciones o más."
+
+msgid "Offices"
+msgstr "Oficinas"
+
+msgid "Desks, files and equipment, moved after hours so you lose no workday."
+msgstr "Escritorios, archivos y equipos, trasladados fuera de horario para que no pierda un día de trabajo."
+
+msgid "Packing"
+msgstr "Embalaje"
+
+msgid "We bring boxes, wrap and labels, and pack room by room."
+msgstr "Llevamos cajas, plástico y etiquetas, y empacamos por habitación."
+
+msgid "Storage"
+msgstr "Almacenamiento"
+
+msgid "Short-term storage when your new place isn't ready yet."
+msgstr "Bodegaje temporal cuando su nuevo lugar aún no está listo."
+
+msgid "Popular routes"
+msgstr "Rutas frecuentes"
+
+msgid "Prices from, for a one-room apartment with no extras."
+msgstr "Precios desde, para un apartamento de una habitación sin servicios adicionales."
+
+msgid "What customers say"
+msgstr "Lo que dicen nuestros clientes"
+
+msgid "Sample reviews for this demo"
+msgstr "Reseñas de ejemplo para esta demostración"
+
+msgid "Barranquilla → Cartagena, three-bedroom apartment"
+msgstr "Barranquilla → Cartagena, apartamento de tres habitaciones"
+
+msgid "They moved our three-bedroom apartment from Barranquilla to Cartagena in one day, and the price matched the quote."
+msgstr "Trasladaron nuestro apartamento de tres habitaciones de Barranquilla a Cartagena en un día, y el precio fue el de la cotización."
+
+msgid "Within Santa Marta, house"
+msgstr "Dentro de Santa Marta, casa"
+
+msgid "The crew wrapped every piece of furniture and put the beds back together before leaving."
+msgstr "La cuadrilla protegió cada mueble y armó las camas antes de irse."
+
+msgid "Barranquilla, office move"
+msgstr "Barranquilla, traslado de oficina"
+
+msgid "We moved the office on a Saturday and were working on Monday morning."
+msgstr "Trasladamos la oficina un sábado y el lunes en la mañana ya estábamos trabajando."
+
+msgid "Questions"
+msgstr "Preguntas frecuentes"
+
+msgid "Still have a question?"
+msgstr "¿Le queda alguna duda?"
+
+msgid "Call us or write on WhatsApp. We reply within one business hour."
+msgstr "Llámenos o escríbanos por WhatsApp. Respondemos en menos de una hora hábil."
+
+msgid "Is the online price final?"
+msgstr "¿El precio en línea es el definitivo?"
+
+msgid "It's an estimate. We confirm the final price in writing after a short visit or video call."
+msgstr "Es un estimado. Confirmamos el precio final por escrito después de una visita corta o una videollamada."
+
+msgid "Which cities do you serve?"
+msgstr "¿A qué ciudades llegan?"
+
+msgid "Barranquilla, Cartagena, Santa Marta, Valledupar, Montería, Sincelejo and Riohacha, and any move between them."
+msgstr "Barranquilla, Cartagena, Santa Marta, Valledupar, Montería, Sincelejo y Riohacha, y cualquier trayecto entre ellas."
+
+msgid "Is my move insured?"
+msgstr "¿Mi mudanza tiene seguro?"
+
+msgid "Yes. Every move carries cargo insurance at no extra cost."
+msgstr "Sí. Cada mudanza incluye póliza de carga sin costo adicional."
+
+msgid "How far ahead should I book?"
+msgstr "¿Con cuánta anticipación debo reservar?"
+
+msgid "Two weeks is ideal. For an earlier date, write to us on WhatsApp and we'll check the schedule."
+msgstr "Lo ideal son dos semanas. Si la necesita antes, escríbanos por WhatsApp y revisamos la agenda."
+
+msgid "Ready when you are"
+msgstr "Listos cuando usted lo esté"
+
+msgid "Get my quote"
+msgstr "Cotizar mi mudanza"
+
+msgctxt "Pattern title"
+msgid "Quote"
+msgstr "Cotización"
+
+msgid "Tell us about your move and see an estimate right away."
+msgstr "Cuéntenos sobre su mudanza y vea un precio estimado al instante."
+
+msgctxt "Pattern title"
+msgid "Thank you"
+msgstr "Gracias"
+
+msgid "What happens next"
+msgstr "Qué sigue"
+
+msgid "We email you a summary of your request and your estimate."
+msgstr "Le enviamos por correo un resumen de su solicitud y el precio estimado."
+
+msgid "A member of our team calls you to confirm the details."
+msgstr "Una persona de nuestro equipo se comunica con usted para confirmar los detalles."
+
+msgid "We confirm the final price after a visit or video call, then book your moving day."
+msgstr "Confirmamos el precio final después de una visita o una videollamada y agendamos el día de su mudanza."
+
+msgid "Back to the home page"
+msgstr "Volver al inicio"
+
+msgctxt "Pattern title"
+msgid "Your move"
+msgstr "Su mudanza"

@@ -56,3 +56,16 @@ export function compose(args: readonly string[], opts?: { input?: string }): Pro
     child.stdin.end(input);
   });
 }
+
+/**
+ * `docker compose exec -T <service> <args>` with stdout as bytes, for output that isn't text (a
+ * `.mo` file). A failure's message carries the command's stderr.
+ */
+export function composeExec(service: string, args: readonly string[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    execFile('docker', ['compose', 'exec', '-T', service, ...args], { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err) reject(new Error(`${err.message}\n${stderr.toString()}`));
+      else resolve(stdout);
+    });
+  });
+}

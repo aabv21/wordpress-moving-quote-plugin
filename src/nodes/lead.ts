@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, normalizeLocale, type Locale } from './locale.ts';
+import { CURRENCY, DEFAULT_LOCALE, normalizeLocale, type Locale } from './locale.ts';
 
 export type MoveType = 'apartment' | 'house' | 'office';
 export type Extra = 'packing' | 'furniture_assembly' | 'storage' | 'piano_fragile';
@@ -14,6 +14,13 @@ export interface Lead {
   site_name: string;
   team_email: string;
   locale: Locale;
+  /** The business's own numbers, digits only, for the customer email; `''` when unset. */
+  contact: {
+    phone: string;
+    whatsapp: string;
+  };
+  /** The signed customer status page, or `''` when the site has none; the customer email links it. */
+  status_url: string;
   customer: {
     name: string;
     phone: string;
@@ -29,7 +36,7 @@ export interface Lead {
     extras: Extra[];
   };
   estimate: {
-    currency: 'COP';
+    currency: typeof CURRENCY;
     amount: number;
     low: number;
     high: number;
@@ -50,11 +57,11 @@ const EMAIL_WHITESPACE_OR_CONTROL_RE = /[\s\x00-\x1f\x7f]/;
 
 /**
  * One `@`, non-empty parts, a dot in the domain, and none of `" , ; < > ( ) [ ] : \`, whitespace,
- * or controls: the rule `LeadValidator::is_simple_email()` applies. A quoted local part like
+ * or controls: the rule `EmailRule::is_simple()` applies. A quoted local part like
  * `"a,b"@example.com` would make Gmail's `sendTo` add a second recipient. Plain string operations,
  * not a nested-quantifier regex, so there's no backtracking blow-up.
  */
-function isSimpleEmail(value: string): boolean {
+export function isSimpleEmail(value: string): boolean {
   if (EMAIL_WHITESPACE_OR_CONTROL_RE.test(value)) return false;
   for (const char of value) {
     if (FORBIDDEN_EMAIL_CHARS.has(char)) return false;
@@ -195,7 +202,7 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
   if (!isRecord(value) || !hasOnlyKeys(value, ['currency', 'amount', 'low', 'high'])) return null;
   const { currency, amount, low, high } = value;
 
-  if (currency !== 'COP') return null;
+  if (currency !== CURRENCY) return null;
   if (!isNonNegativeSafeInteger(amount)) return null;
   if (!isNonNegativeSafeInteger(low)) return null;
   if (!isNonNegativeSafeInteger(high)) return null;
@@ -204,7 +211,33 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
   return { currency, amount, low, high };
 }
 
-const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'customer', 'move', 'estimate'] as const;
+const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'contact', 'status_url', 'customer', 'move', 'estimate'] as const;
+
+const CONTACT_NUMBER_RE = /^\d{10,15}$/;
+
+/**
+ * Optional: a lead queued by a plugin version without business details still parses, as blank
+ * numbers. Each number is `''` or 10 to 15 digits, the rule the plugin's Settings enforce.
+ */
+function parseContact(value: unknown): Lead['contact'] | null {
+  if (value === undefined) return { phone: '', whatsapp: '' };
+  if (!isRecord(value) || !hasOnlyKeys(value, ['phone', 'whatsapp'])) return null;
+  const { phone, whatsapp } = value;
+  const valid = (n: unknown): n is string => typeof n === 'string' && (n === '' || CONTACT_NUMBER_RE.test(n));
+  return valid(phone) && valid(whatsapp) ? { phone, whatsapp } : null;
+}
+
+const STATUS_URL_RE = /^https?:\/\/[^\s"<>]+$/;
+
+/**
+ * Optional: a lead queued by a plugin version without the status page still parses, as no link.
+ * Otherwise `''` or an http(s) URL with no whitespace, quote or angle bracket, so no other scheme
+ * and nothing that could break out of the email's `href`.
+ */
+function parseStatusUrl(value: unknown): string | null {
+  if (value === undefined) return '';
+  return typeof value === 'string' && (value === '' || STATUS_URL_RE.test(value)) ? value : null;
+}
 
 /**
  * Optional: a lead from an older plugin version can still be in the retry queue. Missing, empty,
@@ -218,7 +251,7 @@ function parseLocale(value: unknown): Locale | null {
 
 export function parseLead(value: unknown): Lead | null {
   if (!isRecord(value) || !hasOnlyKeys(value, LEAD_KEYS)) return null;
-  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, customer, move, estimate } = value;
+  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, contact, status_url: statusUrl, customer, move, estimate } = value;
 
   if (typeof requestUuid !== 'string' || !UUID_V4_RE.test(requestUuid)) return null;
 
@@ -232,6 +265,12 @@ export function parseLead(value: unknown): Lead | null {
 
   const parsedLocale = parseLocale(locale);
   if (!parsedLocale) return null;
+
+  const parsedContact = parseContact(contact);
+  if (!parsedContact) return null;
+
+  const parsedStatusUrl = parseStatusUrl(statusUrl);
+  if (parsedStatusUrl === null) return null;
 
   const parsedCustomer = parseCustomer(customer);
   if (!parsedCustomer) return null;
@@ -251,6 +290,8 @@ export function parseLead(value: unknown): Lead | null {
     site_name: siteName,
     team_email: teamEmail,
     locale: parsedLocale,
+    contact: parsedContact,
+    status_url: parsedStatusUrl,
     customer: parsedCustomer,
     move: parsedMove,
     estimate: parsedEstimate,

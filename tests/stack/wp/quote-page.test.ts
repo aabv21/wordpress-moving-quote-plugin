@@ -108,12 +108,57 @@ describe('the quote page', () => {
     const html = await (await fetch(site(QUOTE_PAGE_PATH))).text();
     const form = /<form\b[^>]*\bdata-moving-quote\b[\s\S]*?<\/form>/.exec(html)?.[0];
     if (form === undefined) throw new Error('the quote form was not rendered');
-    // Each hook with its value (data-step="1", data-error-for="phone", …); data-config by name only.
+    // Each hook with its value (data-step="1", data-error-for="phone", …); data-config by name only. A hook follows whitespace, so a URL such as /data-policy/ is not one.
     const hooksIn = (markup: string): string[] =>
-      [...new Set([...markup.matchAll(/\bdata-[a-z-]+="[^"]*"|\bdata-[a-z-]+/g)].map(([hook]) => (hook.startsWith('data-config=') ? 'data-config=' : hook)))].sort();
+      [...new Set([...markup.matchAll(/(?<=\s)data-[a-z-]+="[^"]*"|(?<=\s)data-[a-z-]+/g)].map(([hook]) => (hook.startsWith('data-config=') ? 'data-config=' : hook)))].sort();
     const fixture = hooksIn(readFileSync('tests/dom/fixtures/quote-form.html', 'utf8'));
     expect(fixture.length).toBeGreaterThan(20);
     expect(hooksIn(form)).toEqual(fixture);
+  });
+
+  it("the rendered form and the DOM tests' fixture have the same controls", async () => {
+    const html = await (await fetch(site(QUOTE_PAGE_PATH))).text();
+    const form = /<form\b[^>]*\bdata-moving-quote\b[\s\S]*?<\/form>/.exec(html)?.[0];
+    if (form === undefined) throw new Error('the quote form was not rendered');
+    // Each control's tag, name, type, required flag and aria-describedby, in document order. Option lists and `min` differ by data and by day, so they are left out.
+    const controlsIn = (markup: string): string[] =>
+      [...markup.matchAll(/<(input|select|textarea|button)\b([^>]*)>/g)].map(([, tag, attributes = '']) => {
+        const parsed = new Map([...attributes.matchAll(/(?<=\s)([a-z-]+)="([^"]*)"/g)].map(([, name = '', value = '']) => [name, value]));
+        const attribute = (name: string): string => parsed.get(name) ?? '';
+        const required = /\srequired(?=\s|\/|$)/.test(attributes);
+        return JSON.stringify({ tag, name: attribute('name'), type: attribute('type'), required, describedby: attribute('aria-describedby') });
+      });
+    const fixture = controlsIn(readFileSync('tests/dom/fixtures/quote-form.html', 'utf8'));
+    expect(fixture.length).toBeGreaterThan(10);
+    expect(controlsIn(form)).toEqual(fixture);
+  });
+
+  it('renders the summary panel, the required note, each extra\'s price and the phone example', async () => {
+    const html = decodeHtmlEntities(await (await fetch(site(QUOTE_PAGE_PATH))).text());
+    const summary = /<aside class="moving-quote__summary"[\s\S]*?<\/aside>/.exec(html)?.[0] ?? '';
+    for (const text of ['Summary', 'Choose both cities', 'No date yet', 'No extra services', 'Estimated price']) expect(summary).toContain(text);
+    expect(summary).toContain('Prefer to talk? Call <a href="tel:+570000000099">+57 000 000 0099</a>');
+    expect(html).toContain('Every field is required, except the extra services.');
+    for (const price of ['+ COP 200,000', '+ COP 150,000', '+ COP 300,000', '+ COP 250,000']) expect(html).toContain(price);
+    expect(html).toContain('<span class="moving-quote__hint" id="mq-hint-phone">Example: +57 300 000 0000</span>');
+    expect(html).toContain('aria-describedby="mq-hint-phone mq-error-phone"');
+  });
+
+  it('the thank-you page shows the card, the reference and a WhatsApp link carrying it', async () => {
+    const html = await (await fetch(site('/thank-you/?reference=MQ-1A2B3C4D'))).text();
+    // One heading says it: the page title, not a second one inside the card.
+    expect(html).toMatch(/<h1[^>]*>Request received<\/h1>/);
+    expect(html).not.toContain('moving-quote-thanks__title');
+    expect(html).toContain('MQ-1A2B3C4D');
+    expect(html).toContain('href="https://wa.me/570000000099?text=Hello%2C%20my%20reference%20is%20MQ-1A2B3C4D."');
+    expect(html).toMatch(/<script[^>]*\bsrc="[^"]*\/plugins\/moving-quote\/assets\/thank-you\.js[^"]*"/);
+  });
+
+  it('the thank-you card links WhatsApp without text for a malformed reference', async () => {
+    const html = await (await fetch(site('/thank-you/?reference=MQ-<b>1</b>'))).text();
+    expect(html).toContain('href="https://wa.me/570000000099"');
+    expect(html).not.toContain('?text=');
+    expect(html).not.toContain('<b>1</b>');
   });
 
   it("sets the move-date input's min to today in America/Bogota, not the site's own configured timezone", async () => {
@@ -124,6 +169,30 @@ describe('the quote page', () => {
 
     const bogotaToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     expect(min).toBe(bogotaToday);
+  });
+
+  it("links the consent to the published data policy page in the page's language", async () => {
+    const consentLink = async (path: string): Promise<string | undefined> => {
+      const html = await (await fetch(site(path))).text();
+      const label = /<label[^>]*\bfor="mq-consent"[^>]*>([\s\S]*?)<\/label>/.exec(html)?.[1];
+      return label === undefined ? undefined : /<a href="([^"]*)"/.exec(label)?.[1];
+    };
+    expect(await consentLink('/get-a-quote/')).toBe(site('/data-policy/'));
+    expect(await consentLink('/es/cotizar/')).toBe(site('/es/politica-de-datos/'));
+  });
+
+  it('publishes the data policy in both languages, marked as a demo', async () => {
+    const english = await fetch(site('/data-policy/'));
+    expect(english.status).toBe(200);
+    expect(await english.text()).toContain('Demo site: Chivabox Movers is a fictional company');
+    const spanish = await fetch(site('/es/politica-de-datos/'));
+    expect(spanish.status).toBe(200);
+    expect(await spanish.text()).toContain('Sitio de demostración: Chivabox Movers es una empresa ficticia');
+  });
+
+  it('says what happens after sending, under the send button', async () => {
+    expect(await (await fetch(site('/get-a-quote/'))).text()).toContain('We call you during business hours. No commitment.');
+    expect(await (await fetch(site('/es/cotizar/'))).text()).toContain('Le llamamos en horario hábil. Sin compromiso.');
   });
 
   it('does not load the quote-form script on a page without the shortcode', async () => {

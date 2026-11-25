@@ -111,6 +111,18 @@ describe('personal data: export and erase', () => {
     expect(names).toContain('Second Lead');
   });
 
+  it('exports the team notes with the lead', async () => {
+    const email = `privacy-notes-${crypto.randomUUID()}@example.com`;
+    const lead = validLead({ email, name: 'Privacy Notes Test' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    await sqlWp(`UPDATE ${await table()} SET notes = 'Prefers calls after 5' WHERE request_uuid = '${lead.submission_id as string}'`);
+
+    const exported = await exportFor(email);
+
+    expect(exported.data[0]!.data).toContainEqual({ name: 'Team notes', value: 'Prefers calls after 5' });
+    expect(exported.data[0]!.data).toContainEqual({ name: 'Date confirmed (America/Bogota)', value: '' });
+  });
+
   it('erases every matching lead through the registered eraser filter, and reports no items removed for an email with none', async () => {
     const email = `privacy-erase-${crypto.randomUUID()}@example.com`;
     const lead = validLead({ email, name: 'Privacy Erase Test' });
@@ -140,6 +152,31 @@ describe('personal data: export and erase', () => {
     expect(emptyErase.items_removed).toBe(false);
     expect(emptyErase.items_retained).toBe(false);
     expect(emptyErase.messages).toEqual([]);
+  });
+
+  it('the eraser names exactly the leads it deleted', async () => {
+    // Three leads in a row would spend the submit budget the earlier tests already used.
+    await resetRateLimits();
+    const email = `privacy-erase-names-${crypto.randomUUID()}@example.com`;
+    const other = `privacy-erase-other-${crypto.randomUUID()}@example.com`;
+    const first = validLead({ email, name: 'Erase Names One' });
+    const second = validLead({ email, name: 'Erase Names Two' });
+    const bystander = validLead({ email: other, name: 'Erase Names Bystander' });
+    for (const lead of [first, second, bystander]) {
+      expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    }
+
+    const erased = await eraseFor(email);
+    expect(erased.items_removed).toBe(true);
+    const message = erased.messages.join(' ');
+    expect(message).toContain(referenceFor(first.submission_id as string));
+    expect(message).toContain(referenceFor(second.submission_id as string));
+    expect(message).not.toContain(referenceFor(bystander.submission_id as string));
+    expect(message).toContain('7 days');
+
+    const leadsTable = await table();
+    expect(await sqlWp(`SELECT id FROM ${leadsTable} WHERE email = '${email}'`)).toHaveLength(0);
+    expect(await sqlWp(`SELECT id FROM ${leadsTable} WHERE email = '${other}'`)).toHaveLength(1);
   });
 
   it('erases a lead whose status is unparseable, which the exporter would have skipped', async () => {

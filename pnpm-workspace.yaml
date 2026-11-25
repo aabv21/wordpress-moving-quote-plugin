@@ -1,8 +1,7 @@
 packages:
   - "."
 
-# Every value is explicit, even a default, so a future pnpm default can't drift it. See AGENTS.md's
-# "Supply-chain hardening".
+# Every value is explicit, even a default, so a future pnpm default can't drift it. See docs/supply-chain.md.
 minimumReleaseAge: 4320 # minutes (3 days); blocks installing a package version published more recently
 minimumReleaseAgeExclude: [] # override pnpm's own default n8n exclusions; nothing is exempt from the age gate
 trustPolicy: no-downgrade # installs fail if a package's trust evidence regresses from an earlier release

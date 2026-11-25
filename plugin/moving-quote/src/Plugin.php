@@ -5,12 +5,15 @@ namespace Chivabox\MovingQuote;
 
 use Chivabox\MovingQuote\Admin\{LeadsPage, Menu, PersonalData, SettingsPage, StuckDeliveryNotice};
 use Chivabox\MovingQuote\Delivery\Outbox;
-use Chivabox\MovingQuote\Frontend\{ReferenceShortcode, Shortcode};
+use Chivabox\MovingQuote\Frontend\{ContactShortcode, ReferenceShortcode, RoutesShortcode, SeoHead, Shortcode, StartShortcode, StatusShortcode, ThanksShortcode};
 use Chivabox\MovingQuote\Install\Installer;
 use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
 
 final class Plugin {
-	public const VERSION = '1.2.0';
+	public const VERSION = '1.4.0';
+
+	/** The business's time zone: lead dates, the Leads table, exports and the form's minimum date read in it. */
+	public const TIMEZONE = 'America/Bogota';
 
 	public static function boot( string $plugin_file ): void {
 		add_action(
@@ -34,6 +37,12 @@ final class Plugin {
 		PersonalData::register();
 		Shortcode::register();
 		ReferenceShortcode::register();
+		ContactShortcode::register();
+		StartShortcode::register();
+		RoutesShortcode::register();
+		ThanksShortcode::register();
+		StatusShortcode::register();
+		SeoHead::register();
 
 		add_action(
 			'rest_api_init',

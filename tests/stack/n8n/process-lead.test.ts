@@ -70,6 +70,9 @@ describe.skipIf(skipForLiveGoogle)('process-lead reaches Google Sheets, read-onl
     expect(output?.customerSubject).toBe('Su cotización de mudanza de Chivabox Movers');
     expect(output?.customerHtml).toContain('COP 1.197.000 – 1.463.000');
     expect(output?.customerHtml).toContain('viernes 20 de noviembre de 2026');
+    // The payload's contact numbers, from the business details in Settings.
+    expect(output?.customerHtml).toContain('Llámenos al +57 000 000 0099');
+    expect(output?.customerHtml).toContain('href="https://wa.me/570000000099"');
     // team_locale is en in CI (config.example.json), whatever the lead's language.
     expect(output?.teamSubject).toMatch(/^(New lead|Nueva solicitud) MQ-/);
   });
