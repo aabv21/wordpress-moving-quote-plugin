@@ -27,7 +27,7 @@ export interface Messages {
   noExtras: string;
   rooms: (rooms: number) => string;
   teamSubject: (reference: string, origin: string, destination: string, date: string) => string;
-  teamLabels: { name: string; phone: string; email: string; moveDate: string; route: string; type: string; extras: string; estimate: string; reference: string };
+  teamLabels: { name: string; phone: string; whatsapp: string; email: string; moveDate: string; route: string; type: string; extras: string; estimate: string; reference: string };
   route: (origin: string, destination: string, km: string) => string;
   customerSubject: (siteName: string) => string;
   greeting: (name: string) => string;
@@ -50,7 +50,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     noExtras: 'None',
     rooms: (rooms) => (rooms >= 5 ? '5 or more rooms' : rooms === 1 ? '1 room' : `${String(rooms)} rooms`),
     teamSubject: (reference, origin, destination, date) => `New lead ${reference}: ${origin} to ${destination} on ${date}`,
-    teamLabels: { name: 'Name', phone: 'Phone', email: 'Email', moveDate: 'Move date', route: 'Route', type: 'Type', extras: 'Extras', estimate: 'Estimate', reference: 'Reference' },
+    teamLabels: { name: 'Name', phone: 'Phone', whatsapp: 'WhatsApp', email: 'Email', moveDate: 'Move date', route: 'Route', type: 'Type', extras: 'Extras', estimate: 'Estimate', reference: 'Reference' },
     route: (origin, destination, km) => `${origin} to ${destination} (${km} km)`,
     customerSubject: (siteName) => `Your moving estimate from ${siteName}`,
     greeting: (name) => `Hi ${name},`,
@@ -78,6 +78,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     teamLabels: {
       name: 'Nombre',
       phone: 'Teléfono',
+      whatsapp: 'WhatsApp',
       email: 'Correo',
       moveDate: 'Fecha de la mudanza',
       route: 'Ruta',

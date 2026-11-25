@@ -23,3 +23,18 @@
   margin-top: 0.75rem;
   color: #b32d2e;
 }
+
+.moving-quote-leads__contacted {
+  margin-bottom: 0.5rem;
+}
+
+.moving-quote-leads__notes {
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.moving-quote-leads__edit-notes textarea {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}

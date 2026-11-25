@@ -13,9 +13,20 @@ final class LeadCsvTest extends TestCase {
 		$row = LeadCsv::row( LeadRecord::from_row( Fixtures::lead_row() ), new \DateTimeZone( 'America/Bogota' ) );
 
 		self::assertSame(
-			[ '2026-11-04 09:15', 'MQ-6F1C2A9E', 'new', 'José Peña', '570000000001', 'jose@example.com', '2026-11-20', 'apartment', '2', 'Barranquilla', 'Cartagena', '120', 'packing', '1330000', '1197000', '1463000', 'pending', 'en_US' ],
+			[ '2026-11-04 09:15', 'MQ-6F1C2A9E', 'new', 'José Peña', '570000000001', 'jose@example.com', '2026-11-20', 'apartment', '2', 'Barranquilla', 'Cartagena', '120', 'packing', '1330000', '1197000', '1463000', 'pending', 'en_US', '' ],
 			$row
 		);
+	}
+
+	public function test_the_header_ends_with_notes(): void {
+		self::assertSame( 'notes', LeadCsv::HEADER[ count( LeadCsv::HEADER ) - 1 ] );
+		self::assertCount( count( LeadCsv::HEADER ), LeadCsv::row( LeadRecord::from_row( Fixtures::lead_row() ), new \DateTimeZone( 'America/Bogota' ) ) );
+	}
+
+	public function test_a_note_is_escaped_in_its_cell(): void {
+		$row = LeadCsv::row( LeadRecord::from_row( [ ...Fixtures::lead_row(), 'notes' => '=1+1' ] ), new \DateTimeZone( 'America/Bogota' ) );
+
+		self::assertSame( '\'=1+1', $row[18] );
 	}
 
 	public function test_a_formula_looking_name_is_escaped_in_its_cell(): void {

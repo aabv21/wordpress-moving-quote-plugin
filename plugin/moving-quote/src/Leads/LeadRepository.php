@@ -301,6 +301,25 @@ final class LeadRepository {
 		return $counts;
 	}
 
+	/**
+	 * Trimmed, control characters other than the line feed removed, cut to 2,000 characters.
+	 */
+	public static function clean_notes( string $notes ): string {
+		$notes = str_replace( "\r\n", "\n", $notes );
+		$notes = (string) preg_replace( '/[\x00-\x09\x0B-\x1F\x7F]/', '', $notes );
+
+		return mb_substr( trim( $notes ), 0, 2000 );
+	}
+
+	/** True when a row with `$id` exists, even if the value didn't change. */
+	public function update_notes( int $id, string $notes ): bool {
+		global $wpdb;
+
+		$changed = $wpdb->update( $this->table(), [ 'notes' => self::clean_notes( $notes ) ], [ 'id' => $id ], [ '%s' ], [ '%d' ] );
+
+		return false !== $changed && null !== $this->find( $id );
+	}
+
 	/** True when a row with `$id` exists, even if the value didn't change. */
 	public function update_status( int $id, LeadStatus $status ): bool {
 		global $wpdb;

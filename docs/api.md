@@ -35,7 +35,8 @@ Each handler checks `manage_options` first (403; a missing or non-numeric `id` i
 
 | Action | Caller | Auth | Request fields | Success | Errors |
 |---|---|---|---|---|---|
-| `moving_quote_update_status` | The status form on each Leads row (POST) | `manage_options` + nonce `moving_quote_update_status_{id}` | `id`, `status` | Redirect with a notice; an unknown status is a no-op | 400, 403 |
+| `moving_quote_update_status` | The status form on each Leads row (POST) | `manage_options` + nonce `moving_quote_update_status_{id}` | `id`, `status` (the "Mark contacted" button on a `new` row posts the same action with `status=contacted`) | Redirect with a notice; an unknown status is a no-op | 400, 403 |
+| `moving_quote_update_notes` | The notes form inside a Leads row's "Edit notes" (POST) | `manage_options` + nonce `moving_quote_update_notes_{id}` | `id`, `notes` (trimmed, control characters other than line feeds removed, cut to 2,000 characters) | Redirect with a notice | 400, 403 |
 | `moving_quote_retry_delivery` | "Retry delivery" on a `failed` row (GET link) | `manage_options` + nonce `moving_quote_retry_delivery_{id}` | `id` | Redirect: queued for delivery, never "sent" | 400, 403 |
 | `moving_quote_delete_lead` | "Delete" on a row, after a `confirm()` (GET link) | `manage_options` + nonce `moving_quote_delete_lead_{id}` | `id` | Redirect with a notice | 400, 403 |
 | `moving_quote_export_csv` | "Export CSV" on the Leads page (GET link) | `manage_options` + nonce `moving_quote_export_csv` | none | `text/csv; charset=utf-8`, `moving-leads-{Y-m-d}.csv`, UTF-8 BOM, 500-row batches | 403 |

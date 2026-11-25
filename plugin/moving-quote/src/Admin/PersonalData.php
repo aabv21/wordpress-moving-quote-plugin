@@ -148,6 +148,10 @@ final class PersonalData {
 					'value' => (string) $lead->estimate_high_cop,
 				],
 				[
+					'name'  => __( 'Team notes', 'moving-quote' ),
+					'value' => $lead->notes,
+				],
+				[
 					/* translators: the site language the request was submitted in, e.g. es_CO */
 					'name'  => __( 'Language', 'moving-quote' ),
 					'value' => $lead->locale,

@@ -42,6 +42,17 @@ export function formatPhoneDisplay(digits: string): string {
   return `+${digits}`;
 }
 
+/**
+ * `https://wa.me/<digits>` for the visitor's number. A Colombian mobile typed without the country
+ * code (10 digits starting with 3) gets `57` in front; every other number is used as it is. Built
+ * only from the digits `parseLead()` validated, so it is the one link a team email carries.
+ */
+export function whatsAppLink(phone: string): string {
+  const digits = /^3\d{9}$/.test(phone) ? `57${phone}` : phone;
+
+  return `https://wa.me/${digits}`;
+}
+
 /** The brand's colors, inline: most email clients drop `<style>` blocks. */
 const EMAIL_TEXT = '#111418';
 const EMAIL_MUTED = '#4b5563';
@@ -119,6 +130,7 @@ export function buildTeamEmail(lead: Lead, config: Pick<Config, 'team_locale'>):
   const text = [
     `${labels.name}: ${oneLine(customer.name)}`,
     `${labels.phone}: ${oneLine(customer.phone)}`,
+    `${labels.whatsapp}: ${whatsAppLink(customer.phone)}`,
     `${labels.email}: ${oneLine(customer.email)}`,
     `${labels.moveDate}: ${longDate(move.date, team)}`,
     `${labels.route}: ${team.route(oneLine(move.origin), oneLine(move.destination), oneLine(formatNumber(move.distance_km, team)))}`,

@@ -55,6 +55,26 @@ function scrapeStatusNonce(html: string, leadId: string): string {
   throw new Error(`no status-update form with a _wpnonce input found for lead id ${leadId}`);
 }
 
+/** The `_wpnonce` inside the notes `<form>` of lead `$leadId`. */
+function scrapeNotesNonce(html: string, leadId: string): string {
+  const formPattern = /<form method="post"[^>]*>[\s\S]*?<\/form>/g;
+  for (const form of html.matchAll(formPattern)) {
+    if (!form[0].includes('value="moving_quote_update_notes"') || !form[0].includes(`name="id" value="${leadId}"`)) continue;
+    const nonceMatch = /name="_wpnonce" value="([^"]+)"/.exec(form[0]);
+    if (nonceMatch?.[1] !== undefined) return nonceMatch[1];
+  }
+  throw new Error(`no notes form with a _wpnonce input found for lead id ${leadId}`);
+}
+
+/** The "Mark contacted" form of lead `$leadId`, or null when the row has none. */
+function markContactedForm(html: string, leadId: string): string | null {
+  const formPattern = /<form method="post"[^>]*>[\s\S]*?<\/form>/g;
+  for (const form of html.matchAll(formPattern)) {
+    if (form[0].includes('name="status" value="contacted"') && form[0].includes(`name="id" value="${leadId}"`)) return form[0];
+  }
+  return null;
+}
+
 async function countLeadRows(): Promise<number> {
   const rows = await sqlWp(`SELECT COUNT(*) AS n FROM ${await table()}`);
   return Number(rows[0]?.n ?? 0);
@@ -234,7 +254,7 @@ describe('admin: leads list, status, export, retry', () => {
     const buffer = Buffer.from(await res.arrayBuffer());
     expect(buffer.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
     const body = stripBom(buffer.toString('utf8'));
-    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status,locale')).toBe(true);
+    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status,locale,notes')).toBe(true);
     expect(body).toContain('"\'=HYPERLINK(""http://example.com"",""x"")"');
 
     const contactedHref = exportHref.includes('?') ? `${exportHref}&status=contacted` : `${exportHref}?status=contacted`;
@@ -468,6 +488,80 @@ echo 'ok';
       // Restore both rows, so a later test never inherits a closed status.
       await sqlWp(`UPDATE ${leadsTable} SET sync_status = 'sent', status = 'new' WHERE request_uuid IN ('${formulaLeadUuid}', '${scriptLeadUuid}')`);
     }
+  });
+
+  it('saves notes through the scraped per-row form, escapes them, and rejects a wrong nonce or a subscriber', async () => {
+    const lead = validLead({ name: 'Notes Customer' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    const uuid = lead.submission_id as string;
+    const leadId = (await rowByUuid(uuid)).id;
+    const leadsTable = await table();
+    const html = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    const notesNonce = scrapeNotesNonce(html, leadId);
+    expect(html).toContain(`<label class="screen-reader-text" for="moving-quote-notes-${leadId}">Notes for lead ${referenceFor(uuid)}</label>`);
+    expect(html).toContain('<textarea id="moving-quote-notes-' + leadId + '" name="notes" maxlength="2000" rows="4">');
+
+    const post = (cookies: string, fields: Record<string, string>) =>
+      fetch(site('/wp-admin/admin-post.php'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: cookies },
+        body: new URLSearchParams({ action: 'moving_quote_update_notes', id: leadId, ...fields }),
+        redirect: 'manual',
+      });
+    const storedNotes = async () => (await sqlWp(`SELECT notes FROM ${leadsTable} WHERE request_uuid = '${uuid}'`))[0]?.notes;
+
+    expect((await post(adminCookies, { notes: 'nope', _wpnonce: 'not-a-real-nonce' })).status).toBe(403);
+    expect(await storedNotes()).toBe('');
+
+    const saved = await post(adminCookies, { notes: '  Call after 5 <script>alert(1)</script>\nAsk about the piano ', _wpnonce: notesNonce });
+    expect(saved.status).toBe(302);
+    expect(await storedNotes()).toBe('Call after 5 <script>alert(1)</script>\nAsk about the piano');
+
+    const after = await (await fetch(site(saved.headers.get('location')!), { headers: { Cookie: adminCookies } })).text();
+    expect(after).toContain('Notes saved.');
+    expect(after).toContain('Call after 5 &lt;script&gt;alert(1)&lt;/script&gt;<br />\nAsk about the piano');
+    expect(after).not.toContain('<script>alert(1)</script>');
+
+    // A markup-looking note already stored is escaped when it is printed.
+    await sqlWp(`UPDATE ${leadsTable} SET notes = '<b>bold</b> & "quoted"' WHERE request_uuid = '${uuid}'`);
+    const escaped = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(escaped).toContain('&lt;b&gt;bold&lt;/b&gt; &amp; &quot;quoted&quot;');
+    expect(escaped).not.toContain('<b>bold</b>');
+
+    const password = randomBytes(18).toString('hex');
+    await wp(['user', 'create', SUBSCRIBER_LOGIN, `${SUBSCRIBER_LOGIN}@example.com`, '--role=subscriber', `--user_pass=${password}`]);
+    try {
+      const subscriberCookies = await login(SUBSCRIBER_LOGIN, password);
+      expect((await post(subscriberCookies, { notes: 'subscriber', _wpnonce: notesNonce })).status).toBe(403);
+      expect(await storedNotes()).toBe('<b>bold</b> & "quoted"');
+    } finally {
+      await wp(['user', 'delete', SUBSCRIBER_LOGIN, '--yes']);
+    }
+  });
+
+  it('marks a new lead contacted in one click, and shows the button only on new leads', async () => {
+    const lead = validLead({ name: 'Quick Status Customer' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    const uuid = lead.submission_id as string;
+    const leadId = (await rowByUuid(uuid)).id;
+
+    const html = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    const form = markContactedForm(html, leadId);
+    expect(form).not.toBeNull();
+    expect(form).toContain('Mark contacted');
+    const quickNonce = /name="_wpnonce" value="([^"]+)"/.exec(form!)![1]!;
+
+    const res = await fetch(site('/wp-admin/admin-post.php'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: adminCookies },
+      body: new URLSearchParams({ action: 'moving_quote_update_status', id: leadId, status: 'contacted', _wpnonce: quickNonce }),
+      redirect: 'manual',
+    });
+    expect(res.status).toBe(302);
+    expect((await rowByUuid(uuid)).status).toBe('contacted');
+
+    const afterHtml = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(markContactedForm(afterHtml, leadId)).toBeNull();
   });
 
   it('logs nothing from the plugin', async () => {

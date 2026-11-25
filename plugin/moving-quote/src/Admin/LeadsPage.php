@@ -14,6 +14,7 @@ final class LeadsPage {
 
 	public static function register_hooks(): void {
 		add_action( 'admin_post_moving_quote_update_status', [ self::class, 'handle_update_status' ] );
+		add_action( 'admin_post_moving_quote_update_notes', [ self::class, 'handle_update_notes' ] );
 		add_action( 'admin_post_moving_quote_export_csv', [ self::class, 'handle_export' ] );
 		add_action( 'admin_post_moving_quote_retry_delivery', [ self::class, 'handle_retry' ] );
 		add_action( 'admin_post_moving_quote_delete_lead', [ self::class, 'handle_delete' ] );
@@ -73,6 +74,7 @@ final class LeadsPage {
 		$notice = self::string_field( $_GET, self::NOTICE_ARG );
 		$text   = match ( $notice ) {
 			'status_updated' => __( 'Lead status updated.', 'moving-quote' ),
+			'notes_saved'    => __( 'Notes saved.', 'moving-quote' ),
 			'retry_queued'   => __( 'The lead was queued for delivery.', 'moving-quote' ),
 			'lead_deleted'   => __( 'The lead was deleted.', 'moving-quote' ),
 			default          => '',
@@ -97,6 +99,17 @@ final class LeadsPage {
 		}
 
 		self::redirect_to_list( 'status_updated' );
+	}
+
+	public static function handle_update_notes(): void {
+		$id = self::require_id();
+		check_admin_referer( 'moving_quote_update_notes_' . $id );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the nonce above covers the request; `update_notes()` cleans the text, and every print escapes it.
+		$value = $_POST['notes'] ?? null;
+		( new LeadRepository() )->update_notes( $id, is_string( $value ) ? wp_unslash( $value ) : '' );
+
+		self::redirect_to_list( 'notes_saved' );
 	}
 
 	public static function handle_retry(): void {

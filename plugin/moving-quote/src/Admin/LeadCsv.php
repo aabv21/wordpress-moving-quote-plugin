@@ -7,7 +7,7 @@ use Chivabox\MovingQuote\Leads\LeadRecord;
 
 final class LeadCsv {
 	/** @var list<string> */
-	public const HEADER = [ 'received_at', 'reference', 'status', 'name', 'phone', 'email', 'move_date', 'move_type', 'rooms', 'origin', 'destination', 'distance_km', 'extras', 'estimate_cop', 'estimate_low_cop', 'estimate_high_cop', 'sync_status', 'locale' ];
+	public const HEADER = [ 'received_at', 'reference', 'status', 'name', 'phone', 'email', 'move_date', 'move_type', 'rooms', 'origin', 'destination', 'distance_km', 'extras', 'estimate_cop', 'estimate_low_cop', 'estimate_high_cop', 'sync_status', 'locale', 'notes' ];
 
 	/**
 	 * `received_at` is `created_at` (UTC) in `$tz`. Every other field is the raw stored value, not
@@ -37,6 +37,7 @@ final class LeadCsv {
 			CsvEscaper::cell( $lead->estimate_high_cop ),
 			CsvEscaper::cell( $lead->sync_status->value ),
 			CsvEscaper::cell( $lead->locale ),
+			CsvEscaper::cell( $lead->notes ),
 		];
 	}
 }

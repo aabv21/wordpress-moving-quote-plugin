@@ -111,6 +111,17 @@ describe('personal data: export and erase', () => {
     expect(names).toContain('Second Lead');
   });
 
+  it('exports the team notes with the lead', async () => {
+    const email = `privacy-notes-${crypto.randomUUID()}@example.com`;
+    const lead = validLead({ email, name: 'Privacy Notes Test' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    await sqlWp(`UPDATE ${await table()} SET notes = 'Prefers calls after 5' WHERE request_uuid = '${lead.submission_id as string}'`);
+
+    const exported = await exportFor(email);
+
+    expect(exported.data[0]!.data).toContainEqual({ name: 'Team notes', value: 'Prefers calls after 5' });
+  });
+
   it('erases every matching lead through the registered eraser filter, and reports no items removed for an email with none', async () => {
     const email = `privacy-erase-${crypto.randomUUID()}@example.com`;
     const lead = validLead({ email, name: 'Privacy Erase Test' });

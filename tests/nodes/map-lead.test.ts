@@ -59,6 +59,16 @@ describe('map-lead', () => {
     expect(team.text).not.toContain('mailto:');
   });
 
+  it('the team email has the WhatsApp line after the phone, in both languages', () => {
+    const english = run({ lead, config }).team.text.split('\n');
+    expect(english.indexOf('WhatsApp: https://wa.me/570000000001')).toBe(english.indexOf('Phone: 570000000001') + 1);
+    const spanish = run({ lead, config: spanishTeamConfig }).team.text.split('\n');
+    expect(spanish.indexOf('WhatsApp: https://wa.me/570000000001')).toBe(spanish.indexOf('Teléfono: 570000000001') + 1);
+    const mobile = run({ lead: { ...lead, customer: { ...lead.customer, phone: '3001234567' } }, config }).team.text;
+    expect(mobile).toContain('WhatsApp: https://wa.me/573001234567');
+    expect(mobile).not.toContain('mailto:');
+  });
+
   it('writes the customer summary', () => {
     const { customer } = run({ lead, config });
     expect([customer.to, customer.reply_to, customer.subject]).toEqual(['jose@example.com', 'team@example.com', 'Your moving estimate from Chivabox Movers']);
@@ -199,6 +209,7 @@ describe('map-lead', () => {
     expect(team.text.split('\n')).toEqual([
       'Nombre: José Peña',
       'Teléfono: 570000000001',
+      'WhatsApp: https://wa.me/570000000001',
       'Correo: jose@example.com',
       'Fecha de la mudanza: viernes 20 de noviembre de 2026',
       'Ruta: Barranquilla a Cartagena (120 km)',

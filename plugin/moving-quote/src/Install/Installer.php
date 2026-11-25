@@ -7,7 +7,7 @@ use Chivabox\MovingQuote\Settings\Defaults;
 
 final class Installer {
 	/** Bumped on every schema change: '2' added the `locale` column. */
-	public const DB_VERSION    = '2';
+	public const DB_VERSION    = '3';
 	public const CRON_HOOK     = 'moving_quote_process_outbox';
 	public const CRON_SCHEDULE = 'moving_quote_every_minute';
 
