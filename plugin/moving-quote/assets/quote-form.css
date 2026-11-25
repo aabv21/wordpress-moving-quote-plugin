@@ -424,6 +424,13 @@
   margin-top: var(--mq-space-5);
 }
 
+.moving-quote .moving-quote__next {
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+  margin: var(--mq-space-3) 0 0;
+  text-align: end;
+}
+
 .moving-quote .moving-quote__button {
   display: inline-flex;
   flex: 1 1 auto;

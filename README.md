@@ -6,21 +6,17 @@ A custom WordPress plugin that gives instant moving estimates in English and Spa
 
 **Single-site only.** This plugin doesn't support WordPress Multisite; activating it on a Multisite install (network-wide or per-site) is refused with a clear message.
 
-## Video
-
-A 60–120 second walkthrough will be linked here.
-
 ## Architecture
 
 ![System architecture: the browser submits to WordPress's REST API, which inserts into the leads table and sends a signed request to n8n's lead-intake workflow; lead-intake records the request once in Postgres and hands off to process-lead, which appends or updates a row in Google Sheets and emails the team and the customer; error-handler alerts the operator on any workflow failure](docs/diagrams/architecture.svg)
 
-Open the [interactive diagram](docs/diagrams/architecture.html) to read it full-size, pan, and inspect each node. [`docs/architecture.md`](docs/architecture.md) covers the components, the workflows node by node, the data model, failure modes with recovery steps, scaling limits, and security, with the lead-delivery sequence diagram. [`docs/testing.md`](docs/testing.md) covers every test suite and what continuous integration (CI) runs.
+Open the [interactive diagram](docs/diagrams/architecture.html) to read it full-size, pan, and inspect each node. [`docs/architecture.md`](docs/architecture.md) covers the components, the workflows node by node, the data model, failure modes with recovery steps, scaling limits, and security, with the [lead-delivery sequence diagram](docs/diagrams/lead-sequence.html). [`docs/testing.md`](docs/testing.md) covers every test suite and what continuous integration (CI) runs.
 
 ## What it does
 
 - **A three-step quote form with a live estimate.** The `[moving_quote]` shortcode asks for the move (type, rooms, both cities, a date), the extra services, and the customer's details. The price range in Colombian pesos updates as the visitor fills in the first step, and a submission lands on a thank-you page that shows the lead's `MQ-…` reference.
 - **English and Spanish, with an EN | ES switcher.** The demo site is bilingual through Polylang: Get a Quote at `/get-a-quote/` and Cotizar at `/es/cotizar/`. The form, its error messages, the price's separators (`COP 1.017.000 – 1.243.000` in Spanish), the thank-you page, and the lead's stored language all follow the page.
-- **Every lead is saved first, then delivered.** WordPress stores the lead in its own table, then sends it to n8n as a signed request. If n8n is down, a cron-driven outbox retries with backoff, so no lead is lost.
+- **Every lead is saved first, then delivered.** WordPress stores the lead in its own table, then sends it to n8n as a signed request. If n8n is down, a cron-driven outbox retries with backoff for about 8.5 hours (10 attempts); after that the lead shows Failed in Leads until someone chooses Retry delivery.
 - **One sheet row and two emails per lead.** n8n verifies the signature, records the lead once, and writes one row to the `Moving leads` Google Sheet. It then emails the team a plain-text summary and the customer their estimate, in the customer's language.
 - **A Leads admin page.** Moving quotes → Leads lists every lead with its status and delivery state, filters by status, exports a formula-safe CSV, retries a failed delivery, and warns on the Dashboard when a lead hasn't reached n8n.
 - **An alert to the operator.** Any workflow failure emails the operator the failed node, the error, and the execution link, in the team's language.
@@ -39,6 +35,13 @@ The quote form, its thank-you page, and the Leads admin, in WordPress's default 
 The form's colors, contrast ratios, and spacing are listed under "The quote form's design tokens" in [`docs/architecture.md`](docs/architecture.md).
 
 ## Quick start
+
+**You need**
+
+- Node.js 24 or newer.
+- pnpm 11: run `corepack enable`, which reads the exact version from `package.json`.
+- Docker with Compose v2.
+- Network access for `./setup.sh` (it downloads Polylang and WordPress's Spanish language pack).
 
 ```sh
 pnpm install --frozen-lockfile
@@ -166,7 +169,7 @@ Then:
 Each is explained in full under "Decisions" in [`docs/architecture.md`](docs/architecture.md).
 
 - **JWT over a hand-rolled HMAC header.** n8n's Webhook node verifies HS256 natively, so the secret stays in an n8n credential and a bad token never starts an execution.
-- **The leads table is the outbox.** WordPress saves the lead first and sends it second, so an n8n outage delays a lead but never loses it.
+- **The leads table is the outbox.** WordPress saves the lead first and sends it second, so an n8n outage delays a lead instead of losing it: it waits in the table until it's sent or retried by hand.
 - **`jti` dedupe in Postgres.** One UUID is the lead's key, the token's `jti`, and the `processed_events` key, so a retried delivery is recorded once.
 - **Append or update by `request_uuid`, in `RAW` cells.** A retried run updates the lead's own row instead of adding a second, and phones and formula-looking names stay text.
 - **Append before email.** No email goes out for a lead that isn't in the sheet.
@@ -179,6 +182,7 @@ Each is explained in full under "Decisions" in [`docs/architecture.md`](docs/arc
 
 - **Rate limits are per IP and fixed-window.** Visitors behind one shared NAT share one budget (5 submissions an hour by default). Upgrade: a per-visitor token, or a CAPTCHA.
 - **A page cache can serve a stale nonce**, and the form then answers "Your session expired". Upgrade: exclude the quote page from the cache.
+- **Delivery gives up after 10 attempts.** About 8.5 hours of backoff; the lead then shows Failed in Leads and on the Dashboard until someone chooses Retry delivery. Upgrade: an operator alert when a lead turns Failed.
 - **Distances are approximate**, from a fixed city-to-city table in Settings. Upgrade: a routing API.
 - **WordPress and n8n need synced clocks (NTP)** when they run on different hosts: a token lives 300 seconds, with 60 seconds of allowed skew.
 - **The webhook secret is stored in the database.** Upgrade: a `wp-config.php` constant.

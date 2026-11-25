@@ -219,6 +219,15 @@ describe('quote and lead REST API', () => {
       expect(body.data?.errors?.email).toBe('Enter an email address like name@example.com.');
     });
 
+    it("names the validator's own date window in the too_far message", async () => {
+      const bogota = new Date(Date.now() - 5 * 3_600_000);
+      bogota.setUTCDate(bogota.getUTCDate() + 366);
+      const res = await rest(LEADS_PATH, validLead({ move_date: bogota.toISOString().slice(0, 10) }), { nonce });
+      expect(res.status).toBe(422);
+      const body = res.json as WpErrorBody;
+      expect(body.data?.errors?.move_date).toBe('Choose a date within the next 365 days.');
+    });
+
     it('a duplicate submission (same submission_id) is idempotent: one row, same reference, back to back and in parallel', async () => {
       const first = validLead();
       const res1 = await rest(LEADS_PATH, first, { nonce });

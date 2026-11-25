@@ -1,11 +1,12 @@
 <?php
 /**
  * The `[moving_quote]` form markup. Included by Frontend\Shortcode::render(), which sets
- * `$cities` (list<string>) and `$config` (the data-config payload) in this file's scope.
+ * `$cities` (list<string>), `$config` (the data-config payload) and `$privacy_url` in this file's scope.
  *
  * @package Chivabox\MovingQuote
  *
  * @var list<string> $cities
+ * @var string|null $privacy_url
  * @var array{estimateUrl: string, leadsUrl: string, nonce: string, thankYouUrl: string|null, strings: array<string, string>} $config
  */
 
@@ -32,7 +33,6 @@ $steps = [
 	__( 'Your details', 'moving-quote' ),
 ];
 
-$privacy_url = get_privacy_policy_url();
 // America/Bogota, like LeadValidator::validate_move_date(), not the site timezone, so min always
 // matches what the REST API accepts.
 $today        = ( new DateTimeImmutable( 'now', new DateTimeZone( 'America/Bogota' ) ) )->format( 'Y-m-d' );
@@ -166,19 +166,19 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 				<label class="moving-quote__check moving-quote__check--plain" for="mq-consent">
 					<input class="moving-quote__checkbox" type="checkbox" id="mq-consent" name="consent" value="1" required aria-describedby="mq-error-consent" />
 					<span>
-						<?php if ( '' !== $privacy_url ) : ?>
+						<?php if ( null !== $privacy_url ) : ?>
 							<?php
 							echo wp_kses(
 								sprintf(
-									/* translators: %s: privacy policy URL */
-									__( 'I agree to the processing of my data under the <a href="%s">privacy policy</a>.', 'moving-quote' ),
+									/* translators: %s: data processing policy URL */
+									__( 'I agree to the processing of my data under the <a href="%s">data processing policy</a>.', 'moving-quote' ),
 									esc_url( $privacy_url )
 								),
 								[ 'a' => [ 'href' => true ] ]
 							);
 							?>
 						<?php else : ?>
-							<?php esc_html_e( 'I agree to the processing of my data under the privacy policy.', 'moving-quote' ); ?>
+							<?php esc_html_e( 'I agree to the processing of my data under the data processing policy.', 'moving-quote' ); ?>
 						<?php endif; ?>
 					</span>
 				</label>
@@ -190,6 +190,7 @@ $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 			<button type="button" class="moving-quote__button moving-quote__button--secondary" data-back><?php esc_html_e( 'Back', 'moving-quote' ); ?></button>
 			<button type="submit" class="moving-quote__button moving-quote__button--cta" data-submit><?php esc_html_e( 'Send my request', 'moving-quote' ); ?></button>
 		</div>
+		<p class="moving-quote__next"><?php esc_html_e( 'We call you during business hours. No commitment.', 'moving-quote' ); ?></p>
 	</fieldset>
 
 	<p class="moving-quote__form-error" data-form-error role="alert"></p>

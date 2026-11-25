@@ -11,6 +11,7 @@ const PAGES = [
   { en: 'home', es: 'inicio' },
   { en: 'get-a-quote', es: 'cotizar' },
   { en: 'thank-you', es: 'gracias' },
+  { en: 'data-policy', es: 'politica-de-datos' },
 ] as const;
 
 interface QuoteFormConfig {

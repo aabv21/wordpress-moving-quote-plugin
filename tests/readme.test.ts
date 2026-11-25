@@ -9,7 +9,30 @@ const TRACKED = new Set(execFileSync('git', ['ls-files', '--cached', '--others',
 describe('README', () => {
   it("README's ## sections follow the design order", () => {
     const sections = README.split('\n').filter((line) => line.startsWith('## ')).map((line) => line.slice(3));
-    expect(sections).toEqual(['Video', 'Architecture', 'What it does', 'Quick start', 'Configuration', 'Test scenarios', 'Design decisions', 'Limitations', 'License']);
+    expect(sections).toEqual(['Architecture', 'What it does', 'Quick start', 'Configuration', 'Test scenarios', 'Design decisions', 'Limitations', 'License']);
+  });
+
+  it('the README never claims that no lead is lost', () => {
+    expect(README).not.toMatch(/no lead is lost|never loses it/);
+  });
+
+  it('the README lists what you need before the quick start', () => {
+    const needs = README.slice(README.indexOf('**You need**'), README.indexOf('```sh', README.indexOf('## Quick start')));
+    expect(needs).toContain('Node.js 24');
+    expect(needs).toContain('pnpm 11');
+    expect(needs).toContain('Docker with Compose');
+  });
+
+  it('the README links both diagrams', () => {
+    expect(README).toContain('docs/diagrams/architecture.html');
+    expect(README).toContain('docs/diagrams/lead-sequence.html');
+  });
+
+  it('SECURITY.md states the supported versions and names only this repo’s services', () => {
+    const security = readFileSync('SECURITY.md', 'utf8');
+    expect(security).toContain('## Supported versions');
+    expect(security).toContain('Only the latest release on main');
+    for (const name of ['Anthropic', 'Meta', 'Shopify']) expect(security).not.toContain(name);
   });
 
   it('the quick start has five commands or fewer', () => {

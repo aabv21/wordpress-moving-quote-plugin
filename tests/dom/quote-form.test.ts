@@ -12,6 +12,7 @@ const STRINGS = {
   rateLimited: 'Too many requests. Please try again later.',
   sessionExpired: 'Your session expired. Reload the page and try again.',
   genericError: 'Please fix the highlighted fields.',
+  serverError: 'Something went wrong on our side. Please try again in a few minutes.',
 };
 
 type FetchMock = Mock<(url: string, init?: RequestInit) => Promise<Response>>;
@@ -274,6 +275,24 @@ describe('the quote form in a DOM', () => {
     expect(submitButton().disabled).toBe(false);
     expect(submitButton().textContent).toBe('Send my request');
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it('a 500 shows the server error, not the connection message, and re-enables the button', async () => {
+    await mount({ respond: (url) => Promise.resolve(url === LEADS_URL ? json(500, { code: 'moving_quote_save_failed', message: 'x' }) : json(200, ESTIMATE)) });
+    goToLastStep();
+    submitButton().click();
+    await settle();
+    expect(q('[data-form-error]').textContent).toBe(STRINGS.serverError);
+    expect(submitButton().disabled).toBe(false);
+    expect(submitButton().textContent).toBe('Send my request');
+  });
+
+  it('any other unexpected status, such as 404, shows the server error too', async () => {
+    await mount({ respond: (url) => Promise.resolve(url === LEADS_URL ? json(404, { code: 'rest_no_route' }) : json(200, ESTIMATE)) });
+    goToLastStep();
+    submitButton().click();
+    await settle();
+    expect(q('[data-form-error]').textContent).toBe(STRINGS.serverError);
   });
 
   it('a retry after a 429 reuses the same submission_id', async () => {

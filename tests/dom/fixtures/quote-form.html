@@ -1,5 +1,5 @@
 <!-- The [moving_quote] markup contract (templates/quote-form.php), rendered in English. tests/stack/wp/quote-page.test.ts checks that every data-* hook here is in the real page. -->
-<form class="moving-quote" data-moving-quote data-config="{&quot;estimateUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/estimate?locale=en_US&quot;,&quot;leadsUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/leads?locale=en_US&quot;,&quot;nonce&quot;:&quot;test-nonce&quot;,&quot;thankYouUrl&quot;:&quot;https://example.com/thank-you/&quot;,&quot;strings&quot;:{&quot;sending&quot;:&quot;Sending…&quot;,&quot;networkError&quot;:&quot;Something went wrong. Please check your connection and try again.&quot;,&quot;rateLimited&quot;:&quot;Too many requests. Please try again later.&quot;,&quot;sessionExpired&quot;:&quot;Your session expired. Reload the page and try again.&quot;,&quot;genericError&quot;:&quot;Please fix the highlighted fields.&quot;}}" novalidate>
+<form class="moving-quote" data-moving-quote data-config="{&quot;estimateUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/estimate?locale=en_US&quot;,&quot;leadsUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/leads?locale=en_US&quot;,&quot;nonce&quot;:&quot;test-nonce&quot;,&quot;thankYouUrl&quot;:&quot;https://example.com/thank-you/&quot;,&quot;strings&quot;:{&quot;sending&quot;:&quot;Sending…&quot;,&quot;networkError&quot;:&quot;Something went wrong. Please check your connection and try again.&quot;,&quot;rateLimited&quot;:&quot;Too many requests. Please try again later.&quot;,&quot;sessionExpired&quot;:&quot;Your session expired. Reload the page and try again.&quot;,&quot;genericError&quot;:&quot;Please fix the highlighted fields.&quot;,&quot;serverError&quot;:&quot;Something went wrong on our side. Please try again in a few minutes.&quot;}}" novalidate>
   <ol class="moving-quote__progress" role="list">
     <li class="moving-quote__progress-step" data-progress-step="0" aria-current="step"><span class="moving-quote__progress-marker" aria-hidden="true">1</span><span class="moving-quote__progress-label">Your move</span></li>
     <li class="moving-quote__progress-step" data-progress-step="1"><span class="moving-quote__progress-marker" aria-hidden="true">2</span><span class="moving-quote__progress-label">Extra services</span></li>
@@ -121,7 +121,7 @@
       <p class="moving-quote__field moving-quote__field--wide">
         <label class="moving-quote__check moving-quote__check--plain" for="mq-consent">
           <input class="moving-quote__checkbox" type="checkbox" id="mq-consent" name="consent" value="1" required aria-describedby="mq-error-consent" />
-          <span>I agree to the processing of my data under the privacy policy.</span>
+          <span>I agree to the processing of my data under the data processing policy.</span>
         </label>
         <span class="moving-quote__error" id="mq-error-consent" data-error-for="consent"></span>
       </p>
