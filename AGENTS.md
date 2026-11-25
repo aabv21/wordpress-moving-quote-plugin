@@ -8,13 +8,13 @@ Chivabox Movers' moving-quote plugin: a WordPress plugin that prices a move in a
 
 ## Map
 
-- `plugin/moving-quote/`: the plugin (namespace `Chivabox\MovingQuote`). `src/` has `Pricing/`, `Settings/`, `Install/`, `Admin/`, `Leads/`, `Security/`, `Rest/`, `Delivery/`, `Frontend/`. The committed `vendor/` is a generated autoloader. `assets/` holds the stylesheets and the generated scripts; `languages/` the `moving-quote` text domain.
+- `plugin/moving-quote/`: the plugin (namespace `Chivabox\MovingQuote`). `src/` has `Pricing/`, `Settings/`, `Install/`, `Admin/`, `Leads/`, `Security/`, `Rest/`, `Delivery/`, `Frontend/`. Shared pieces: `Leads\Labels` (every translated label), `Leads\EmailRule`, `Rest\Responses`, `Admin\CsvExporter`, and the `Plugin::TIMEZONE` and `Pricing\Estimate::CURRENCY` constants. The committed `vendor/` is a generated autoloader. `assets/` holds the stylesheets and the generated scripts; `languages/` the `moving-quote` text domain.
 - `site/theme/`: the demo site's block child theme `chivabox`: tokens, patterns (the page copy), templates, fonts, photos, `languages/`.
 - `site/mu-plugins/`: the demo site's own glue (Polylang for navigation menus), not part of the plugin.
 - `src/frontend/`: the browser TypeScript (`quote-form.ts`, `thank-you.ts`, `form/`, `lib/`), bundled by esbuild into `plugin/moving-quote/assets/`.
-- `src/nodes/`: the Code-node sources (`lead.ts`, `locale.ts`, `verify-request.ts`, `map-lead.ts`, `error-alert.ts`), bundled into each node's `jsCode`.
+- `src/nodes/`: the Code-node sources (`lead.ts`, `locale.ts`, `verify-request.ts`, `map-lead.ts` over `messages.ts`, `sheet-row.ts` and `emails.ts`, `error-alert.ts`), bundled into each node's `jsCode`.
 - `workflows/`: `lead-intake`, `process-lead`, `error-handler`, mounted read-only into n8n.
-- `scripts/`: the TypeScript CLIs. `scripts/lib/manifest.ts` is the source of truth for fixed workflow, credential and Code-node IDs.
+- `scripts/`: the TypeScript CLIs. `scripts/lib/manifest.ts` is the source of truth for fixed workflow, credential and Code-node IDs; a CLI imports only `scripts/lib/` (`migrations.ts`, `build.ts`, `compose.ts`), never another CLI.
 - `tests/`: Vitest (`frontend/`, `nodes/`, `tooling/`, `scripts/`, `dom/`, top-level suites), PHPUnit in `tests/php/`, the stack suite in `tests/stack/`, `fixtures/`, `lib/`.
 - `compose.yaml`, `compose.queue.yaml`, `docker/php/`: the stack and the PHP tools image. `setup.sh` installs WordPress against it.
 - `db/`, `config/`, `playground/`: the Postgres baseline and migrations, the n8n config template, the Playground blueprints.
@@ -52,7 +52,7 @@ Run before every commit that touches the area:
 
 Generated files and tooling:
 - Never hand-edit generated files: `quote-form.js`, `thank-you.js`, `vendor/`, each `jsCode`, and every `.pot`, `.mo` and `.l10n.php`. CI fails on drift. The plugin's `composer.json` pins `version` and `autoloader-suffix`.
-- No `.js` sources. Code nodes are `src/nodes/<name>.ts` (pure, no I/O, no clock), built by `pnpm run build:workflows`. Re-check `hardenAgainstFrozenDefineProperty` in `scripts/build-workflows.ts` before moving `esbuild` past its exact pin.
+- No `.js` sources. Code nodes are `src/nodes/<name>.ts` (pure, no I/O, no clock), built by `pnpm run build:workflows`. Re-check `hardenAgainstFrozenDefineProperty` in `scripts/lib/build.ts` before moving `esbuild` past its exact pin.
 - pnpm stays 11.x. Never touch `trustPolicy`, `trustPolicyExclude`, `minimumReleaseAge` or `minimumReleaseAgeExclude` without the owner (`docs/supply-chain.md`).
 - Bump `Plugin::VERSION`, the header `Version:` and `plugin/moving-quote/composer.json` together whenever `assets/` changes (CONTRIBUTING.md).
 
