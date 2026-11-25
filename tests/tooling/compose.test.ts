@@ -79,3 +79,20 @@ it('without input, compose never spawns (uses execFile instead)', async () => {
   await compose(['ls']).catch(() => undefined);
   expect(mockSpawn).not.toHaveBeenCalled();
 });
+
+interface ComposeVolume {
+  type: string;
+  source: string;
+  target: string;
+  read_only?: boolean;
+}
+
+it('mounts site/theme read-only as the chivabox theme in wordpress, wpcli and cron', async () => {
+  const { stdout } = await compose(['config', '--format', 'json']);
+  const services = (JSON.parse(stdout) as { services: Record<string, { volumes?: ComposeVolume[] }> }).services;
+  for (const name of ['wordpress', 'wpcli', 'cron']) {
+    const mount = services[name]?.volumes?.find((volume) => volume.target === '/var/www/html/wp-content/themes/chivabox');
+    expect(mount, name).toMatchObject({ type: 'bind', read_only: true });
+    expect(mount?.source, name).toMatch(/\/site\/theme$/);
+  }
+});

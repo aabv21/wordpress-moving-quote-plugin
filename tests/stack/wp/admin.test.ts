@@ -36,7 +36,7 @@ function scrapeHref(html: string, linkText: string): string {
 
 /** Matched by `action=moving_quote_delete_lead` and `id=$leadId` in the URL. */
 function scrapeDeleteHref(html: string, leadId: string): string {
-  const linkPattern = /<a href=(["'])(.*?)\1[^>]*class="submitdelete"[^>]*>/g;
+  const linkPattern = /<a href=(["'])(.*?)\1[^>]*class="submitdelete[ "][^>]*>/g;
   for (const match of html.matchAll(linkPattern)) {
     const href = match[2]!.replaceAll('&#038;', '&').replaceAll('&amp;', '&');
     if (href.includes('action=moving_quote_delete_lead') && href.includes(`id=${leadId}`)) return href;
@@ -146,6 +146,16 @@ describe('admin: leads list, status, export, retry', () => {
     expect(opens).toBe(closes);
     // The specific regression this guards: no bare <form method="get"> wrapping the whole table.
     expect(html).not.toContain('<form method="get">');
+  });
+
+  it('loads the Leads stylesheet on the Leads page only, and marks the email and Delete link', async () => {
+    const leads = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(leads).toMatch(/<link[^>]*\bhref=["'][^"']*\/plugins\/moving-quote\/assets\/admin\.css[^"']*["']/);
+    expect(leads).toMatch(/<span class="moving-quote-leads__email">[^<]+@example\.com<\/span>/);
+    expect(leads).toContain('class="submitdelete moving-quote-leads__delete"');
+
+    const settings = await (await fetch(site('/wp-admin/admin.php?page=moving-quote-settings'), { headers: { Cookie: adminCookies } })).text();
+    expect(settings).not.toContain('assets/admin.css');
   });
 
   it('updates a lead status through the scraped per-row form, rejects a wrong nonce, filters by status, and blocks a subscriber', async () => {

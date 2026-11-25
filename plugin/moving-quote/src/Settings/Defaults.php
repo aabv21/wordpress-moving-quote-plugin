@@ -15,30 +15,45 @@ namespace Chivabox\MovingQuote\Settings;
  *     webhook_url: string,
  *     webhook_secret: string,
  *     team_email: string,
+ *     business_phone: string,
+ *     business_whatsapp: string,
+ *     business_street: string,
+ *     business_city: string,
+ *     business_hours_open: string,
+ *     business_hours_close: string,
+ *     business_tax_id: string,
  * }
  */
 final class Defaults {
 	/** @return SettingsShape */
 	public static function settings(): array {
 		return [
-			'base_rates'     => [
+			'base_rates'           => [
 				'apartment' => 350000,
 				'house'     => 500000,
 				'office'    => 800000,
 			],
-			'per_room'       => 150000,
-			'per_km'         => 4000,
-			'extras'         => [
+			'per_room'             => 150000,
+			'per_km'               => 4000,
+			'extras'               => [
 				'packing'            => 200000,
 				'furniture_assembly' => 150000,
 				'storage'            => 300000,
 				'piano_fragile'      => 250000,
 			],
-			'range_percent'  => 10,
-			'routes'         => self::routes(),
-			'webhook_url'    => '',
-			'webhook_secret' => '',
-			'team_email'     => '',
+			'range_percent'        => 10,
+			'routes'               => self::routes(),
+			'webhook_url'          => '',
+			'webhook_secret'       => '',
+			'team_email'           => '',
+			// Business details: shown in the footer, the quote page and the customer email. Blank hides each.
+			'business_phone'       => '',
+			'business_whatsapp'    => '',
+			'business_street'      => '',
+			'business_city'        => '',
+			'business_hours_open'  => '',
+			'business_hours_close' => '',
+			'business_tax_id'      => '',
 		];
 	}
 

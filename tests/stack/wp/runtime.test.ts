@@ -22,7 +22,7 @@ interface WpNavigation {
 
 const NAVIGATION_ARGS = ['post', 'list', '--post_type=wp_navigation', '--name=primary-navigation'];
 const SPANISH_NAVIGATION_ARGS = ['post', 'list', '--post_type=wp_navigation', '--name=navegacion-principal'];
-const SWITCHER_BLOCK = '<!-- wp:polylang/navigation-language-switcher {"show_labels":"codes"} /-->';
+const SWITCHER_BLOCK = '<!-- wp:polylang/navigation-language-switcher {"show_labels":"names"} /-->';
 
 describe('WordPress runtime, after setup.sh', () => {
   beforeAll(async () => {
@@ -38,12 +38,12 @@ describe('WordPress runtime, after setup.sh', () => {
     await expect(wp(['option', 'get', 'timezone_string'])).resolves.toBe('America/Bogota\n');
   });
 
-  it('activates the default theme', async () => {
+  it('activates the Chivabox theme, a child of the default theme', async () => {
     const defaultTheme = (await wp(['eval', 'echo WP_DEFAULT_THEME;'])).trim();
     expect(defaultTheme).toBe('twentytwentyfive');
-    const active = await wpJson<{ name: string }[]>(['theme', 'list', '--status=active']);
-    expect(active).toHaveLength(1);
-    expect(active[0]?.name).toBe(defaultTheme);
+    const active = await wpJson<{ name: string }[]>(['theme', 'list', '--status=active', '--fields=name']);
+    expect(active).toEqual([{ name: 'chivabox' }]);
+    await expect(wp(['theme', 'get', 'chivabox', '--field=template'])).resolves.toBe(`${defaultTheme}\n`);
   });
 
   it('creates exactly one published page per slug', async () => {
@@ -54,21 +54,21 @@ describe('WordPress runtime, after setup.sh', () => {
     }
   });
 
-  it('creates one primary navigation menu that links Home and Get a Quote, never the thank-you page', async () => {
+  it('creates one primary navigation menu that links Get a quote, never the thank-you page', async () => {
     const menus = await wpJson<WpNavigation[]>([...NAVIGATION_ARGS, '--fields=ID,post_status,post_content']);
     expect(menus).toHaveLength(1);
     expect(menus[0]?.post_status).toBe('publish');
-    expect(menus[0]?.post_content).toContain('"url":"/"');
     expect(menus[0]?.post_content).toContain('"url":"/get-a-quote/"');
+    // The logo already links home, so the menu doesn't repeat it.
+    expect(menus[0]?.post_content).not.toContain('"url":"/"');
     expect(menus[0]?.post_content).toContain(SWITCHER_BLOCK);
     expect(menus[0]?.post_content).not.toContain('thank-you');
   });
 
-  it('creates its Spanish translation, linking Inicio and Cotizar under /es/', async () => {
+  it('creates its Spanish translation, linking Cotizar under /es/', async () => {
     const menus = await wpJson<WpNavigation[]>([...SPANISH_NAVIGATION_ARGS, '--fields=ID,post_status,post_content']);
     expect(menus).toHaveLength(1);
     expect(menus[0]?.post_status).toBe('publish');
-    expect(menus[0]?.post_content).toContain('"label":"Inicio","url":"/es/"');
     expect(menus[0]?.post_content).toContain('"label":"Cotizar","url":"/es/cotizar/"');
     expect(menus[0]?.post_content).toContain(SWITCHER_BLOCK);
     expect(menus[0]?.post_content).not.toContain('gracias');
@@ -153,43 +153,46 @@ async function linksOf(postType: string, slug: string): Promise<string[]> {
   return [...content.matchAll(/href="([^"]*)"|"url":"([^"]*)"/g)].map(([, href, url]) => href ?? url ?? '');
 }
 
-/** Every link setup.sh writes, keyed by the post it lives in. */
-async function siteLinks(): Promise<Record<string, string[]>> {
+/** Every link setup.sh writes into a menu, keyed by the menu. */
+async function menuLinks(): Promise<Record<string, string[]>> {
   return {
-    'home button': await linksOf('page', 'home'),
-    'thank-you button': await linksOf('page', 'thank-you'),
     'English menu': await linksOf('wp_navigation', 'primary-navigation'),
-    'inicio button': await linksOf('page', 'inicio'),
-    'gracias button': await linksOf('page', 'gracias'),
     'Spanish menu': await linksOf('wp_navigation', 'navegacion-principal'),
   };
+}
+
+/** The paths of a rendered page's button links. The patterns resolve them for the page's language. */
+async function buttonPaths(path: string): Promise<string[]> {
+  const html = await (await fetch(site(path))).text();
+  return [...html.matchAll(/<a class="wp-block-button__link[^"]*" href="([^"]*)"/g)].map(([, href]) => new URL(href ?? '', site('/')).pathname);
 }
 
 describe('switching the default language with SITE_LOCALE', () => {
   const runSetup = (locale: string) => execFileAsync('./setup.sh', { env: { ...process.env, SITE_LOCALE: locale } });
 
-  it("rewrites the links setup.sh wrote, so each language's menu and buttons keep pointing at its own pages", { timeout: 300_000 }, async () => {
+  it("rewrites the menu links setup.sh wrote, and each language's buttons point at its own pages", { timeout: 300_000 }, async () => {
     try {
       await runSetup('es_CO');
-      expect(await siteLinks()).toEqual({
-        'home button': ['/en/get-a-quote/'],
-        'thank-you button': ['/en/'],
-        'English menu': ['/en/', '/en/get-a-quote/'],
-        'inicio button': ['/cotizar/'],
-        'gracias button': ['/'],
-        'Spanish menu': ['/', '/cotizar/'],
+      expect(await menuLinks()).toEqual({
+        'English menu': ['/en/get-a-quote/'],
+        'Spanish menu': ['/cotizar/'],
       });
+      expect(await buttonPaths('/en/')).toEqual(['/en/get-a-quote/']);
+      // pll_home_url() answers the English front page itself, which /en/ redirects to.
+      expect(await buttonPaths('/en/thank-you/')).toEqual(['/en/home/']);
+      expect(await buttonPaths('/')).toEqual(['/cotizar/']);
+      expect(await buttonPaths('/gracias/')).toEqual(['/']);
     } finally {
       await runSetup('en_US');
     }
-    expect(await siteLinks()).toEqual({
-      'home button': ['/get-a-quote/'],
-      'thank-you button': ['/'],
-      'English menu': ['/', '/get-a-quote/'],
-      'inicio button': ['/es/cotizar/'],
-      'gracias button': ['/es/'],
-      'Spanish menu': ['/es/', '/es/cotizar/'],
+    expect(await menuLinks()).toEqual({
+      'English menu': ['/get-a-quote/'],
+      'Spanish menu': ['/es/cotizar/'],
     });
+    expect(await buttonPaths('/')).toEqual(['/get-a-quote/']);
+    expect(await buttonPaths('/thank-you/')).toEqual(['/']);
+    expect(await buttonPaths('/es/')).toEqual(['/es/cotizar/']);
+    expect(await buttonPaths('/es/gracias/')).toEqual(['/es/inicio/']);
   });
 });
 

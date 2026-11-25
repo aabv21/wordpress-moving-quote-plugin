@@ -1,0 +1,236 @@
+# Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
+msgid ""
+msgstr ""
+"Project-Id-Version: Chivabox 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-11-25T09:24:15+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: chivabox\n"
+
+#. Theme Name of the theme
+msgid "Chivabox"
+msgstr ""
+
+#. Description of the theme
+msgid "The Chivabox Movers demo site: a block child theme of Twenty Twenty-Five whose page content lives in translatable patterns."
+msgstr ""
+
+#. Author of the theme
+msgid "Andrés Buelvas"
+msgstr ""
+
+msgid "A mover pushing a tall stack of moving boxes on a hand truck"
+msgstr ""
+
+#: patterns/data-policy.php
+msgctxt "Pattern title"
+msgid "Data processing policy"
+msgstr ""
+
+msgid "Demo site: Chivabox Movers is a fictional company, and this policy is a sample."
+msgstr ""
+
+msgid "Who is responsible: Chivabox Movers, Barranquilla, Colombia."
+msgstr ""
+
+msgid "What we collect: your name, phone, email, and the details of your move, when you ask for a quote."
+msgstr ""
+
+msgid "Why: to prepare your estimate, contact you about your move, and keep a record of your request. We don't sell your data or use it for advertising."
+msgstr ""
+
+msgid "Your rights: under Colombia's Law 1581 of 2012 you can see, correct or delete your data, and withdraw your consent, by writing to us from the email address you used."
+msgstr ""
+
+msgid "How long: we keep a request for as long as we need it to answer you and to meet our legal obligations."
+msgstr ""
+
+#: patterns/footer.php
+msgctxt "Pattern title"
+msgid "Footer"
+msgstr ""
+
+msgid "Demo site, fictional company and tax ID."
+msgstr ""
+
+#: patterns/header.php
+msgctxt "Pattern title"
+msgid "Header"
+msgstr ""
+
+#: patterns/home.php
+msgctxt "Pattern title"
+msgid "Home"
+msgstr ""
+
+msgid "Moving on the Caribbean coast, done right"
+msgstr ""
+
+msgid "Homes and offices between Barranquilla, Cartagena and Santa Marta. See your price in under a minute."
+msgstr ""
+
+msgid "Cargo insurance on every move"
+msgstr ""
+
+msgid "Final price in writing after a visit"
+msgstr ""
+
+msgid "Reply within one business hour"
+msgstr ""
+
+msgid "Trained, uniformed crews"
+msgstr ""
+
+msgid "How it works"
+msgstr ""
+
+msgid "Get your estimate"
+msgstr ""
+
+msgid "Answer three short steps and see a price range right away."
+msgstr ""
+
+msgid "Confirm the details"
+msgstr ""
+
+msgid "We call you, or meet by video call, and send the final price in writing."
+msgstr ""
+
+msgid "Move day"
+msgstr ""
+
+msgid "Our crew packs, loads and delivers on the date you booked."
+msgstr ""
+
+msgid "What we move"
+msgstr ""
+
+msgid "Labeled moving boxes stacked by a living room window"
+msgstr ""
+
+msgid "Homes"
+msgstr ""
+
+msgid "Apartments and houses, from a studio to five rooms and more."
+msgstr ""
+
+msgid "Offices"
+msgstr ""
+
+msgid "Desks, files and equipment, moved after hours so you lose no workday."
+msgstr ""
+
+msgid "Packing"
+msgstr ""
+
+msgid "We bring boxes, wrap and labels, and pack room by room."
+msgstr ""
+
+msgid "Storage"
+msgstr ""
+
+msgid "Short-term storage when your new place isn't ready yet."
+msgstr ""
+
+msgid "Popular routes"
+msgstr ""
+
+msgid "Prices from, for a one-room apartment with no extras."
+msgstr ""
+
+msgid "What customers say"
+msgstr ""
+
+msgid "Sample reviews for this demo"
+msgstr ""
+
+msgid "Barranquilla → Cartagena, three-bedroom apartment"
+msgstr ""
+
+msgid "They moved our three-bedroom apartment from Barranquilla to Cartagena in one day, and the price matched the quote."
+msgstr ""
+
+msgid "Within Santa Marta, house"
+msgstr ""
+
+msgid "The crew wrapped every piece of furniture and put the beds back together before leaving."
+msgstr ""
+
+msgid "Barranquilla, office move"
+msgstr ""
+
+msgid "We moved the office on a Saturday and were working on Monday morning."
+msgstr ""
+
+msgid "Questions"
+msgstr ""
+
+msgid "Still have a question?"
+msgstr ""
+
+msgid "Call us or write on WhatsApp. We reply within one business hour."
+msgstr ""
+
+msgid "Is the online price final?"
+msgstr ""
+
+msgid "It's an estimate. We confirm the final price in writing after a short visit or video call."
+msgstr ""
+
+msgid "Which cities do you serve?"
+msgstr ""
+
+msgid "Barranquilla, Cartagena, Santa Marta, Valledupar, Montería, Sincelejo and Riohacha, and any move between them."
+msgstr ""
+
+msgid "Is my move insured?"
+msgstr ""
+
+msgid "Yes. Every move carries cargo insurance at no extra cost."
+msgstr ""
+
+msgid "How far ahead should I book?"
+msgstr ""
+
+msgid "Two weeks is ideal. For an earlier date, write to us on WhatsApp and we'll check the schedule."
+msgstr ""
+
+msgid "Ready when you are"
+msgstr ""
+
+msgid "Get my quote"
+msgstr ""
+
+#: patterns/quote.php
+msgctxt "Pattern title"
+msgid "Quote"
+msgstr ""
+
+msgid "Tell us about your move and see an estimate right away."
+msgstr ""
+
+#: patterns/thank-you.php
+msgctxt "Pattern title"
+msgid "Thank you"
+msgstr ""
+
+msgid "What happens next"
+msgstr ""
+
+msgid "We email you a summary of your request and your estimate."
+msgstr ""
+
+msgid "A member of our team calls you to confirm the details."
+msgstr ""
+
+msgid "We confirm the final price after a visit or video call, then book your moving day."
+msgstr ""
+
+msgid "Back to the home page"
+msgstr ""

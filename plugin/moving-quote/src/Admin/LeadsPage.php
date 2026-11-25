@@ -18,6 +18,15 @@ final class LeadsPage {
 		add_action( 'admin_post_moving_quote_export_csv', [ self::class, 'handle_export' ] );
 		add_action( 'admin_post_moving_quote_retry_delivery', [ self::class, 'handle_retry' ] );
 		add_action( 'admin_post_moving_quote_delete_lead', [ self::class, 'handle_delete' ] );
+		add_action( 'admin_enqueue_scripts', [ self::class, 'enqueue_styles' ] );
+	}
+
+	/** The Leads table's own stylesheet, on that page only. */
+	public static function enqueue_styles( string $hook_suffix ): void {
+		if ( 'toplevel_page_' . Menu::SLUG !== $hook_suffix ) {
+			return;
+		}
+		wp_enqueue_style( 'moving-quote-admin', plugins_url( 'assets/admin.css', \dirname( __DIR__, 2 ) . '/moving-quote.php' ), [], \Chivabox\MovingQuote\Plugin::VERSION );
 	}
 
 	public static function render(): void {

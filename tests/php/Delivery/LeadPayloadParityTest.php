@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Tests\Delivery;
 
-use Chivabox\MovingQuote\Delivery\LeadPayload;
+use Chivabox\MovingQuote\Delivery\{LeadPayload, PayloadContext};
 use Chivabox\MovingQuote\Leads\LeadRecord;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -15,6 +15,7 @@ use PHPUnit\Framework\TestCase;
 final class LeadPayloadParityTest extends TestCase {
 	private const SITE_NAME  = 'Chivabox Movers';
 	private const TEAM_EMAIL = 'team@example.com';
+	private const PHONE      = '570000000099';
 
 	/**
 	 * @param array<string, string|null> $overrides
@@ -52,7 +53,7 @@ final class LeadPayloadParityTest extends TestCase {
 		);
 	}
 
-	/** @return iterable<string, array{string, array<string, string|null>, string}> */
+	/** @return iterable<string, array{string, array<string, string|null>, string, 3?: string}> */
 	public static function cases(): iterable {
 		yield 'range zero with an amount not a multiple of 1,000' => [
 			'range-zero-amount-not-rounded',
@@ -153,12 +154,20 @@ final class LeadPayloadParityTest extends TestCase {
 			self::row( [ 'locale' => '' ] ),
 			self::SITE_NAME,
 		];
+
+		yield 'a site with no business phone or WhatsApp set' => [
+			'blank-contact',
+			self::row(),
+			self::SITE_NAME,
+			'',
+		];
 	}
 
 	/** @param array<string, string|null> $row */
 	#[DataProvider( 'cases' )]
-	public function test_body_matches_its_fixture( string $fixture, array $row, string $site_name ): void {
-		$body     = LeadPayload::body( LeadRecord::from_row( $row ), $site_name, self::TEAM_EMAIL, new \DateTimeZone( 'America/Bogota' ) );
+	public function test_body_matches_its_fixture( string $fixture, array $row, string $site_name, string $phone = self::PHONE ): void {
+		$context  = new PayloadContext( $site_name, self::TEAM_EMAIL, $phone, $phone );
+		$body     = LeadPayload::body( LeadRecord::from_row( $row ), $context, new \DateTimeZone( 'America/Bogota' ) );
 		$expected = trim( (string) file_get_contents( dirname( __DIR__, 2 ) . '/fixtures/lead-payloads/' . $fixture . '.json' ) );
 		self::assertSame( $expected, $body );
 	}

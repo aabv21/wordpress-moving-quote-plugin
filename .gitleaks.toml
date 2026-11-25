@@ -1,0 +1,8 @@
+# gitleaks reads this file from the repository root. Keep the default rules.
+[extend]
+useDefault = true
+
+# The test fixtures sign status links with one fixed placeholder token. It is not a secret.
+[[allowlists]]
+description = "Placeholder status-link token in test fixtures"
+regexes = ['''^(?:0123456789abcdef){4}$''']

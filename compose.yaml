@@ -17,6 +17,8 @@ x-wordpress-volumes: &wordpress-volumes
   - ./plugin/moving-quote:/var/www/html/wp-content/plugins/moving-quote:ro
   # The demo site's own glue, not part of the plugin: see site/mu-plugins/.
   - ./site/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+  # The demo site's block theme, a child of Twenty Twenty-Five: see site/theme/.
+  - ./site/theme:/var/www/html/wp-content/themes/chivabox:ro
 
 services:
   php:

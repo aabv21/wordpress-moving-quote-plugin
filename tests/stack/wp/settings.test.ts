@@ -176,6 +176,26 @@ describe('settings page', () => {
     }
   });
 
+  it('saves the business details through the real form and rejects a short phone', async () => {
+    const before = await wpJson<{ business_phone: string }>(['option', 'get', OPTION_NAME]);
+    try {
+      const scraped = scrapeForm(await (await fetchSettingsPage(adminCookies)).text());
+      const saved = await submitSettingsForm(scraped, adminCookies, { 'moving_quote_settings[business_phone]': '+57 000 000 0099' });
+      expect(saved.status).toBe(302);
+      await expect(wpJson<{ business_phone: string }>(['option', 'get', OPTION_NAME])).resolves.toMatchObject({ business_phone: '570000000099' });
+
+      const again = scrapeForm(await (await fetchSettingsPage(adminCookies)).text());
+      const rejected = await submitSettingsForm(again, adminCookies, { 'moving_quote_settings[business_phone]': '12345' });
+      expect(rejected.status).toBe(302);
+      await expect(wpJson<{ business_phone: string }>(['option', 'get', OPTION_NAME])).resolves.toMatchObject({ business_phone: '570000000099' });
+
+      const afterSave = await fetch(site(rejected.headers.get('location')!), { headers: { Cookie: adminCookies } });
+      expect(await afterSave.text()).toContain('Enter a phone number with 10 to 15 digits.');
+    } finally {
+      await wp(['option', 'patch', 'update', OPTION_NAME, 'business_phone', before.business_phone]);
+    }
+  });
+
   it('after ./setup.sh, stores the fixed webhook URL and the .env secret and team email, without printing the secret', async () => {
     await execFileAsync('./setup.sh');
 

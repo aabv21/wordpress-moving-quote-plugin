@@ -1,29 +1,37 @@
 /*
- * Every color, radius, and spacing value is a --mq-* token on .moving-quote. The form draws its
- * own light surface, so contrast holds whatever the theme paints around it. Selectors are scoped
- * under .moving-quote so a theme's element styles never outrank them.
+ * The plugin's stylesheet: the quote form, the home page's start form and route chips, and the
+ * thank-you card. Every color, radius, and spacing value is a --mq-* token with a literal default:
+ * the blocks draw their own light surfaces, so contrast holds under any theme, a dark one included.
+ * A theme that wants them in its own colors sets the tokens itself (the Chivabox theme does).
+ * Selectors are scoped under each block's own class so a theme's element styles never outrank them.
  */
 
-.moving-quote {
-  /* Color: each pair is checked against WCAG AA in the README's "The quote form's design tokens". */
-  --mq-color-primary: #1d4ed8;
-  --mq-color-primary-hover: #1e40af;
-  --mq-color-cta: #c2410c;
-  --mq-color-cta-hover: #9a3412;
+.moving-quote,
+.moving-quote-start,
+.moving-quote-routes,
+.moving-quote-thanks {
+  /* Color: each pair is checked against WCAG AA in docs/architecture.md, "The design tokens". */
+  --mq-color-text: #111418;
+  --mq-color-primary: #111418;
+  --mq-color-primary-hover: #2a2f36;
   --mq-color-on-fill: #fff;
-  --mq-color-text: #0f172a;
-  --mq-color-muted: #475569;
-  --mq-color-border: #64748b;
-  --mq-color-divider: #cbd5e1;
-  --mq-color-surface: #f8fafc;
-  --mq-color-field: #fff;
-  --mq-color-panel: #eff6ff;
-  --mq-color-panel-border: #bfdbfe;
+  --mq-color-muted: #4b5563;
+  --mq-color-accent: #1d4ed8;
+  --mq-color-accent-soft: #e8eefc;
+  --mq-color-divider: #d4d4d8;
+  --mq-color-surface: #fff;
+  --mq-color-base: #fafafa;
   --mq-color-error: #b91c1c;
   --mq-color-success: #15803d;
+  /* A control's own outline needs 3:1 against white; the divider color is for decoration only. */
+  --mq-color-control: #71717a;
+
+  /* Headings inherit the page's type unless a theme names its own heading family here. */
+  --mq-font-heading: inherit;
 
   /* Shape and spacing. */
-  --mq-radius: 8px;
+  --mq-radius: 12px;
+  --mq-radius-pill: 999px;
   --mq-space-1: 4px;
   --mq-space-2: 8px;
   --mq-space-3: 12px;
@@ -34,50 +42,57 @@
   --mq-marker: 32px;
   --mq-card-padding: var(--mq-space-4);
 
-  /* Motion: color, opacity, and transform only. */
+  /* Motion: color, opacity, and transform only, on a strong ease-out. */
   --mq-duration: 150ms;
-  --mq-ease: ease-out;
+  --mq-ease: cubic-bezier(0.23, 1, 0.32, 1);
 
+  box-sizing: border-box;
+  color: var(--mq-color-text);
+  color-scheme: light;
+}
+
+.moving-quote {
   /*
    * Icons drawn with mask-image take their color from background-color (a token); the black in each
    * SVG below only marks which pixels are opaque.
    */
   --mq-icon-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9.5' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M12 7.5v5.5' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='16.5' r='1.25'/%3E%3C/svg%3E");
   --mq-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='black' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  /* The phone's sticky price bar, which scroll-padding keeps clear of a focused field. */
+  --mq-bar-height: 4.75rem;
 
   container: moving-quote / inline-size;
-  box-sizing: border-box;
   width: 100%;
-  max-width: 40rem;
+  max-width: 64rem;
   margin-inline: auto;
-  padding: var(--mq-card-padding);
-  color: var(--mq-color-text);
   font-size: clamp(1rem, 0.875em, 1.25rem);
   line-height: 1.5;
-  background-color: var(--mq-color-surface);
-  border: 1px solid var(--mq-color-divider);
-  border-radius: var(--mq-radius);
-  color-scheme: light;
 }
 
 @media (min-width: 37.5em) {
-  .moving-quote {
+  .moving-quote,
+  .moving-quote-start,
+  .moving-quote-thanks {
     --mq-card-padding: var(--mq-space-5);
   }
 }
 
 .moving-quote *,
 .moving-quote *::before,
-.moving-quote *::after {
+.moving-quote *::after,
+.moving-quote-start *,
+.moving-quote-thanks * {
   box-sizing: border-box;
 }
 
 /* The fieldset, error, hint, and success elements carry display rules of their own below. */
-.moving-quote [hidden] {
+.moving-quote [hidden],
+.moving-quote-thanks [hidden] {
   display: none !important;
 }
 
-.moving-quote .moving-quote__offscreen {
+.moving-quote .moving-quote__offscreen,
+.moving-quote-visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -99,28 +114,58 @@
  * this form moves onto a step's legend after a mouse click; inside the form only :focus-visible
  * draws it, so keyboard users always get this ring and pointer users don't get a stray one.
  */
-.moving-quote :focus:not(:focus-visible) {
+.moving-quote :focus:not(:focus-visible),
+.moving-quote-start :focus:not(:focus-visible) {
   outline: none;
 }
 
-.moving-quote :focus-visible {
-  outline: 2px solid var(--mq-color-primary);
+.moving-quote :focus-visible,
+.moving-quote-start :focus-visible,
+.moving-quote-routes :focus-visible,
+.moving-quote-thanks :focus-visible {
+  outline: 2px solid var(--mq-color-accent);
   outline-offset: 2px;
 }
 
-.moving-quote .moving-quote__check a {
-  color: var(--mq-color-primary);
+.moving-quote a,
+.moving-quote-thanks .moving-quote-reference a {
+  color: var(--mq-color-accent);
   text-decoration: underline;
   text-underline-offset: 0.15em;
+}
+
+/* Layout: the form and its summary, side by side once the form itself is wide enough. */
+.moving-quote .moving-quote__layout {
+  display: grid;
+  gap: var(--mq-space-4);
+  align-items: start;
+}
+
+.moving-quote .moving-quote__main {
+  min-width: 0;
+  padding: var(--mq-card-padding);
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-divider);
+  border-radius: var(--mq-radius);
+}
+
+@container moving-quote (min-width: 48rem) {
+  .moving-quote .moving-quote__layout {
+    grid-template-columns: minmax(0, 1fr) 21rem;
+    gap: var(--mq-space-5);
+  }
+
+  .moving-quote .moving-quote__main {
+    padding: var(--mq-space-6);
+  }
 }
 
 /* Progress stepper: a numbered marker per step, a check once a step is done. */
 .moving-quote .moving-quote__progress {
   display: flex;
-  margin: 0 0 var(--mq-space-5);
-  padding: 0 0 var(--mq-space-5);
+  margin: 0;
+  padding: 0;
   list-style: none;
-  border-bottom: 1px solid var(--mq-color-divider);
 }
 
 .moving-quote .moving-quote__progress-step {
@@ -157,11 +202,11 @@
   width: var(--mq-marker);
   height: var(--mq-marker);
   color: var(--mq-color-muted);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  background-color: var(--mq-color-field);
-  border: 2px solid var(--mq-color-border);
+  background-color: var(--mq-color-surface);
+  border: 2px solid var(--mq-color-control);
   border-radius: 50%;
   transition:
     background-color var(--mq-duration) var(--mq-ease),
@@ -181,12 +226,12 @@
 
 .moving-quote .moving-quote__progress-step[aria-current='step'] .moving-quote__progress-marker {
   color: var(--mq-color-on-fill);
-  background-color: var(--mq-color-primary);
-  border-color: var(--mq-color-primary);
+  background-color: var(--mq-color-accent);
+  border-color: var(--mq-color-accent);
 }
 
 .moving-quote .moving-quote__progress-step[aria-current='step']::before {
-  background-color: var(--mq-color-primary);
+  background-color: var(--mq-color-accent);
 }
 
 /* Done: every step before the current one. Without :has(), it keeps the upcoming look. */
@@ -195,30 +240,43 @@
 }
 
 .moving-quote .moving-quote__progress-step:has(~ [aria-current='step'])::before {
-  background-color: var(--mq-color-primary);
+  background-color: var(--mq-color-accent);
 }
 
 .moving-quote .moving-quote__progress-step:has(~ [aria-current='step']) .moving-quote__progress-marker {
   font-size: 0;
-  background-color: var(--mq-color-panel);
-  border-color: var(--mq-color-primary);
+  background-color: var(--mq-color-accent-soft);
+  border-color: var(--mq-color-accent);
 }
 
 .moving-quote .moving-quote__progress-step:has(~ [aria-current='step']) .moving-quote__progress-marker::before {
   width: 16px;
   height: 16px;
   content: '';
-  background-color: var(--mq-color-primary);
+  background-color: var(--mq-color-accent);
   -webkit-mask: var(--mq-icon-check) center / contain no-repeat;
   mask: var(--mq-icon-check) center / contain no-repeat;
 }
 
-/* Steps. */
+.moving-quote .moving-quote__required-note {
+  margin: var(--mq-space-4) 0 var(--mq-space-5);
+  padding-bottom: var(--mq-space-4);
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+  text-align: center;
+  border-bottom: 1px solid var(--mq-color-divider);
+}
+
+/* Steps: a short fade on change, so a new step reads as a new place, not a glitch. */
 .moving-quote .moving-quote__step {
   min-width: 0; /* a fieldset's default min-content width would otherwise overflow a narrow screen */
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.moving-quote .moving-quote__step:not([hidden]) {
+  animation: mq-fade-in var(--mq-duration) var(--mq-ease);
 }
 
 .moving-quote .moving-quote__legend {
@@ -227,9 +285,11 @@
   margin: 0;
   padding: 0;
   color: var(--mq-color-text);
-  font-size: 1.25em;
+  font-family: var(--mq-font-heading);
+  font-size: 1.375em;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   text-wrap: balance;
   border-radius: var(--mq-space-1);
 }
@@ -276,7 +336,8 @@
 }
 
 .moving-quote .moving-quote__field,
-.moving-quote .moving-quote__option {
+.moving-quote .moving-quote__option,
+.moving-quote-start .moving-quote-start__field {
   display: flex;
   flex-direction: column;
   gap: var(--mq-space-2);
@@ -284,7 +345,8 @@
   margin: 0;
 }
 
-.moving-quote .moving-quote__label {
+.moving-quote .moving-quote__label,
+.moving-quote-start label {
   display: block;
   margin: 0;
   color: var(--mq-color-text);
@@ -292,7 +354,14 @@
   line-height: 1.3;
 }
 
-.moving-quote .moving-quote__control {
+.moving-quote .moving-quote__hint {
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+  line-height: 1.4;
+}
+
+.moving-quote .moving-quote__control,
+.moving-quote-start select {
   display: block;
   width: 100%;
   min-height: var(--mq-target);
@@ -302,15 +371,16 @@
   font: inherit;
   font-size: max(16px, 1em); /* below 16px, iOS Safari zooms the page on focus */
   line-height: 1.4;
-  background-color: var(--mq-color-field);
-  border: 1px solid var(--mq-color-border);
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-control);
   border-radius: var(--mq-radius);
   box-shadow: none;
   transition: border-color var(--mq-duration) var(--mq-ease);
 }
 
-.moving-quote .moving-quote__control:focus-visible {
-  border-color: var(--mq-color-primary);
+.moving-quote .moving-quote__control:focus-visible,
+.moving-quote-start select:focus-visible {
+  border-color: var(--mq-color-accent);
   outline-offset: 1px;
 }
 
@@ -357,7 +427,7 @@
 .moving-quote .moving-quote__form-error {
   margin: var(--mq-space-4) 0 0;
   padding: var(--mq-space-3) var(--mq-space-4);
-  background-color: var(--mq-color-field);
+  background-color: var(--mq-color-surface);
   border: 1px solid var(--mq-color-error);
   border-radius: var(--mq-radius);
 }
@@ -365,14 +435,15 @@
 /* Checkboxes: the whole row is the hit target, at least 44px tall. */
 .moving-quote .moving-quote__check {
   display: flex;
-  gap: var(--mq-space-3);
+  flex-wrap: wrap;
+  gap: var(--mq-space-1) var(--mq-space-3);
   align-items: flex-start;
   min-height: var(--mq-target);
   margin: 0;
   padding: var(--mq-space-3);
   color: var(--mq-color-text);
   line-height: 1.4;
-  background-color: var(--mq-color-field);
+  background-color: var(--mq-color-surface);
   border: 1px solid var(--mq-color-divider);
   border-radius: var(--mq-radius);
   cursor: pointer;
@@ -381,13 +452,27 @@
     border-color var(--mq-duration) var(--mq-ease);
 }
 
+.moving-quote .moving-quote__option-label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.moving-quote .moving-quote__price {
+  margin-left: auto;
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .moving-quote .moving-quote__check:has(:checked) {
-  background-color: var(--mq-color-panel);
-  border-color: var(--mq-color-primary);
+  background-color: var(--mq-color-accent-soft);
+  border-color: var(--mq-color-accent);
 }
 
 .moving-quote .moving-quote__check--plain,
 .moving-quote .moving-quote__check--plain:has(:checked) {
+  flex-wrap: nowrap;
   padding-inline: 0;
   background-color: transparent;
   border-color: transparent;
@@ -399,14 +484,14 @@
   height: 20px;
   margin: calc((1.4em - 20px) / 2) 0 0;
   font: inherit;
-  accent-color: var(--mq-color-primary);
+  accent-color: var(--mq-color-accent);
   cursor: pointer;
 }
 
 /* An option row shows the ring itself instead of its small box, where :has() is supported. */
 @supports selector(:has(*)) {
   .moving-quote .moving-quote__check:not(.moving-quote__check--plain):has(:focus-visible) {
-    outline: 2px solid var(--mq-color-primary);
+    outline: 2px solid var(--mq-color-accent);
     outline-offset: 2px;
   }
 
@@ -431,7 +516,10 @@
   text-align: end;
 }
 
-.moving-quote .moving-quote__button {
+/* Buttons: the theme's pill. A filled near-black one for every action; Back is outlined. */
+.moving-quote .moving-quote__button,
+.moving-quote-start .moving-quote-start__button,
+.moving-quote-thanks .moving-quote-thanks__whatsapp {
   display: inline-flex;
   flex: 1 1 auto;
   gap: var(--mq-space-2);
@@ -440,14 +528,16 @@
   min-width: var(--mq-target);
   min-height: var(--mq-target);
   margin: 0;
-  padding: var(--mq-space-2) var(--mq-space-5);
+  padding: var(--mq-space-3) var(--mq-space-5);
+  color: var(--mq-color-on-fill);
   font: inherit;
   font-weight: 600;
   line-height: 1.25;
   text-align: center;
   text-decoration: none;
+  background-color: var(--mq-color-primary);
   border: 1px solid transparent;
-  border-radius: var(--mq-radius);
+  border-radius: var(--mq-radius-pill);
   box-shadow: none;
   cursor: pointer;
   touch-action: manipulation;
@@ -463,18 +553,8 @@
   flex: 0 0 auto;
   margin-right: auto;
   color: var(--mq-color-text);
-  background-color: var(--mq-color-field);
-  border-color: var(--mq-color-border);
-}
-
-.moving-quote .moving-quote__button--primary {
-  color: var(--mq-color-on-fill);
-  background-color: var(--mq-color-primary);
-}
-
-.moving-quote .moving-quote__button--cta {
-  color: var(--mq-color-on-fill);
-  background-color: var(--mq-color-cta);
+  background-color: var(--mq-color-surface);
+  border-color: var(--mq-color-control);
 }
 
 @container moving-quote (min-width: 32rem) {
@@ -483,35 +563,41 @@
   }
 }
 
-@media (hover: hover) {
-  .moving-quote .moving-quote__check a:hover {
-    color: var(--mq-color-primary-hover);
+@media (hover: hover) and (pointer: fine) {
+  .moving-quote a:hover {
+    text-decoration-thickness: 2px;
   }
 
-  .moving-quote .moving-quote__control:hover:not(:focus-visible, [aria-invalid='true']) {
-    border-color: var(--mq-color-muted);
-  }
-
-  .moving-quote .moving-quote__check:not(.moving-quote__check--plain):hover {
-    border-color: var(--mq-color-border);
-  }
-
-  .moving-quote .moving-quote__button--secondary:hover {
-    background-color: var(--mq-color-panel);
+  .moving-quote .moving-quote__control:hover:not(:focus-visible, [aria-invalid='true']),
+  .moving-quote-start select:hover:not(:focus-visible) {
     border-color: var(--mq-color-text);
   }
 
-  .moving-quote .moving-quote__button--primary:hover {
+  .moving-quote .moving-quote__check:not(.moving-quote__check--plain):hover {
+    border-color: var(--mq-color-control);
+  }
+
+  .moving-quote .moving-quote__button:hover:not(:disabled),
+  .moving-quote-start .moving-quote-start__button:hover,
+  .moving-quote-thanks .moving-quote-thanks__whatsapp:hover {
     background-color: var(--mq-color-primary-hover);
   }
 
-  .moving-quote .moving-quote__button--cta:hover:not(:disabled) {
-    background-color: var(--mq-color-cta-hover);
+  .moving-quote .moving-quote__button--secondary:hover:not(:disabled) {
+    background-color: var(--mq-color-base);
+    border-color: var(--mq-color-text);
+  }
+
+  .moving-quote-routes .moving-quote-route:hover {
+    border-color: var(--mq-color-text);
   }
 }
 
-.moving-quote .moving-quote__button:active:not(:disabled) {
-  transform: translateY(1px);
+.moving-quote .moving-quote__button:active:not(:disabled),
+.moving-quote-start .moving-quote-start__button:active,
+.moving-quote-thanks .moving-quote-thanks__whatsapp:active,
+.moving-quote-routes .moving-quote-route:active {
+  transform: scale(0.97);
 }
 
 .moving-quote .moving-quote__button:disabled {
@@ -520,12 +606,12 @@
 }
 
 /* Sending: full opacity (busy, not unavailable), plus a CSS spinner. */
-.moving-quote .moving-quote__button--cta:disabled {
+.moving-quote .moving-quote__button--submit:disabled {
   cursor: progress;
   opacity: 1;
 }
 
-.moving-quote .moving-quote__button--cta:disabled::before,
+.moving-quote .moving-quote__button--submit:disabled::before,
 .moving-quote .moving-quote__estimate[data-estimate-state='loading'] .moving-quote__estimate-label::after {
   display: inline-block;
   flex: none;
@@ -559,7 +645,8 @@
   white-space: nowrap; /* keeps "MQ-" on the same line as its digits */
 }
 
-.moving-quote .moving-quote__success-icon {
+.moving-quote .moving-quote__success-icon,
+.moving-quote-thanks .moving-quote-thanks__icon {
   width: 40px;
   height: 40px;
   color: var(--mq-color-success);
@@ -572,17 +659,70 @@
   line-height: 1.3;
 }
 
-/* Estimate: the card's footer band, a price range or one of its idle, loading, or error states. */
-.moving-quote .moving-quote__estimate {
-  margin: var(--mq-space-5) calc(var(--mq-card-padding) * -1) calc(var(--mq-card-padding) * -1);
-  padding: var(--mq-space-4) var(--mq-card-padding);
-  background-color: var(--mq-color-panel);
-  border-top: 1px solid var(--mq-color-panel-border);
-  border-radius: 0 0 calc(var(--mq-radius) - 1px) calc(var(--mq-radius) - 1px);
+/* The summary: the route, date, extras and price beside the form, sticky while it scrolls. */
+.moving-quote .moving-quote__summary {
+  padding: var(--mq-card-padding);
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-divider);
+  border-radius: var(--mq-radius);
 }
 
-.moving-quote .moving-quote__estimate p {
+.moving-quote .moving-quote__summary p,
+.moving-quote .moving-quote__summary dl,
+.moving-quote .moving-quote__summary dd {
   margin: 0;
+}
+
+.moving-quote .moving-quote__summary-title {
+  margin: 0 0 var(--mq-space-3);
+  font-family: var(--mq-font-heading);
+  font-size: 1.125em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.moving-quote .moving-quote__summary-list {
+  display: grid;
+  gap: var(--mq-space-3);
+}
+
+.moving-quote .moving-quote__summary-list dt,
+.moving-quote-thanks .moving-quote-thanks__summary dt {
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+}
+
+.moving-quote .moving-quote__summary-list dd,
+.moving-quote-thanks .moving-quote-thanks__summary dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* A line still showing its placeholder reads as a hint, not an answer. */
+.moving-quote .moving-quote__summary-list dd[data-empty] {
+  color: var(--mq-color-muted);
+  font-weight: 400;
+}
+
+.moving-quote .moving-quote__summary .moving-quote__summary-call {
+  margin-top: var(--mq-space-4);
+  padding-top: var(--mq-space-3);
+  border-top: 1px solid var(--mq-color-divider);
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+}
+
+.moving-quote .moving-quote__summary-call a {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Estimate: a price range, or its idle, loading, or error state. */
+.moving-quote .moving-quote__estimate {
+  margin-top: var(--mq-space-4);
+  padding-top: var(--mq-space-4);
+  border-top: 1px solid var(--mq-color-divider);
 }
 
 .moving-quote .moving-quote__estimate .moving-quote__estimate-label {
@@ -597,15 +737,21 @@
 .moving-quote .moving-quote__estimate .moving-quote__estimate-value {
   margin-top: var(--mq-space-1);
   color: var(--mq-color-text);
-  font-size: 1.375em;
+  font-family: var(--mq-font-heading);
+  font-size: 1.5em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  line-height: 1.25;
+  line-height: 1.2;
   text-wrap: balance;
   transition: opacity var(--mq-duration) var(--mq-ease);
 }
 
-/* A stale range fades while its replacement loads; 0.7 keeps it above 4.5:1 on the panel. */
+/* Nothing to show until the first price: the hint says what's missing instead. */
+.moving-quote .moving-quote__estimate .moving-quote__estimate-value:empty {
+  display: none;
+}
+
+/* A stale range fades while its replacement loads; 0.7 keeps it above 4.5:1 on white. */
 .moving-quote .moving-quote__estimate[data-estimate-state='loading'] .moving-quote__estimate-value {
   opacity: 0.7;
 }
@@ -624,9 +770,178 @@
   text-wrap: pretty;
 }
 
-@container moving-quote (min-width: 32rem) {
+@container moving-quote (min-width: 48rem) {
+  .moving-quote .moving-quote__summary {
+    position: sticky;
+    top: 1.5rem;
+  }
+
+  /* One line for a full range, so the dash never starts a line. */
   .moving-quote .moving-quote__estimate .moving-quote__estimate-value {
-    font-size: 1.5em;
+    font-size: 1.3em;
+  }
+}
+
+/*
+ * Phones: once a price exists, the summary becomes a bar pinned to the bottom of the screen with
+ * just the price. Before that it stays in the flow, with the hint, so the bar never shows empty.
+ */
+@container moving-quote (max-width: 47.99rem) {
+  .moving-quote .moving-quote__summary:has(.moving-quote__estimate:not([data-estimate-state='idle'])) {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding: var(--mq-space-3) var(--mq-space-4);
+    border-color: var(--mq-color-divider);
+    border-radius: var(--mq-radius) var(--mq-radius) 0 0;
+    box-shadow: 0 -4px 16px rgb(17 20 24 / 8%);
+  }
+
+  .moving-quote .moving-quote__summary:has(.moving-quote__estimate:not([data-estimate-state='idle'])) :is(.moving-quote__summary-title, .moving-quote__summary-list, .moving-quote__summary-call, .moving-quote__disclaimer) {
+    display: none;
+  }
+
+  .moving-quote .moving-quote__summary:has(.moving-quote__estimate:not([data-estimate-state='idle'])) .moving-quote__estimate {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .moving-quote .moving-quote__summary:has(.moving-quote__estimate:not([data-estimate-state='idle'])) .moving-quote__estimate-value {
+    font-size: 1.25em;
+  }
+}
+
+/* Keeps a field the keyboard focuses from scrolling under the phone's price bar. */
+@media (max-width: 47.99rem) {
+  :root:has(.moving-quote__summary) {
+    scroll-padding-bottom: var(--mq-bar-height, 4.75rem);
+  }
+}
+
+/* The home page's first step: a card that opens the quote page prefilled. */
+.moving-quote-start {
+  display: grid;
+  gap: var(--mq-space-4);
+  padding: var(--mq-card-padding);
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-divider);
+  border-radius: var(--mq-radius);
+  box-shadow: 0 1px 2px rgb(17 20 24 / 4%), 0 12px 32px -12px rgb(17 20 24 / 12%);
+}
+
+.moving-quote-start .moving-quote-start__title {
+  margin: 0;
+  font-size: 1.375rem;
+  line-height: 1.2;
+}
+
+.moving-quote-start .moving-quote-start__button {
+  width: 100%;
+  margin-top: var(--mq-space-1);
+}
+
+/* Route chips: each a pill linking to the quote with both cities chosen. */
+.moving-quote-routes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mq-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.moving-quote-routes li {
+  margin: 0;
+}
+
+.moving-quote-routes .moving-quote-route {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--mq-space-1) var(--mq-space-3);
+  align-items: baseline;
+  min-height: var(--mq-target);
+  padding: var(--mq-space-3) var(--mq-space-5);
+  color: var(--mq-color-text);
+  font-weight: 600;
+  text-decoration: none;
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-control);
+  border-radius: var(--mq-radius-pill);
+  transition:
+    border-color var(--mq-duration) var(--mq-ease),
+    transform var(--mq-duration) var(--mq-ease);
+}
+
+/* A narrow screen stacks the chips full width; their two lines take the card radius, not the pill. */
+@media (max-width: 37.49em) {
+  .moving-quote-routes li {
+    flex: 1 1 100%;
+  }
+
+  .moving-quote-routes .moving-quote-route {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mq-space-1);
+    padding-block: var(--mq-space-3);
+    border-radius: var(--mq-radius);
+  }
+}
+
+.moving-quote-routes .moving-quote-route__price {
+  color: var(--mq-color-accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The thank-you card. */
+.moving-quote-thanks {
+  display: grid;
+  gap: var(--mq-space-4);
+  justify-items: start;
+  padding: var(--mq-space-6) var(--mq-card-padding);
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-divider);
+  border-radius: var(--mq-radius);
+}
+
+.moving-quote-thanks .moving-quote-thanks__title {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.15;
+}
+
+.moving-quote-thanks .moving-quote-reference {
+  margin: 0;
+}
+
+.moving-quote-thanks .moving-quote-thanks__summary {
+  display: grid;
+  gap: var(--mq-space-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--mq-space-4) 0;
+  border-block: 1px solid var(--mq-color-divider);
+}
+
+@media (min-width: 37.5em) {
+  .moving-quote-thanks .moving-quote-thanks__summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.moving-quote-thanks .moving-quote-thanks__whatsapp {
+  flex: 0 0 auto;
+}
+
+@keyframes mq-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
   }
 }
 
@@ -642,21 +957,31 @@
   }
 }
 
-/* Reduced motion: no transitions, no press shift, and the spinners pulse in place instead of turning. */
+/* Reduced motion: no fade, transitions, or press shift, and the spinners pulse in place instead of turning. */
 @media (prefers-reduced-motion: reduce) {
+  .moving-quote .moving-quote__step:not([hidden]) {
+    animation: none;
+  }
+
   .moving-quote .moving-quote__progress-marker,
   .moving-quote .moving-quote__control,
   .moving-quote .moving-quote__check,
   .moving-quote .moving-quote__button,
-  .moving-quote .moving-quote__estimate .moving-quote__estimate-value {
+  .moving-quote .moving-quote__estimate .moving-quote__estimate-value,
+  .moving-quote-start .moving-quote-start__button,
+  .moving-quote-routes .moving-quote-route,
+  .moving-quote-thanks .moving-quote-thanks__whatsapp {
     transition: none;
   }
 
-  .moving-quote .moving-quote__button:active:not(:disabled) {
+  .moving-quote .moving-quote__button:active:not(:disabled),
+  .moving-quote-start .moving-quote-start__button:active,
+  .moving-quote-thanks .moving-quote-thanks__whatsapp:active,
+  .moving-quote-routes .moving-quote-route:active {
     transform: none;
   }
 
-  .moving-quote .moving-quote__button--cta:disabled::before,
+  .moving-quote .moving-quote__button--submit:disabled::before,
   .moving-quote .moving-quote__estimate[data-estimate-state='loading'] .moving-quote__estimate-label::after {
     animation: mq-pulse 1.6s ease-in-out infinite;
   }
