@@ -12,16 +12,20 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<!-- wp:shortcode -->
-[moving_quote_thanks]
-<!-- /wp:shortcode -->
+<!-- wp:columns {"className":"chivabox-thanks"} -->
+<div class="wp-block-columns chivabox-thanks"><!-- wp:column {"width":"55%","className":"chivabox-thanks__card"} -->
+<div class="wp-block-column chivabox-thanks__card" style="flex-basis:55%"><!-- wp:html -->
+<?php chivabox_shortcode( 'moving_quote_thanks', 'heading="0"' ); ?>
+<!-- /wp:html --></div>
+<!-- /wp:column -->
 
-<!-- wp:heading -->
-<h2 class="wp-block-heading"><?php esc_html_e( 'What happens next', 'chivabox' ); ?></h2>
+<!-- wp:column {"width":"45%","className":"chivabox-thanks__next"} -->
+<div class="wp-block-column chivabox-thanks__next" style="flex-basis:45%"><!-- wp:heading {"className":"chivabox-next-title"} -->
+<h2 class="wp-block-heading chivabox-next-title"><?php esc_html_e( 'What happens next', 'chivabox' ); ?></h2>
 <!-- /wp:heading -->
 
-<!-- wp:list {"ordered":true} -->
-<ol class="wp-block-list"><!-- wp:list-item -->
+<!-- wp:list {"ordered":true,"className":"chivabox-next-list"} -->
+<ol class="wp-block-list chivabox-next-list"><!-- wp:list-item -->
 <li><?php esc_html_e( 'We email you a summary of your request and your estimate.', 'chivabox' ); ?></li>
 <!-- /wp:list-item -->
 
@@ -35,7 +39,9 @@ defined( 'ABSPATH' ) || exit;
 <!-- /wp:list -->
 
 <!-- wp:buttons -->
-<div class="wp-block-buttons"><!-- wp:button -->
-<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="<?php echo esc_url( chivabox_page_url( '' ) ); ?>"><?php esc_html_e( 'Back to the home page', 'chivabox' ); ?></a></div>
+<div class="wp-block-buttons"><!-- wp:button {"className":"is-style-outline"} -->
+<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="<?php echo esc_url( chivabox_page_url( '' ) ); ?>"><?php esc_html_e( 'Back to the home page', 'chivabox' ); ?></a></div>
 <!-- /wp:button --></div>
-<!-- /wp:buttons -->
+<!-- /wp:buttons --></div>
+<!-- /wp:column --></div>
+<!-- /wp:columns -->

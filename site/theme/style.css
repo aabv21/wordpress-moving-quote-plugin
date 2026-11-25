@@ -11,3 +11,818 @@ License URI: https://opensource.org/licenses/MIT
 Text Domain: chivabox
 Domain Path: /languages
 */
+
+/*
+ * Layout, the parts theme.json can't express: the header and footer, the home page's sections,
+ * and the reading width of plain pages. Colors, type and the button come from theme.json presets.
+ */
+
+:root {
+	--chivabox-gutter: clamp(1rem, 0.6rem + 2vw, 2rem);
+	--chivabox-wide: 1200px;
+	--chivabox-radius: var(--wp--custom--radius--card, 12px);
+	--chivabox-pill: var(--wp--custom--radius--pill, 999px);
+	--chivabox-ease: cubic-bezier(0.23, 1, 0.32, 1);
+	--chivabox-icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='black' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--chivabox-icon-check-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%231d4ed8' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--chivabox-icon-phone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.6 3.5h2.6l1.4 4.1-2 1.4a12 12 0 0 0 6.4 6.4l1.4-2 4.1 1.4v2.6a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--chivabox-icon-office: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 21V5l8-2v18M12 8h8v13M2 21h20M7 8h2M7 12h2M7 16h2M15 12h2M15 16h2' fill='none' stroke='%231d4ed8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--chivabox-icon-box: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z M3 7.5l9 4.5 9-4.5M12 12v9M7.5 5.2l9 4.6' fill='none' stroke='%231d4ed8' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--chivabox-icon-storage: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 21V9l9-6 9 6v12M7 21v-8h10v8M7 17h10' fill='none' stroke='%231d4ed8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	--chivabox-icon-chat: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 19.5l1.3-3.9A8 8 0 1 1 8.6 19z' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* The moving-quote plugin's blocks, in the theme's own palette and heading font. */
+.moving-quote,
+.moving-quote-start,
+.moving-quote-routes,
+.moving-quote-thanks {
+	--mq-color-text: var(--wp--preset--color--contrast);
+	--mq-color-primary: var(--wp--preset--color--contrast);
+	--mq-color-primary-hover: var(--wp--preset--color--contrast-hover);
+	--mq-color-on-fill: var(--wp--preset--color--surface);
+	--mq-color-muted: var(--wp--preset--color--muted);
+	--mq-color-accent: var(--wp--preset--color--accent);
+	--mq-color-accent-soft: var(--wp--preset--color--accent-soft);
+	--mq-color-divider: var(--wp--preset--color--border);
+	--mq-color-surface: var(--wp--preset--color--surface);
+	--mq-color-base: var(--wp--preset--color--base);
+	--mq-color-error: var(--wp--preset--color--danger);
+	--mq-color-success: var(--wp--preset--color--success);
+	--mq-font-heading: var(--wp--preset--font-family--heading);
+}
+
+body {
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+	text-wrap: balance;
+}
+
+p {
+	text-wrap: pretty;
+}
+
+/* The page's frame: header, main and footer touch, each spacing itself. */
+.wp-site-blocks > * + * {
+	margin-block-start: 0;
+}
+
+.chivabox-header,
+.chivabox-footer,
+.chivabox-section,
+.chivabox-main--page {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: calc(var(--chivabox-wide) + 2 * var(--chivabox-gutter));
+	margin-inline: auto;
+	padding-inline: var(--chivabox-gutter);
+}
+
+/* Header: the brand on the left, the menu and WhatsApp on the right. */
+.chivabox-header {
+	max-width: none;
+	border-bottom: 1px solid var(--wp--preset--color--border);
+}
+
+.chivabox-header__inner {
+	max-width: var(--chivabox-wide);
+	min-height: 4.25rem;
+	margin-inline: auto;
+	gap: 1rem;
+}
+
+.chivabox-brand {
+	gap: 0.625rem;
+	align-items: center;
+}
+
+.chivabox-brand .wp-block-site-title {
+	margin: 0;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+.chivabox-logo {
+	display: block;
+	flex: none;
+}
+
+.chivabox-header__actions {
+	gap: 1.25rem;
+	align-items: center;
+}
+
+.chivabox-nav .wp-block-navigation-item__content {
+	color: var(--wp--preset--color--contrast);
+	text-decoration: none;
+}
+
+.chivabox-nav .wp-block-navigation__container {
+	gap: 0.25rem 1.25rem;
+}
+
+/* The language switcher: full names, the current one on a soft accent pill. */
+.chivabox-nav .wp-block-navigation-item.current-lang > .wp-block-navigation-item__content {
+	padding: 0.25rem 0.75rem;
+	font-weight: 600;
+	background-color: var(--wp--preset--color--accent-soft);
+	border-radius: var(--chivabox-pill);
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.chivabox-nav .wp-block-navigation-item__content:hover {
+		color: var(--wp--preset--color--accent);
+	}
+}
+
+/* The business's phone and WhatsApp, wherever the theme shows them: outlined pills with a mark. */
+.chivabox-header .moving-quote-contact__whatsapp,
+.chivabox-actions .moving-quote-contact__whatsapp,
+.chivabox-actions .moving-quote-contact__phone {
+	box-sizing: border-box;
+	display: inline-flex;
+	gap: 0.5rem;
+	align-items: center;
+	min-height: 2.75rem;
+	padding: 0.5rem 1.125rem;
+	color: var(--wp--preset--color--contrast);
+	font-weight: 600;
+	line-height: 1.25;
+	text-decoration: none;
+	white-space: nowrap;
+	border: 1px solid #71717a;
+	border-radius: var(--chivabox-pill);
+	transition:
+		border-color 150ms var(--chivabox-ease),
+		transform 150ms var(--chivabox-ease);
+}
+
+.chivabox-header .moving-quote-contact__whatsapp::before,
+.chivabox-actions .moving-quote-contact__whatsapp::before,
+.chivabox-header .moving-quote-contact__phone::before,
+.chivabox-actions .moving-quote-contact__phone::before {
+	flex: none;
+	width: 1.125rem;
+	height: 1.125rem;
+	content: '';
+	background-color: var(--wp--preset--color--accent);
+	-webkit-mask: var(--chivabox-icon-chat) center / contain no-repeat;
+	mask: var(--chivabox-icon-chat) center / contain no-repeat;
+}
+
+.chivabox-header .moving-quote-contact__phone::before,
+.chivabox-actions .moving-quote-contact__phone::before {
+	-webkit-mask-image: var(--chivabox-icon-phone);
+	mask-image: var(--chivabox-icon-phone);
+}
+
+/* The header's phone: the number itself, as a plain link beside the menu. */
+.chivabox-header .moving-quote-contact__phone {
+	display: inline-flex;
+	gap: 0.375rem;
+	align-items: center;
+	min-height: 2.75rem;
+	color: var(--wp--preset--color--contrast);
+	font-weight: 600;
+	text-decoration: none;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.chivabox-actions .moving-quote-contact__whatsapp,
+.chivabox-actions .moving-quote-contact__phone {
+	min-height: 3rem;
+	padding-inline: 1.5rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.chivabox-header .moving-quote-contact__whatsapp:hover,
+	.chivabox-actions .moving-quote-contact__whatsapp:hover,
+	.chivabox-actions .moving-quote-contact__phone:hover {
+		border-color: var(--wp--preset--color--contrast);
+	}
+
+	.chivabox-header .moving-quote-contact__phone:hover {
+		color: var(--wp--preset--color--accent);
+	}
+}
+
+.chivabox-actions .moving-quote-contact__whatsapp:active,
+.chivabox-actions .moving-quote-contact__phone:active,
+.wp-element-button:active {
+	transform: scale(0.97);
+}
+
+.wp-element-button {
+	transition:
+		background-color 150ms var(--chivabox-ease),
+		transform 150ms var(--chivabox-ease);
+}
+
+/* Phones: the header's phone and WhatsApp keep their names for screen readers but show only their marks. */
+@media (max-width: 781px) {
+	.chivabox-header__actions {
+		gap: 0.5rem;
+	}
+
+	.chivabox-header .moving-quote-contact__whatsapp,
+	.chivabox-header .moving-quote-contact__phone {
+		justify-content: center;
+		width: 2.75rem;
+		padding: 0;
+		font-size: 0;
+		gap: 0;
+		border: 1px solid #71717a;
+		border-radius: var(--chivabox-pill);
+	}
+
+	.chivabox-header .moving-quote-contact__whatsapp::before,
+	.chivabox-header .moving-quote-contact__phone::before {
+		width: 1.25rem;
+		height: 1.25rem;
+	}
+}
+
+/* Home: every section shares the wide column and the same rhythm. */
+.chivabox-section {
+	padding-block: var(--wp--preset--spacing--60) 0;
+}
+
+.chivabox-section > h2 {
+	margin-block: 0 1.5rem;
+	max-width: 22ch;
+}
+
+.chivabox-section__lead {
+	margin-block: -0.75rem 1.75rem;
+	color: var(--wp--preset--color--muted);
+}
+
+/* Hero: the promise and actions beside the quote's first step, then the crew photo. */
+.chivabox-hero {
+	padding-block-start: var(--wp--preset--spacing--50);
+}
+
+.chivabox-hero__columns {
+	gap: clamp(2rem, 1rem + 4vw, 4.5rem);
+	margin: 0;
+}
+
+.chivabox-hero__title {
+	margin: 0;
+	max-width: 14ch;
+	font-size: var(--wp--preset--font-size--xx-large);
+	letter-spacing: -0.02em;
+}
+
+.chivabox-hero__lead {
+	margin-block: 1.25rem 0;
+	max-width: 38ch;
+	color: var(--wp--preset--color--muted);
+	font-size: 1.125rem;
+}
+
+.chivabox-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+	margin-block-start: 2rem;
+}
+
+.chivabox-hero__photo {
+	margin: var(--wp--preset--spacing--50) 0 0;
+}
+
+.chivabox-hero__photo img {
+	display: block;
+	width: 100%;
+	height: clamp(14rem, 32vw, 26rem);
+	object-fit: cover;
+	object-position: 30% 28%;
+	border-radius: var(--chivabox-radius);
+}
+
+/* Trust strip: the four promises as a proof band, each with its check. */
+.chivabox-trust {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+	gap: 1.25rem 2rem;
+	margin: 2rem 0 0;
+	padding: 1.5rem clamp(1.25rem, 0.8rem + 2vw, 2rem);
+	list-style: none;
+	background-color: var(--wp--preset--color--surface);
+	border: 1px solid var(--wp--preset--color--border);
+	border-radius: var(--chivabox-radius);
+}
+
+.chivabox-trust li {
+	display: flex;
+	gap: 0.75rem;
+	align-items: center;
+	margin: 0;
+	font-family: var(--wp--preset--font-family--heading);
+	font-size: 1.125rem;
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: -0.005em;
+}
+
+.chivabox-trust li::before {
+	flex: none;
+	width: 2.25rem;
+	height: 2.25rem;
+	content: '';
+	background: var(--wp--preset--color--accent-soft) var(--chivabox-icon-check-tile) center / 1.25rem no-repeat;
+	border-radius: 50%;
+}
+
+@media (max-width: 599px) {
+	.chivabox-trust {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 1rem;
+		padding: 1.25rem;
+	}
+
+	.chivabox-trust li {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.5rem;
+		font-size: 1rem;
+	}
+}
+
+/* How it works: a real sequence, so the numbers carry the order. */
+.chivabox-steps__list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	gap: 1.5rem 3rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	counter-reset: chivabox-step;
+}
+
+.chivabox-steps__list li {
+	position: relative;
+	margin: 0;
+	padding-top: 3.25rem;
+	color: var(--wp--preset--color--muted);
+	counter-increment: chivabox-step;
+}
+
+.chivabox-steps__list li::before {
+	position: absolute;
+	top: 0;
+	left: 0;
+	content: counter(chivabox-step);
+	color: var(--wp--preset--color--accent);
+	font-family: var(--wp--preset--font-family--heading);
+	font-size: 2.25rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+}
+
+.chivabox-steps__list strong {
+	display: block;
+	margin-bottom: 0.375rem;
+	color: var(--wp--preset--color--contrast);
+	font-size: 1.125rem;
+}
+
+/* Services: homes, the bulk of the work, as the large tile beside three short ones of equal height. */
+.chivabox-services__grid {
+	display: grid;
+	gap: 1rem;
+}
+
+.chivabox-service {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0.25rem 1rem;
+	align-content: center;
+	margin: 0;
+	padding: 1.5rem;
+	background-color: var(--wp--preset--color--surface);
+	border: 1px solid var(--wp--preset--color--border);
+	border-radius: var(--chivabox-radius);
+}
+
+.chivabox-service::before {
+	grid-row: 1 / span 2;
+	width: 3rem;
+	height: 3rem;
+	content: '';
+	background: var(--wp--preset--color--accent-soft) var(--chivabox-service-icon, none) center / 1.5rem no-repeat;
+	border-radius: 0.75rem;
+}
+
+.chivabox-service--offices {
+	--chivabox-service-icon: var(--chivabox-icon-office);
+}
+
+.chivabox-service--packing {
+	--chivabox-service-icon: var(--chivabox-icon-box);
+}
+
+.chivabox-service--storage {
+	--chivabox-service-icon: var(--chivabox-icon-storage);
+}
+
+.chivabox-service h3 {
+	align-self: end;
+	margin: 0;
+}
+
+.chivabox-service p {
+	align-self: start;
+	margin: 0;
+	color: var(--wp--preset--color--muted);
+}
+
+.chivabox-service--homes {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	padding: 0 0 1.5rem;
+	overflow: hidden;
+}
+
+.chivabox-service--homes::before {
+	content: none;
+}
+
+.chivabox-service--homes > :not(img) {
+	margin-inline: 1.5rem;
+}
+
+.chivabox-service--homes h3,
+.chivabox-service--homes p {
+	align-self: auto;
+}
+
+.chivabox-service--homes p {
+	margin-top: 0.5rem;
+}
+
+.chivabox-service__photo {
+	display: block;
+	width: 100%;
+	height: auto;
+	aspect-ratio: 3 / 2;
+	margin-bottom: 1.25rem;
+	object-fit: cover;
+	object-position: 30% 55%;
+	/* The photo is backlit; lift it to sit with the bright cards beside it. */
+	filter: brightness(1.32) contrast(0.96) saturate(1.05);
+}
+
+@media (min-width: 782px) {
+	.chivabox-services__grid {
+		grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+		grid-template-rows: repeat(3, 1fr);
+	}
+
+	.chivabox-service--homes {
+		grid-row: 1 / span 3;
+	}
+
+	.chivabox-service__photo {
+		flex: 1 1 auto;
+		min-height: 16rem;
+		aspect-ratio: auto;
+	}
+}
+
+/* Reviews: signed delivery notes, the route on top, the signature under a rule, one featured. */
+.chivabox-reviews__grid {
+	display: grid;
+	gap: 1rem;
+}
+
+@media (min-width: 782px) {
+	.chivabox-reviews__grid {
+		grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+		grid-template-rows: repeat(2, auto);
+	}
+
+	.chivabox-review--featured {
+		grid-row: 1 / span 2;
+	}
+}
+
+.chivabox-review.wp-block-quote {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	margin: 0;
+	padding: 1.5rem;
+	background-color: var(--wp--preset--color--surface);
+	border: 1px solid var(--wp--preset--color--border);
+	border-radius: var(--chivabox-radius);
+}
+
+.chivabox-review .chivabox-review__route {
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	padding-bottom: 0.75rem;
+	color: var(--wp--preset--color--accent);
+	font-size: var(--wp--preset--font-size--small);
+	font-weight: 600;
+	border-bottom: 1px dashed var(--wp--preset--color--border);
+}
+
+.chivabox-review p {
+	margin: 0;
+	font-size: 1.0625rem;
+	line-height: 1.55;
+}
+
+.chivabox-review--featured p:not(.chivabox-review__route) {
+	margin-block: auto;
+	font-family: var(--wp--preset--font-family--heading);
+	font-size: clamp(1.25rem, 1rem + 1vw, 1.625rem);
+	font-weight: 700;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+}
+
+.chivabox-review--featured {
+	justify-content: space-between;
+	padding: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+}
+
+/* The featured note opens on a large quote mark, so its height reads as emphasis, not as space. */
+.chivabox-review--featured p:not(.chivabox-review__route)::before {
+	display: block;
+	height: 2.5rem;
+	content: '\201C';
+	color: var(--wp--preset--color--accent);
+	font-size: 4.5rem;
+	line-height: 1;
+}
+
+.chivabox-review cite {
+	margin-top: auto;
+	padding-top: 0.75rem;
+	color: var(--wp--preset--color--muted);
+	font-size: var(--wp--preset--font-size--small);
+	font-style: normal;
+	font-weight: 600;
+	border-top: 1px solid var(--wp--preset--color--border);
+}
+
+/* FAQ: the heading and a way to ask beside the questions. */
+.chivabox-faq {
+	display: grid;
+	gap: 1.5rem 3rem;
+}
+
+@media (min-width: 782px) {
+	.chivabox-faq {
+		grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+		align-items: start;
+	}
+}
+
+.chivabox-faq__intro > * {
+	margin: 0;
+}
+
+.chivabox-faq__intro h2 {
+	margin-bottom: 1rem;
+}
+
+.chivabox-faq__ask {
+	max-width: 32ch;
+	color: var(--wp--preset--color--muted);
+}
+
+.chivabox-faq__ask strong {
+	display: block;
+	margin-bottom: 0.25rem;
+	color: var(--wp--preset--color--contrast);
+}
+
+.chivabox-faq__intro .chivabox-actions {
+	margin-top: 1.25rem;
+}
+
+.chivabox-faq__list {
+	border-top: 1px solid var(--wp--preset--color--border);
+}
+
+.chivabox-faq .wp-block-details {
+	margin: 0;
+}
+
+.chivabox-faq summary {
+	display: flex;
+	gap: 1rem;
+	justify-content: space-between;
+	align-items: center;
+	min-height: 2.75rem;
+	font-weight: 600;
+	list-style: none;
+	cursor: pointer;
+}
+
+.chivabox-faq summary::-webkit-details-marker {
+	display: none;
+}
+
+.chivabox-faq summary::after {
+	flex: none;
+	content: '+';
+	color: var(--wp--preset--color--accent);
+	font-size: 1.5rem;
+	font-weight: 400;
+	line-height: 1;
+}
+
+.chivabox-faq details[open] summary::after {
+	content: '\2212';
+}
+
+.chivabox-faq details p {
+	margin: 0.25rem 0 0.5rem;
+	max-width: 60ch;
+	color: var(--wp--preset--color--muted);
+}
+
+/* Closing band: a slim strip with the quote button and both ways to talk. */
+.chivabox-closing {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.25rem 2rem;
+	justify-content: space-between;
+	align-items: center;
+	margin-block-start: var(--wp--preset--spacing--60);
+	padding-block: 1.75rem;
+	background-color: var(--wp--preset--color--accent-soft);
+	border-radius: var(--chivabox-radius);
+}
+
+.chivabox-section.chivabox-closing {
+	width: calc(100% - 2 * var(--chivabox-gutter));
+	max-width: var(--chivabox-wide);
+	padding-inline: clamp(1.25rem, 1rem + 2vw, 2.5rem);
+}
+
+.chivabox-closing h2 {
+	margin: 0;
+	font-size: clamp(1.375rem, 1.1rem + 1vw, 1.75rem);
+}
+
+.chivabox-closing .chivabox-actions {
+	margin: 0;
+}
+
+/* Plain pages: the title and the text share one left edge; text keeps a reading width. */
+.chivabox-main--page {
+	padding-block: var(--wp--preset--spacing--40) 0;
+}
+
+.chivabox-page-title {
+	margin: 0 0 1.5rem;
+}
+
+.chivabox-page-content > :where(p, ul, ol, h2, h3, .wp-block-buttons) {
+	max-width: 65ch;
+}
+
+.chivabox-page-content > * + * {
+	margin-block-start: 1.25rem;
+}
+
+.chivabox-page-lead {
+	margin-top: 0;
+	color: var(--wp--preset--color--muted);
+	font-size: 1.125rem;
+}
+
+.chivabox-page-content .moving-quote {
+	max-width: none;
+	margin-inline: 0;
+	margin-top: 2rem;
+}
+
+.chivabox-thanks {
+	gap: clamp(2rem, 1rem + 3vw, 4rem);
+	margin-top: 0;
+}
+
+.chivabox-thanks__next > :first-child {
+	margin-top: 0;
+}
+
+.chivabox-next-title {
+	font-size: 1.5rem;
+}
+
+.chivabox-next-list {
+	display: grid;
+	gap: 1rem;
+	margin: 1.25rem 0 1.75rem;
+	padding: 0;
+	list-style: none;
+	counter-reset: chivabox-next;
+}
+
+.chivabox-next-list li {
+	display: grid;
+	grid-template-columns: 2rem 1fr;
+	gap: 0.75rem;
+	color: var(--wp--preset--color--muted);
+	counter-increment: chivabox-next;
+}
+
+.chivabox-next-list li::before {
+	display: grid;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	content: counter(chivabox-next);
+	color: var(--wp--preset--color--accent);
+	font-weight: 700;
+	background-color: var(--wp--preset--color--accent-soft);
+	border-radius: 50%;
+}
+
+/* Footer: the brand, the business details, then the demo notice. */
+.chivabox-footer {
+	max-width: none;
+	margin-block-start: var(--wp--preset--spacing--60);
+	padding-block: var(--wp--preset--spacing--50);
+	color: var(--wp--preset--color--muted);
+	font-size: var(--wp--preset--font-size--small);
+	border-top: 1px solid var(--wp--preset--color--border);
+}
+
+.chivabox-footer__inner {
+	display: grid;
+	gap: 2rem;
+	max-width: var(--chivabox-wide);
+	margin-inline: auto;
+}
+
+@media (min-width: 782px) {
+	.chivabox-footer__inner {
+		grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+	}
+}
+
+.chivabox-footer__inner > * {
+	margin: 0;
+}
+
+.chivabox-footer .wp-block-site-title {
+	color: var(--wp--preset--color--contrast);
+}
+
+.chivabox-footer__tagline {
+	margin: 0.75rem 0 0;
+	max-width: 30ch;
+	font-size: inherit;
+}
+
+.chivabox-footer .moving-quote-contact {
+	display: grid;
+	gap: 0.375rem;
+	font-style: normal;
+}
+
+.chivabox-footer .moving-quote-contact a {
+	color: var(--wp--preset--color--contrast);
+	text-underline-offset: 0.15em;
+}
+
+.chivabox-footer .moving-quote-contact__phone {
+	font-weight: 600;
+}
+
+.chivabox-footer__legal p {
+	margin: 0 0 0.375rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.chivabox-header .moving-quote-contact__whatsapp,
+	.chivabox-actions .moving-quote-contact__whatsapp,
+	.chivabox-actions .moving-quote-contact__phone,
+	.wp-element-button {
+		transition: none;
+	}
+
+	.chivabox-actions .moving-quote-contact__whatsapp:active,
+	.chivabox-actions .moving-quote-contact__phone:active,
+	.wp-element-button:active {
+		transform: none;
+	}
+}

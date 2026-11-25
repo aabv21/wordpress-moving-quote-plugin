@@ -114,7 +114,7 @@ describe('the language switcher (Polylang)', () => {
   it('serves the Spanish pages under /es/, in Spanish', async () => {
     const home = await page('/es/');
     expect(home).toMatch(/<html[^>]*\blang="es-CO"/);
-    expect(home).toContain('Su mudanza, sin complicaciones, en la costa Caribe de Colombia');
+    expect(home).toContain('Su mudanza en la costa Caribe, bien hecha');
     expect(home).toMatch(/href="[^"]*\/es\/cotizar\/"/);
     // The tagline is one option; Polylang's string translations give each language its own.
     expect(home).toContain('Mudanzas en la costa Caribe colombiana');
@@ -131,23 +131,22 @@ describe('the language switcher (Polylang)', () => {
   it('keeps the English pages unprefixed, in English', async () => {
     const home = await page('/');
     expect(home).toMatch(/<html[^>]*\blang="en-US"/);
-    expect(home).toContain("Moving made simple on Colombia's Caribbean coast");
+    expect(home).toContain('Moving on the Caribbean coast, done right');
     expect(home).toContain("Moving across Colombia's Caribbean coast");
 
     const quote = await page('/get-a-quote/');
     for (const text of ['Your move', 'Extra services', 'Your details']) expect(quote).toContain(text);
   });
 
-  it('puts the menu and an EN | ES switcher in the header, both following the page language', async () => {
+  it('puts the menu and an English | Español switcher in the header, both following the page language', async () => {
     const english = headerNav(await page('/get-a-quote/'));
     expect(english).toContain('>Get a quote<');
     expect(english).not.toContain('Cotizar');
     expect(switcherHref(english, 'es-CO')).toMatch(/\/es\/cotizar\/$/);
-    expect(english).toMatch(/>EN</);
-    expect(english).toMatch(/>ES</);
+    expect(english).toMatch(/>English</);
+    expect(english).toMatch(/>Español</);
 
     const spanish = headerNav(await page('/es/cotizar/'));
-    expect(spanish).toContain('>Inicio<');
     expect(spanish).toContain('>Cotizar<');
     expect(spanish).not.toContain('Get a quote');
     expect(spanish).not.toContain('/es/gracias/');

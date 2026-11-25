@@ -75,26 +75,24 @@ load_copy() {
       tagline="Moving across Colombia's Caribbean coast"
       home_title="Moving company on Colombia's Caribbean coast"
       quote_title="Get a quote"
-      thanks_title="Thank you"
+      thanks_title="Request received"
       policy_title="Data processing policy"
       home_excerpt="Home and office moves between Barranquilla, Cartagena and Santa Marta. See an instant estimate and book a crew."
       quote_excerpt="Answer three short steps and see your moving estimate in Colombian pesos right away."
       thanks_excerpt="Your moving request was received. Here is what happens next."
       policy_excerpt="How Chivabox Movers handles the data you send with a quote request."
-      nav_home="Home"
       nav_quote="Get a quote"
       ;;
     es_CO)
       tagline="Mudanzas en la costa Caribe colombiana"
       home_title="Empresa de mudanzas en la costa Caribe de Colombia"
       quote_title="Cotice su mudanza"
-      thanks_title="Gracias"
+      thanks_title="Solicitud recibida"
       policy_title="Política de tratamiento de datos"
       home_excerpt="Mudanzas de hogares y oficinas entre Barranquilla, Cartagena y Santa Marta. Vea un precio estimado al instante y reserve su cuadrilla."
       quote_excerpt="Responda tres pasos cortos y vea al instante el precio estimado de su mudanza en pesos colombianos."
       thanks_excerpt="Recibimos su solicitud de mudanza. Esto es lo que sigue."
       policy_excerpt="Cómo trata Chivabox Movers los datos que envía con una solicitud de cotización."
-      nav_home="Inicio"
       nav_quote="Cotizar"
       ;;
   esac
@@ -327,18 +325,26 @@ echo $id;
 PHP
 }
 
-# A menu from before the switcher keeps its links and gets the switcher appended; that block is
-# the one thing this script adds to an existing post.
+# A menu from before the switcher keeps its links and gets the switcher appended, and one whose
+# switcher shows the language codes (an older run's) gets the names instead; those are the only
+# edits this script makes to an existing menu.
 # Arguments: the menu's ID, the switcher block.
 ensure_switcher() {
   wp eval-file - "$@" <<'PHP'
 <?php
 [ $id, $switcher ] = $args;
 $menu = get_post( (int) $id );
-if ( $menu instanceof WP_Post && ! has_block( 'polylang/navigation-language-switcher', $menu ) ) {
-	$updated = wp_update_post( wp_slash( [ 'ID' => $menu->ID, 'post_content' => $menu->post_content . "\n" . $switcher ] ), true );
+if ( ! $menu instanceof WP_Post ) {
+	exit( 0 );
+}
+$codes   = '<!-- wp:polylang/navigation-language-switcher {"show_labels":"codes"} /-->';
+$content = has_block( 'polylang/navigation-language-switcher', $menu )
+	? str_replace( $codes, $switcher, $menu->post_content )
+	: $menu->post_content . "\n" . $switcher;
+if ( $content !== $menu->post_content ) {
+	$updated = wp_update_post( wp_slash( [ 'ID' => $menu->ID, 'post_content' => $content ] ), true );
 	if ( is_wp_error( $updated ) ) {
-		fwrite( STDERR, 'setup.sh: could not add the language switcher: ' . $updated->get_error_message() . "\n" );
+		fwrite( STDERR, 'setup.sh: could not update the language switcher: ' . $updated->get_error_message() . "\n" );
 		exit( 1 );
 	}
 }
@@ -386,8 +392,8 @@ pll_save_post_translations( [ 'en' => (int) $args[0], 'es' => (int) $args[1] ] )
 PHP
 }
 
-# Codes, not names, so the header reads "EN ES", the current language marked.
-switcher_block='<!-- wp:polylang/navigation-language-switcher {"show_labels":"codes"} /-->'
+# Full names, so the header reads "English Español", the current language marked by the theme.
+switcher_block='<!-- wp:polylang/navigation-language-switcher {"show_labels":"names"} /-->'
 
 en_ids=()
 es_ids=()
@@ -409,10 +415,10 @@ for locale in en_US es_CO; do
   policy_id=$(ensure_post "$lang" page "$policy_slug" "$policy_title" "$(pattern_block data-policy)" "$policy_excerpt" "$refresh_pages")
 
   # The theme's header navigation falls back to listing every page (the thank-you page included)
-  # when no navigation menu exists, so each language gets its own: Home, Get a Quote, and the
-  # switcher. Polylang filters the theme's menu lookup by language (site/mu-plugins/).
-  nav_id=$(ensure_post "$lang" wp_navigation "$nav_slug" "$nav_title" "<!-- wp:navigation-link {\"label\":\"${nav_home}\",\"url\":\"${home_path}\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->
-<!-- wp:navigation-link {\"label\":\"${nav_quote}\",\"url\":\"${quote_path}\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->
+  # when no navigation menu exists, so each language gets its own: Get a quote and the switcher
+  # (the logo already links home). Polylang filters the theme's menu lookup by language
+  # (site/mu-plugins/).
+  nav_id=$(ensure_post "$lang" wp_navigation "$nav_slug" "$nav_title" "<!-- wp:navigation-link {\"label\":\"${nav_quote}\",\"url\":\"${quote_path}\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->
 ${switcher_block}" "" 0)
   ensure_switcher "$nav_id" "$switcher_block"
 
@@ -482,7 +488,7 @@ seed_business_details \
   business_city "Barranquilla" \
   business_hours_open "07:00" \
   business_hours_close "18:00" \
-  business_tax_id "NIT 000.000.000-0 (fictional)"
+  business_tax_id "NIT 000.000.000-0"
 
 # Last, so the rules include Polylang's language prefixes and the front page.
 wp rewrite flush --hard

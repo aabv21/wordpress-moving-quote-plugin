@@ -22,7 +22,7 @@ interface WpNavigation {
 
 const NAVIGATION_ARGS = ['post', 'list', '--post_type=wp_navigation', '--name=primary-navigation'];
 const SPANISH_NAVIGATION_ARGS = ['post', 'list', '--post_type=wp_navigation', '--name=navegacion-principal'];
-const SWITCHER_BLOCK = '<!-- wp:polylang/navigation-language-switcher {"show_labels":"codes"} /-->';
+const SWITCHER_BLOCK = '<!-- wp:polylang/navigation-language-switcher {"show_labels":"names"} /-->';
 
 describe('WordPress runtime, after setup.sh', () => {
   beforeAll(async () => {
@@ -54,21 +54,21 @@ describe('WordPress runtime, after setup.sh', () => {
     }
   });
 
-  it('creates one primary navigation menu that links Home and Get a quote, never the thank-you page', async () => {
+  it('creates one primary navigation menu that links Get a quote, never the thank-you page', async () => {
     const menus = await wpJson<WpNavigation[]>([...NAVIGATION_ARGS, '--fields=ID,post_status,post_content']);
     expect(menus).toHaveLength(1);
     expect(menus[0]?.post_status).toBe('publish');
-    expect(menus[0]?.post_content).toContain('"url":"/"');
     expect(menus[0]?.post_content).toContain('"url":"/get-a-quote/"');
+    // The logo already links home, so the menu doesn't repeat it.
+    expect(menus[0]?.post_content).not.toContain('"url":"/"');
     expect(menus[0]?.post_content).toContain(SWITCHER_BLOCK);
     expect(menus[0]?.post_content).not.toContain('thank-you');
   });
 
-  it('creates its Spanish translation, linking Inicio and Cotizar under /es/', async () => {
+  it('creates its Spanish translation, linking Cotizar under /es/', async () => {
     const menus = await wpJson<WpNavigation[]>([...SPANISH_NAVIGATION_ARGS, '--fields=ID,post_status,post_content']);
     expect(menus).toHaveLength(1);
     expect(menus[0]?.post_status).toBe('publish');
-    expect(menus[0]?.post_content).toContain('"label":"Inicio","url":"/es/"');
     expect(menus[0]?.post_content).toContain('"label":"Cotizar","url":"/es/cotizar/"');
     expect(menus[0]?.post_content).toContain(SWITCHER_BLOCK);
     expect(menus[0]?.post_content).not.toContain('gracias');
@@ -174,24 +174,24 @@ describe('switching the default language with SITE_LOCALE', () => {
     try {
       await runSetup('es_CO');
       expect(await menuLinks()).toEqual({
-        'English menu': ['/en/', '/en/get-a-quote/'],
-        'Spanish menu': ['/', '/cotizar/'],
+        'English menu': ['/en/get-a-quote/'],
+        'Spanish menu': ['/cotizar/'],
       });
-      expect(await buttonPaths('/en/')).toEqual(['/en/get-a-quote/', '/en/get-a-quote/']);
+      expect(await buttonPaths('/en/')).toEqual(['/en/get-a-quote/']);
       // pll_home_url() answers the English front page itself, which /en/ redirects to.
       expect(await buttonPaths('/en/thank-you/')).toEqual(['/en/home/']);
-      expect(await buttonPaths('/')).toEqual(['/cotizar/', '/cotizar/']);
+      expect(await buttonPaths('/')).toEqual(['/cotizar/']);
       expect(await buttonPaths('/gracias/')).toEqual(['/']);
     } finally {
       await runSetup('en_US');
     }
     expect(await menuLinks()).toEqual({
-      'English menu': ['/', '/get-a-quote/'],
-      'Spanish menu': ['/es/', '/es/cotizar/'],
+      'English menu': ['/get-a-quote/'],
+      'Spanish menu': ['/es/cotizar/'],
     });
-    expect(await buttonPaths('/')).toEqual(['/get-a-quote/', '/get-a-quote/']);
+    expect(await buttonPaths('/')).toEqual(['/get-a-quote/']);
     expect(await buttonPaths('/thank-you/')).toEqual(['/']);
-    expect(await buttonPaths('/es/')).toEqual(['/es/cotizar/', '/es/cotizar/']);
+    expect(await buttonPaths('/es/')).toEqual(['/es/cotizar/']);
     expect(await buttonPaths('/es/gracias/')).toEqual(['/es/inicio/']);
   });
 });
