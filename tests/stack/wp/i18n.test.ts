@@ -120,6 +120,7 @@ describe('the site in Spanish (WPLANG=es_CO), without Polylang', () => {
     expect(config.strings).toEqual({
       sending: 'Enviando…',
       networkError: 'Algo salió mal. Revise su conexión e intente de nuevo.',
+      serverError: 'Algo falló de nuestro lado. Intente de nuevo en unos minutos.',
       rateLimited: 'Demasiadas solicitudes. Intente de nuevo más tarde.',
       sessionExpired: 'Su sesión expiró. Recargue la página e intente de nuevo.',
       genericError: 'Corrija los campos resaltados.',

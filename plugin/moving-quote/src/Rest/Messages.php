@@ -40,11 +40,23 @@ final class Messages {
 			'invalid'          => __( 'Please check this value.', 'moving-quote' ),
 			'unknown_city'     => __( 'Choose a city from the list.', 'moving-quote' ),
 			'unknown_route'    => __( 'We don’t have a price for this route yet. Please call us.', 'moving-quote' ),
-			'too_short'        => __( 'Please enter at least 2 characters.', 'moving-quote' ),
-			'too_long'         => __( 'Please use 100 characters or fewer.', 'moving-quote' ),
+			'too_short'        => sprintf(
+				/* translators: %d: minimum number of characters */
+				__( 'Please enter at least %d characters.', 'moving-quote' ),
+				LeadValidator::NAME_MIN_LEN
+			),
+			'too_long'         => sprintf(
+				/* translators: %d: maximum number of characters */
+				__( 'Please use %d characters or fewer.', 'moving-quote' ),
+				LeadValidator::NAME_MAX_LEN
+			),
 			'past_date'        => __( 'Choose today or a later date.', 'moving-quote' ),
-			'too_far'          => __( 'Choose a date within the next 12 months.', 'moving-quote' ),
-			'consent_required' => __( 'Please accept the privacy policy to continue.', 'moving-quote' ),
+			'too_far'          => sprintf(
+				/* translators: %d: number of days ahead a move date may be */
+				__( 'Choose a date within the next %d days.', 'moving-quote' ),
+				LeadValidator::MOVE_DATE_MAX_DAYS_AHEAD
+			),
+			'consent_required' => __( 'Please accept the data processing policy to continue.', 'moving-quote' ),
 		];
 
 		return $messages[ $code ] ?? $code;

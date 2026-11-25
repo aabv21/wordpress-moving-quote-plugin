@@ -10,14 +10,14 @@ use Chivabox\MovingQuote\Pricing\{DistanceTable, Extra, MoveType, QuoteInput};
  * display text by `Rest\Messages`.
  */
 final class LeadValidator {
-	private const ROOMS_MIN                = 1;
-	private const ROOMS_MAX                = 5;
-	private const NAME_MIN_LEN             = 2;
-	private const NAME_MAX_LEN             = 100;
-	private const EMAIL_MAX_LEN            = 254;
-	public const PHONE_MIN_LEN             = 10;
-	public const PHONE_MAX_LEN             = 15;
-	private const MOVE_DATE_MAX_DAYS_AHEAD = 365;
+	private const ROOMS_MIN               = 1;
+	private const ROOMS_MAX               = 5;
+	public const NAME_MIN_LEN             = 2;
+	public const NAME_MAX_LEN             = 100;
+	private const EMAIL_MAX_LEN           = 254;
+	public const PHONE_MIN_LEN            = 10;
+	public const PHONE_MAX_LEN            = 15;
+	public const MOVE_DATE_MAX_DAYS_AHEAD = 365;
 
 	/**
 	 * Only the fields that affect price, for the estimate endpoint.

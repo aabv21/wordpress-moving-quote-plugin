@@ -10,7 +10,7 @@ use Chivabox\MovingQuote\Install\Installer;
 use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
 
 final class Plugin {
-	public const VERSION = '1.2.0';
+	public const VERSION = '1.2.1';
 
 	public static function boot( string $plugin_file ): void {
 		add_action(

@@ -2,7 +2,7 @@
 # Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
 msgid ""
 msgstr ""
-"Project-Id-Version: Moving Quote 1.2.0\n"
+"Project-Id-Version: Moving Quote 1.2.1\n"
 "Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
 "POT-Creation-Date: 2026-11-03 00:00-0500\n"
 "PO-Revision-Date: 2026-11-03 00:00-0500\n"
@@ -381,20 +381,11 @@ msgstr "Elija una ciudad de la lista."
 msgid "We don’t have a price for this route yet. Please call us."
 msgstr "Aún no tenemos precio para esta ruta. Por favor, llámenos."
 
-msgid "Please enter at least 2 characters."
-msgstr "Escriba al menos 2 caracteres."
-
-msgid "Please use 100 characters or fewer."
-msgstr "Use como máximo 100 caracteres."
-
 msgid "Choose today or a later date."
 msgstr "Elija la fecha de hoy o una posterior."
 
-msgid "Choose a date within the next 12 months."
-msgstr "Elija una fecha dentro de los próximos 12 meses."
-
-msgid "Please accept the privacy policy to continue."
-msgstr "Acepte la política de privacidad para continuar."
+msgid "Please accept the data processing policy to continue."
+msgstr "Acepte la política de tratamiento de datos para continuar."
 
 #. translators: 1: low estimate, 2: high estimate
 #, php-format
@@ -446,13 +437,13 @@ msgstr "Atrás"
 msgid "Full name"
 msgstr "Nombre completo"
 
-#. translators: %s: privacy policy URL
+#. translators: %s: data processing policy URL
 #, php-format
-msgid "I agree to the processing of my data under the <a href=\"%s\">privacy policy</a>."
-msgstr "Autorizo el tratamiento de mis datos personales según la <a href=\"%s\">política de privacidad</a>."
+msgid "I agree to the processing of my data under the <a href=\"%s\">data processing policy</a>."
+msgstr "Autorizo el tratamiento de mis datos personales según la <a href=\"%s\">política de tratamiento de datos</a>."
 
-msgid "I agree to the processing of my data under the privacy policy."
-msgstr "Autorizo el tratamiento de mis datos personales según la política de privacidad."
+msgid "I agree to the processing of my data under the data processing policy."
+msgstr "Autorizo el tratamiento de mis datos personales según la política de tratamiento de datos."
 
 msgid "Send my request"
 msgstr "Enviar mi solicitud"
@@ -479,3 +470,24 @@ msgstr "Elija qué va a mudar, cuántas habitaciones y ambas ciudades para ver e
 
 msgid "This is an estimate. We confirm the final price after a visit or video call."
 msgstr "Este valor es un estimado. Confirmamos el precio final después de una visita o una videollamada."
+
+msgid "We call you during business hours. No commitment."
+msgstr "Le llamamos en horario hábil. Sin compromiso."
+
+msgid "Something went wrong on our side. Please try again in a few minutes."
+msgstr "Algo falló de nuestro lado. Intente de nuevo en unos minutos."
+
+#. translators: %d: minimum number of characters
+#, php-format
+msgid "Please enter at least %d characters."
+msgstr "Escriba al menos %d caracteres."
+
+#. translators: %d: maximum number of characters
+#, php-format
+msgid "Please use %d characters or fewer."
+msgstr "Use como máximo %d caracteres."
+
+#. translators: %d: number of days ahead a move date may be
+#, php-format
+msgid "Choose a date within the next %d days."
+msgstr "Elija una fecha dentro de los próximos %d días."

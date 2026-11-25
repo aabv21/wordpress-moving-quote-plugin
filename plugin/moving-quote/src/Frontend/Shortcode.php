@@ -53,9 +53,10 @@ final class Shortcode {
 
 		$parsed = shortcode_atts( [ 'thank_you' => 'thank-you' ], is_array( $atts ) ? $atts : [] );
 
-		// Local variables for templates/quote-form.php, included below: $cities and $config.
-		$cities = self::cities();
-		$config = self::config( (string) $parsed['thank_you'] );
+		// Local variables for templates/quote-form.php, included below: $cities, $config and $privacy_url.
+		$cities      = self::cities();
+		$config      = self::config( (string) $parsed['thank_you'] );
+		$privacy_url = self::privacy_url();
 
 		ob_start();
 		include self::template_path();
@@ -90,6 +91,30 @@ final class Shortcode {
 	}
 
 	/**
+	 * The published privacy policy page in the visitor's language, or null when none is set or it
+	 * isn't published (core's own draft, for one). With Polylang, the page set in Settings > Privacy
+	 * stands for its whole translation group.
+	 */
+	public static function privacy_url(): ?string {
+		$option  = get_option( 'wp_page_for_privacy_policy' );
+		$page_id = is_numeric( $option ) ? (int) $option : 0;
+		if ( $page_id <= 0 ) {
+			return null;
+		}
+
+		if ( function_exists( 'pll_get_post' ) ) {
+			$page_id = TranslatedPage::id( $page_id, pll_get_post( $page_id ) );
+		}
+
+		if ( 'publish' !== get_post_status( $page_id ) ) {
+			return null;
+		}
+
+		$url = get_permalink( $page_id );
+		return false !== $url ? $url : null;
+	}
+
+	/**
 	 * Carries the page's language to the REST route, which runs in it (see `Rest\RequestLocale`).
 	 */
 	private static function rest_url_for_page( string $route ): string {
@@ -107,6 +132,7 @@ final class Shortcode {
 	 *     strings: array{
 	 *         sending: string,
 	 *         networkError: string,
+	 *         serverError: string,
 	 *         rateLimited: string,
 	 *         sessionExpired: string,
 	 *         genericError: string,
@@ -122,6 +148,7 @@ final class Shortcode {
 			'strings'     => [
 				'sending'        => __( 'Sending…', 'moving-quote' ),
 				'networkError'   => __( 'Something went wrong. Please check your connection and try again.', 'moving-quote' ),
+				'serverError'    => __( 'Something went wrong on our side. Please try again in a few minutes.', 'moving-quote' ),
 				'rateLimited'    => __( 'Too many requests. Please try again later.', 'moving-quote' ),
 				'sessionExpired' => __( 'Your session expired. Reload the page and try again.', 'moving-quote' ),
 				'genericError'   => __( 'Please fix the highlighted fields.', 'moving-quote' ),

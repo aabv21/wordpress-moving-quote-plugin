@@ -16,6 +16,7 @@ interface QuoteFormConfig {
   strings: {
     sending: string;
     networkError: string;
+    serverError: string;
     rateLimited: string;
     sessionExpired: string;
     genericError: string;
@@ -252,7 +253,7 @@ function initQuoteForm(form: HTMLFormElement): void {
       return;
     }
 
-    setFormError(config.strings.networkError);
+    setFormError(0 === result.status ? config.strings.networkError : config.strings.serverError);
   }
 
   function reenableSubmit(): void {

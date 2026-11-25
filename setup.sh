@@ -78,6 +78,13 @@ load_copy() {
       thanks_step_2="A member of our team calls you to confirm the details."
       thanks_step_3="We confirm the final price after a visit or video call, then book your moving day."
       thanks_button="Back to the home page"
+      policy_title="Data processing policy"
+      policy_demo="Demo site: Chivabox Movers is a fictional company, and this policy is a sample."
+      policy_owner="Who is responsible: Chivabox Movers, Barranquilla, Colombia."
+      policy_data="What we collect: your name, phone, email, and the details of your move, when you ask for a quote."
+      policy_purpose="Why: to prepare your estimate, contact you about your move, and keep a record of your request. We don't sell your data or use it for advertising."
+      policy_rights="Your rights: under Colombia's Law 1581 of 2012 you can see, correct or delete your data, and withdraw your consent, by writing to us from the email address you used."
+      policy_retention="How long: we keep a request for as long as we need it to answer you and to meet our legal obligations."
       nav_home="Home"
       nav_quote="Get a Quote"
       ;;
@@ -96,6 +103,13 @@ load_copy() {
       thanks_step_2="Una persona de nuestro equipo se comunica con usted para confirmar los detalles."
       thanks_step_3="Confirmamos el precio final después de una visita o una videollamada y agendamos el día de su mudanza."
       thanks_button="Volver al inicio"
+      policy_title="Política de tratamiento de datos"
+      policy_demo="Sitio de demostración: Chivabox Movers es una empresa ficticia y esta política es un ejemplo."
+      policy_owner="Responsable: Chivabox Movers, Barranquilla, Colombia."
+      policy_data="Qué datos recogemos: su nombre, teléfono, correo y los detalles de su mudanza, cuando nos pide una cotización."
+      policy_purpose="Para qué: preparar su cotización, contactarle sobre su mudanza y guardar el registro de su solicitud. No vendemos sus datos ni los usamos para publicidad."
+      policy_rights="Sus derechos: según la Ley 1581 de 2012 usted puede conocer, actualizar, rectificar o suprimir sus datos y revocar su autorización, escribiéndonos desde el correo que usó."
+      policy_retention="Cuánto tiempo: conservamos su solicitud mientras sea necesaria para atenderle y cumplir nuestras obligaciones legales."
       nav_home="Inicio"
       nav_quote="Cotizar"
       ;;
@@ -110,6 +124,7 @@ load_slugs() {
       home_slug="home"
       quote_slug="get-a-quote"
       thanks_slug="thank-you"
+      policy_slug="data-policy"
       nav_slug="primary-navigation"
       nav_title="Primary navigation"
       ;;
@@ -117,6 +132,7 @@ load_slugs() {
       home_slug="inicio"
       quote_slug="cotizar"
       thanks_slug="gracias"
+      policy_slug="politica-de-datos"
       nav_slug="navegacion-principal"
       nav_title="Navegación principal"
       ;;
@@ -390,6 +406,15 @@ for locale in en_US es_CO; do
 <!-- wp:list {\"ordered\":true} --><ol class=\"wp-block-list\"><!-- wp:list-item --><li>${thanks_step_1}</li><!-- /wp:list-item --><!-- wp:list-item --><li>${thanks_step_2}</li><!-- /wp:list-item --><!-- wp:list-item --><li>${thanks_step_3}</li><!-- /wp:list-item --></ol><!-- /wp:list -->
 <!-- wp:buttons --><div class=\"wp-block-buttons\"><!-- wp:button --><div class=\"wp-block-button\"><a class=\"wp-block-button__link wp-element-button\" href=\"${home_path}\">${thanks_button}</a></div><!-- /wp:button --></div><!-- /wp:buttons -->")
 
+  # Core's own draft "Privacy Policy" (slug privacy-policy) stays untouched; this page is the one
+  # the consent line links to.
+  policy_id=$(ensure_post "$lang" page "$policy_slug" "$policy_title" "<!-- wp:paragraph --><p>${policy_demo}</p><!-- /wp:paragraph -->
+<!-- wp:paragraph --><p>${policy_owner}</p><!-- /wp:paragraph -->
+<!-- wp:paragraph --><p>${policy_data}</p><!-- /wp:paragraph -->
+<!-- wp:paragraph --><p>${policy_purpose}</p><!-- /wp:paragraph -->
+<!-- wp:paragraph --><p>${policy_rights}</p><!-- /wp:paragraph -->
+<!-- wp:paragraph --><p>${policy_retention}</p><!-- /wp:paragraph -->")
+
   # The theme's header navigation falls back to listing every page (the thank-you page included)
   # when no navigation menu exists, so each language gets its own: Home, Get a Quote, and the
   # switcher. Polylang filters the theme's menu lookup by language (site/mu-plugins/).
@@ -405,9 +430,9 @@ ${switcher_block}")
   relink_post "$nav_id" "$previous_home_path" "$home_path" "$previous_quote_path" "$quote_path"
 
   if [ "$lang" = "en" ]; then
-    en_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id")
+    en_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id" "$policy_id")
   else
-    es_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id")
+    es_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id" "$policy_id")
   fi
   if [ "$lang" = "$default_lang" ]; then
     front_page_id="$home_id"
@@ -417,6 +442,14 @@ done
 for i in "${!en_ids[@]}"; do
   link_translations "${en_ids[$i]}" "${es_ids[$i]}"
 done
+
+# The consent line links to the English data policy page; the plugin translates it for the
+# visitor. An owner's own choice in Settings > Privacy stays: only an unset option, or one that
+# points at a page that isn't published (core's own draft, say), is replaced.
+# shellcheck disable=SC2016 # PHP, not shell: the dollar sign is PHP's
+if ! wp eval '$id = (int) get_option( "wp_page_for_privacy_policy" ); exit( $id > 0 && "publish" === get_post_status( $id ) ? 0 : 1 );' >/dev/null 2>&1; then
+  wp option update wp_page_for_privacy_policy "${en_ids[4]}"
+fi
 
 # Polylang shows the front page's translation for the other language, at /es/ or /en/.
 wp option update show_on_front page

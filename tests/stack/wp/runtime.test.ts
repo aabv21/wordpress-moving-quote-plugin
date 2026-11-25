@@ -6,7 +6,7 @@ import { clearDebugLog, pluginLogLines, site, wp, wpJson } from '../lib/stack.ts
 const execFileAsync = promisify(execFile);
 
 /** Each demo page in English, then in Spanish (Polylang needs a distinct slug per language). */
-const SLUGS = ['home', 'get-a-quote', 'thank-you', 'inicio', 'cotizar', 'gracias'] as const;
+const SLUGS = ['home', 'get-a-quote', 'thank-you', 'inicio', 'cotizar', 'gracias', 'data-policy', 'politica-de-datos'] as const;
 
 interface WpPage {
   ID: number;
@@ -116,6 +116,28 @@ describe('WordPress runtime, after setup.sh', () => {
       expect(menus).toHaveLength(1);
       // The switcher is appended only to a menu that lacks it, so a rerun never adds a second one.
       expect(menus[0]?.post_content.split(SWITCHER_BLOCK)).toHaveLength(2);
+    }
+  });
+
+  it('points Settings > Privacy at the English data policy page', async () => {
+    const [policy] = await wpJson<WpPage[]>(['post', 'list', '--post_type=page', '--name=data-policy', '--fields=ID']);
+    expect((await wp(['option', 'get', 'wp_page_for_privacy_policy'])).trim()).toBe(String(policy?.ID));
+  });
+
+  it('keeps a privacy page the owner chose, through a rerun', { timeout: 300_000 }, async () => {
+    const original = (await wp(['option', 'get', 'wp_page_for_privacy_policy'])).trim();
+    const custom = (await wp(['post', 'create', '--post_type=page', '--post_status=publish', '--post_title=Owner policy', '--porcelain'])).trim();
+    try {
+      await wp(['option', 'update', 'wp_page_for_privacy_policy', custom]);
+      await execFileAsync('./setup.sh');
+      expect((await wp(['option', 'get', 'wp_page_for_privacy_policy'])).trim()).toBe(custom);
+      // A draft (core's own, say) is replaced again.
+      await wp(['post', 'update', custom, '--post_status=draft']);
+      await execFileAsync('./setup.sh');
+      expect((await wp(['option', 'get', 'wp_page_for_privacy_policy'])).trim()).toBe(original);
+    } finally {
+      await wp(['post', 'delete', custom, '--force']);
+      await wp(['option', 'update', 'wp_page_for_privacy_policy', original]);
     }
   });
 

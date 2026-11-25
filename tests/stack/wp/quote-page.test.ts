@@ -108,9 +108,9 @@ describe('the quote page', () => {
     const html = await (await fetch(site(QUOTE_PAGE_PATH))).text();
     const form = /<form\b[^>]*\bdata-moving-quote\b[\s\S]*?<\/form>/.exec(html)?.[0];
     if (form === undefined) throw new Error('the quote form was not rendered');
-    // Each hook with its value (data-step="1", data-error-for="phone", …); data-config by name only.
+    // Each hook with its value (data-step="1", data-error-for="phone", …); data-config by name only. A hook follows whitespace, so a URL such as /data-policy/ is not one.
     const hooksIn = (markup: string): string[] =>
-      [...new Set([...markup.matchAll(/\bdata-[a-z-]+="[^"]*"|\bdata-[a-z-]+/g)].map(([hook]) => (hook.startsWith('data-config=') ? 'data-config=' : hook)))].sort();
+      [...new Set([...markup.matchAll(/(?<=\s)data-[a-z-]+="[^"]*"|(?<=\s)data-[a-z-]+/g)].map(([hook]) => (hook.startsWith('data-config=') ? 'data-config=' : hook)))].sort();
     const fixture = hooksIn(readFileSync('tests/dom/fixtures/quote-form.html', 'utf8'));
     expect(fixture.length).toBeGreaterThan(20);
     expect(hooksIn(form)).toEqual(fixture);
@@ -124,6 +124,30 @@ describe('the quote page', () => {
 
     const bogotaToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     expect(min).toBe(bogotaToday);
+  });
+
+  it("links the consent to the published data policy page in the page's language", async () => {
+    const consentLink = async (path: string): Promise<string | undefined> => {
+      const html = await (await fetch(site(path))).text();
+      const label = /<label[^>]*\bfor="mq-consent"[^>]*>([\s\S]*?)<\/label>/.exec(html)?.[1];
+      return label === undefined ? undefined : /<a href="([^"]*)"/.exec(label)?.[1];
+    };
+    expect(await consentLink('/get-a-quote/')).toBe(site('/data-policy/'));
+    expect(await consentLink('/es/cotizar/')).toBe(site('/es/politica-de-datos/'));
+  });
+
+  it('publishes the data policy in both languages, marked as a demo', async () => {
+    const english = await fetch(site('/data-policy/'));
+    expect(english.status).toBe(200);
+    expect(await english.text()).toContain('Demo site: Chivabox Movers is a fictional company');
+    const spanish = await fetch(site('/es/politica-de-datos/'));
+    expect(spanish.status).toBe(200);
+    expect(await spanish.text()).toContain('Sitio de demostración: Chivabox Movers es una empresa ficticia');
+  });
+
+  it('says what happens after sending, under the send button', async () => {
+    expect(await (await fetch(site('/get-a-quote/'))).text()).toContain('We call you during business hours. No commitment.');
+    expect(await (await fetch(site('/es/cotizar/'))).text()).toContain('Le llamamos en horario hábil. Sin compromiso.');
   });
 
   it('does not load the quote-form script on a page without the shortcode', async () => {
