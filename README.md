@@ -14,25 +14,27 @@ Open the [interactive diagram](docs/diagrams/architecture.html) to read it full-
 
 ## What it does
 
-- **A three-step quote form with a live estimate.** The `[moving_quote]` shortcode asks for the move (type, rooms, both cities, a date), the extra services, and the customer's details. The price range in Colombian pesos updates as the visitor fills in the first step, and a submission lands on a thank-you page that shows the lead's `MQ-…` reference.
-- **English and Spanish, with an EN | ES switcher.** The demo site is bilingual through Polylang: Get a Quote at `/get-a-quote/` and Cotizar at `/es/cotizar/`. The form, its error messages, the price's separators (`COP 1.017.000 – 1.243.000` in Spanish), the thank-you page, and the lead's stored language all follow the page.
+- **A local moving company's site.** The Chivabox theme (`site/theme/`, a child of Twenty Twenty-Five) gives the demo a full home page: the quote's first step in the hero, a trust strip, how it works, services, popular routes with "from" prices that open the quote prefilled, sample reviews, questions, and a footer with the business's phone, WhatsApp, address, hours and tax ID. Every page has a meta description and Open Graph tags, and the home page carries `MovingCompany` structured data.
+- **A three-step quote form with a live estimate.** The `[moving_quote]` shortcode asks for the move (type, rooms, both cities, a date), the extra services, and the customer's details. A summary beside the form (a price bar at the bottom on phones) shows the route, date, extras and the price range in Colombian pesos as the visitor fills them in. A submission lands on a thank-you card with the lead's `MQ-…` reference, that summary, and a WhatsApp link that carries the reference.
+- **English and Spanish, with an English | Español switcher.** The demo site is bilingual through Polylang: Get a quote at `/get-a-quote/` and Cotizar at `/es/cotizar/`. The form, its error messages, the price's separators (`COP 1.017.000 – 1.243.000` in Spanish), the thank-you page, and the lead's stored language all follow the page.
 - **Every lead is saved first, then delivered.** WordPress stores the lead in its own table, then sends it to n8n as a signed request. If n8n is down, a cron-driven outbox retries with backoff for about 8.5 hours (10 attempts); after that the lead shows Failed in Leads until someone chooses Retry delivery.
-- **One sheet row and two emails per lead.** n8n verifies the signature, records the lead once, and writes one row to the `Moving leads` Google Sheet. It then emails the team a plain-text summary and the customer their estimate, in the customer's language.
+- **One sheet row and two emails per lead.** n8n verifies the signature, records the lead once, and writes one row to the `Moving leads` Google Sheet. It then emails the team a plain-text summary and the customer a branded email with their estimate, the move's details and the business's phone and WhatsApp, in the customer's language.
 - **A Leads admin page.** Moving quotes → Leads lists every lead with its status and delivery state, filters by status, exports a formula-safe CSV, retries a failed delivery, and warns on the Dashboard when a lead hasn't reached n8n.
 - **An alert to the operator.** Any workflow failure emails the operator the failed node, the error, and the execution link, in the team's language.
 
-The quote form, its thank-you page, and the Leads admin, in WordPress's default theme (Twenty Twenty-Five) on the local stack, at 1280 px and 390 px wide:
+The site, the quote form, its thank-you card, and the Leads admin, on the local stack at 1280 px and 390 px wide:
 
 | Screen | 1280 px | 390 px |
 |---|---|---|
-| Step 1, your move, before anything can be priced | <img src="docs/screenshots/quote-step-1-desktop.png" width="480" alt="Step 1 of the quote form: a numbered three-step progress bar with Your move current, move type and rooms side by side, the two city selects side by side, a move date, a Next button, and an estimate band reading Estimated price, a dash, and a hint naming what to fill in"> | <img src="docs/screenshots/quote-step-1-mobile.png" width="180" alt="Step 1 of the quote form at phone width: one column of fields, a full-width Next button, and the estimate band below"> |
-| Step 2, extra services, with a live estimate | <img src="docs/screenshots/quote-step-2-desktop.png" width="480" alt="Step 2 of the quote form: step 1 checked off in the progress bar, four extra services as selectable rows with Packing selected, Back and Next buttons, and an estimated price of COP 1,197,000 to 1,463,000"> | <img src="docs/screenshots/quote-step-2-mobile.png" width="180" alt="Step 2 of the quote form at phone width: the extra services stacked as rows, Back and Next side by side, and the live estimate below"> |
-| Step 3, your details, with the estimate | <img src="docs/screenshots/quote-step-3-desktop.png" width="480" alt="Step 3 of the quote form: full name, phone and email side by side, the privacy consent checkbox, a Back button and an orange Send my request button, and the estimate band"> | <img src="docs/screenshots/quote-step-3-mobile.png" width="180" alt="Step 3 of the quote form at phone width: the customer fields in one column, Back and Send my request side by side, and the estimate band"> |
-| A validation error from the server | <img src="docs/screenshots/quote-validation-error-desktop.png" width="480" alt="Step 3 after a rejected submission: the name, phone and email fields outlined in red, each with an icon and a message saying how to fix it, the consent error, and a boxed form message saying Please fix the highlighted fields below the buttons"> | <img src="docs/screenshots/quote-validation-error-mobile.png" width="180" alt="The same validation errors at phone width, each message under its own field, focus on the first invalid field"> |
-| The thank-you page | <img src="docs/screenshots/thank-you-desktop.png" width="480" alt="The thank-you page: We received your moving request, the lead's reference number, a What happens next list of three steps, and a Back to the home page button"> | <img src="docs/screenshots/thank-you-mobile.png" width="180" alt="The thank-you page at phone width, with the reference number kept on one line"> |
-| Moving quotes → Leads | <img src="docs/screenshots/admin-leads-desktop.png" width="480" alt="The Leads admin screen in WordPress's own styles: status views with counts, an Export CSV button, and a table of leads with reference, customer, move, route, estimate, a labelled status select with Update, and delivery state"> | <img src="docs/screenshots/admin-leads-mobile.png" width="180" alt="The Leads admin screen at phone width: one line per lead, the first expanded into labelled rows"> |
+| The home page | <img src="docs/screenshots/home-desktop.png" width="480" alt="The Chivabox Movers home page: the logo, Get a quote link, language switcher, phone number and WhatsApp button in the header; a three-line headline about moving on the Caribbean coast with WhatsApp and phone buttons beside a Start your quote card asking what is being moved and both cities; and the top of a wide photo of a mover pushing a stack of boxes"> | <img src="docs/screenshots/home-mobile.png" width="180" alt="The home page at phone width: the header's phone and WhatsApp icon buttons, then the headline, the WhatsApp and phone buttons and the Start your quote card stacked in one column"> |
+| Step 1, your move, before anything can be priced | <img src="docs/screenshots/quote-step-1-desktop.png" width="480" alt="Step 1 of the quote form: a numbered three-step progress bar with Your move current, a note that every field but the extras is required, the move fields in two columns, a Next pill button, and a Summary panel beside the form waiting for both cities"> | <img src="docs/screenshots/quote-step-1-mobile.png" width="180" alt="Step 1 of the quote form at phone width: the page title, the progress bar, the required-fields note, and the move fields in one column"> |
+| Step 2, extra services, with a live estimate | <img src="docs/screenshots/quote-step-2-desktop.png" width="480" alt="Step 2 of the quote form: step 1 checked off, four extra services as selectable rows each showing its price, Packing selected, and the Summary panel with the route, date, Packing, and an estimated price of COP 1,197,000 to 1,463,000"> | <img src="docs/screenshots/quote-step-2-mobile.png" width="180" alt="Step 2 of the quote form at phone width: the extra services stacked as rows with their prices, and a price bar pinned to the bottom of the screen"> |
+| Step 3, your details, with the estimate | <img src="docs/screenshots/quote-step-3-desktop.png" width="480" alt="Step 3 of the quote form: full name, phone with an example under it, email, the consent checkbox linked to the data policy, a Back pill and a near-black Send my request pill, and the Summary panel with a Prefer to talk line and the business phone"> | <img src="docs/screenshots/quote-step-3-mobile.png" width="180" alt="Step 3 of the quote form at phone width: the customer fields in one column with the phone example, the consent checkbox, and the price bar pinned to the bottom of the screen"> |
+| A validation error from the server | <img src="docs/screenshots/quote-validation-error-desktop.png" width="480" alt="Step 3 after a rejected submission: the name, phone and email fields outlined in red, each with an icon and a message saying how to fix it, the consent error, and a boxed form message saying Please fix the highlighted fields"> | <img src="docs/screenshots/quote-validation-error-mobile.png" width="180" alt="The same validation errors at phone width, each message under its own field, Back and Send my request side by side, the boxed form message, and the price bar"> |
+| The thank-you card | <img src="docs/screenshots/thank-you-desktop.png" width="480" alt="The thank-you page titled Request received: a card with a green check, the lead's reference number, the route, move date and estimate the visitor just sent, and a Write to us on WhatsApp button, beside a numbered What happens next list and a Back to the home page button"> | <img src="docs/screenshots/thank-you-mobile.png" width="180" alt="The thank-you page at phone width: the Request received title, the card with the check, the reference, the route, date and estimate stacked and the WhatsApp button, then the numbered next steps"> |
+| Moving quotes → Leads | <img src="docs/screenshots/admin-leads-desktop.png" width="480" alt="The Leads admin screen in WordPress's own styles: status views with counts, an Export CSV button, and a table of leads whose customer column keeps each email on one line, with a labelled status select, Update, and a separate red Delete link"> | <img src="docs/screenshots/admin-leads-mobile.png" width="180" alt="The Leads admin screen at phone width: the first lead expanded into labelled rows, with its status select, Update, and a red Delete link"> |
 
-The form's colors, contrast ratios, and spacing are listed under "The quote form's design tokens" in [`docs/architecture.md`](docs/architecture.md).
+The site's and the form's colors, with each pair's contrast ratio, are listed under "The design tokens" in [`docs/architecture.md`](docs/architecture.md). The photos and fonts, with their licenses, are credited in [`site/theme/CREDITS.md`](site/theme/CREDITS.md).
 
 ## Quick start
 
@@ -61,18 +63,18 @@ Once the stack is up:
 
 **One stack at a time.** Every demo in this series binds `127.0.0.1:5678`, and this one also binds `127.0.0.1:8080`. Run `docker compose ls` first, and stop any other demo's stack before bringing this one up.
 
-**Upgrading an existing stack.** A stack from before `db/migrations/` existed follows "The one-time upgrade for an existing local stack" in [`docs/database.md`](docs/database.md). A stack from before the language switcher needs `docker compose up -d --wait` first, so the WordPress containers mount `site/mu-plugins/`, then `./setup.sh`, which keeps the existing English pages and adds the Spanish ones and the switcher. An existing `Moving leads` sheet needs `request_uuid` added as its 16th header before the next lead, or every lead stops at "Append lead row" and raises the operator alert.
+**Upgrading an existing stack.** A stack from before `db/migrations/` existed follows "The one-time upgrade for an existing local stack" in [`docs/database.md`](docs/database.md). A stack from before the language switcher or the Chivabox theme needs `docker compose up -d --wait` first, so the WordPress containers mount `site/mu-plugins/` and `site/theme/`, then `./setup.sh`, which activates the theme, adds what's missing, and leaves existing pages as they are. To replace the existing pages' content with the theme's current copy, run `SETUP_REFRESH_PAGES=1 ./setup.sh` once; it rewrites only the eight pages `setup.sh` owns. An existing `Moving leads` sheet needs `request_uuid` added as its 16th header before the next lead, or every lead stops at "Append lead row" and raises the operator alert.
 
 PHP runs only inside Docker; there's no local `php` or `composer`. `pnpm run php <command>` runs a command in the PHP tools container.
 
 ### Try it in Playground
 
-No server needed: open the plugin in [WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.json), or the same site [in Spanish](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.es.json). Each installs the plugin from this repository's `main`, creates the pages, and lands on the quote form with a working live estimate. Delivery to n8n stays off, and each shows one language, without the switcher.
+No server needed: open the site in [WordPress Playground](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.json), or the same site [in Spanish](https://playground.wordpress.net/?blueprint-url=https://raw.githubusercontent.com/aabv21/wordpress-moving-quote-plugin/main/playground/blueprint.es.json). Each installs the plugin and the Chivabox theme from this repository's `main`, creates the pages and the demo business details, and lands on the home page; the quote form gives a working live estimate. Delivery to n8n stays off, and each shows one language, without the switcher.
 
-To run the same thing against the plugin files on disk:
+To run the same thing against the files on disk:
 
 ```sh
-pnpm dlx @wp-playground/cli@3.1.61 server --php=8.3 --port=9400 --mount=./plugin/moving-quote:/wordpress/wp-content/plugins/moving-quote --blueprint=playground/blueprint.local.json
+pnpm dlx @wp-playground/cli@3.1.61 server --php=8.3 --port=9400 --mount=./plugin/moving-quote:/wordpress/wp-content/plugins/moving-quote --mount=./site/theme:/wordpress/wp-content/themes/chivabox --blueprint=playground/blueprint.local.json
 ```
 
 ## Configuration
@@ -89,7 +91,8 @@ pnpm dlx @wp-playground/cli@3.1.61 server --php=8.3 --port=9400 --mount=./plugin
 |---|---|
 | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | The OAuth client above. Run `pnpm run setup` again afterward to import the two Google credentials, then choose "Sign in with Google" on each in n8n. |
 | `TEAM_EMAIL` | The team's inbox for new-lead emails. `./setup.sh` copies it into the plugin's settings. |
-| `SITE_LOCALE` | The site's default language, `en_US` or `es_CO`. The other language lives under `/es/` or `/en/`. Rerunning `./setup.sh` with the other value switches an existing site, and rewrites the menu and button links it created so each language keeps pointing at its own pages. |
+| `SITE_LOCALE` | The site's default language, `en_US` or `es_CO`. The other language lives under `/es/` or `/en/`. Rerunning `./setup.sh` with the other value switches an existing site, and rewrites the menu links it created so each language keeps pointing at its own pages. |
+| `SETUP_REFRESH_PAGES` | `0` by default. `1` makes `./setup.sh` replace the content and excerpt of the pages it owns with their theme pattern; `SETUP_REFRESH_PAGES=1 ./setup.sh` does it once. |
 
 **The `Moving leads` sheet.** A spreadsheet with a tab named `Moving leads`, whose first row is exactly these 16 headers, in this order:
 
@@ -107,6 +110,8 @@ Format the `phone` column as Plain text. `request_uuid` is how a retried run fin
 | `google.leads_tab` | The tab name, `Moving leads`. |
 | `alerts.error_email` | Where workflow-failure alerts go. |
 | `team_locale` | The team email's and the alert's language, `en` or `es`. Anything else falls back to English, with a note in each email. |
+
+**Business details.** Moving quotes → Settings → Business details holds the phone, WhatsApp number, street address, city, opening hours and tax ID. The site footer, the header's phone and WhatsApp links, the quote page, the thank-you card, the customer email and the home page's structured data all read them, and a blank field hides its line everywhere. `./setup.sh` fills in the fictional demo values (`+57 000 000 0099`, `Calle 00 # 00-00, Barranquilla`, 07:00 to 18:00, `NIT 000.000.000-0`; the footer says in each language that the company and tax ID are fictional) only while every business field is blank, so the owner's own values survive a rerun.
 
 **Rates and cities.** Moving quotes → Settings holds the base rate per move type, the per-room and per-km prices, each extra's price, the range percentage, and the city-to-city distances. Amounts are whole Colombian pesos and accept Colombian formatting: `4.500`, `4,500`, and `4500` all mean 4,500 COP.
 
@@ -162,7 +167,8 @@ Then:
 | The same with `team_locale: "es"`, then restore it | The subject is `[Chivabox demo] Falló el flujo: Process lead`, with Spanish labels. |
 | With both Google credentials signed in, `pnpm run test:stack:n8n` | Every case that would reach `process-lead` or `error-handler` prints its skip message. No test row and no email. |
 | The Gmail consent and the sender name | The consent is send-only, and the sender name shows on both emails. |
-| Both Playground links above, once this version is on `main` | `blueprint.json` installs from GitHub, and `blueprint.es.json` shows the Spanish pages and form. |
+| Send scenario 1, then open the customer email in Gmail | A header with "Chivabox Movers", the estimate as a large figure, rows for route, date, type, extras and reference, and a line "Questions? Call us at +57 000 000 0099 or write on WhatsApp" whose link opens `https://wa.me/570000000099`. |
+| Both Playground links above, once this version is on `main` | `blueprint.json` shows the redesigned English home with the Chivabox theme; `blueprint.es.json` the Spanish one. |
 
 ## Design decisions
 
@@ -175,6 +181,7 @@ Each is explained in full under "Decisions" in [`docs/architecture.md`](docs/arc
 - **Append before email.** No email goes out for a lead that isn't in the sheet.
 - **A plain-text team email.** It's built from visitor input, so it carries no `tel:` or `mailto:` links a crafted address could abuse.
 - **Polylang as a soft dependency.** The plugin follows whatever language a page is in and works without Polylang.
+- **The site is a child theme.** The page copy lives in `site/theme/patterns/`, translated through gettext like the plugin, so `setup.sh` and the blueprints write only a pattern reference per page. The plugin owns what only it knows (the business details, the route prices, the form, the structured data); the theme owns the look and the meta tags.
 - **Alerts in the team's language.** The team email and the operator alert both follow `team_locale`, and an invalid value never blocks either.
 - **Scaling.** `compose.queue.yaml` switches n8n to queue mode, with Redis and workers; see "Scaling" in [`docs/architecture.md`](docs/architecture.md).
 
@@ -192,7 +199,7 @@ Each is explained in full under "Decisions" in [`docs/architecture.md`](docs/arc
 - **Append before email, and one shared OAuth client.** A failed append sends no email, and an expired Google grant silences the sheet, both emails, and the alert at once.
 - **A false duplicate.** A lost acknowledgement from Postgres can make a new lead read as a replay, so it never reaches the sheet. "Recovering a false duplicate" in [`docs/architecture.md`](docs/architecture.md) has the commands.
 - **The sheet lookup grows with its rows.** Each run reads the `request_uuid` column to find a match, which is fine for tens of thousands of leads. Upgrade: a keyed store checked before writing.
-- **Twenty Twenty-Five's own strings stay English in Spanish**, such as its footer: they come from the theme's language pack, which this demo doesn't install.
+- **Sample business data.** The phone, address, tax ID and reviews are invented and marked as such.
 - **`./setup.sh` needs network access** to download Polylang and WordPress's Spanish language pack.
 - **A site first set up in Spanish before the language switcher keeps Spanish copy on its English pages.** Those pages (English slugs, Spanish text) get tagged English. To fix one, delete the `home`, `get-a-quote`, and `thank-you` pages and the `primary-navigation` menu (`docker compose exec -T wpcli wp post delete <id> --force`), then rerun `./setup.sh`, which recreates them in English.
 
