@@ -27,7 +27,7 @@ export interface Messages {
   noExtras: string;
   rooms: (rooms: number) => string;
   teamSubject: (reference: string, origin: string, destination: string, date: string) => string;
-  teamLabels: { name: string; phone: string; email: string; moveDate: string; route: string; type: string; extras: string; estimate: string; reference: string };
+  teamLabels: { name: string; phone: string; whatsapp: string; email: string; moveDate: string; route: string; type: string; extras: string; estimate: string; reference: string };
   route: (origin: string, destination: string, km: string) => string;
   customerSubject: (siteName: string) => string;
   greeting: (name: string) => string;
@@ -35,6 +35,8 @@ export interface Messages {
   routeValue: (origin: string, destination: string) => string;
   disclaimer: string;
   nextStep: string;
+  /** The link text for the signed status page. */
+  statusLink: string;
   /** `whatsAppLink` is an `<a>` already built from validated digits, or '' to leave that half out. */
   questions: (phone: string, whatsAppLink: string) => string;
   demoNotice: (siteName: string) => string;
@@ -50,7 +52,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     noExtras: 'None',
     rooms: (rooms) => (rooms >= 5 ? '5 or more rooms' : rooms === 1 ? '1 room' : `${String(rooms)} rooms`),
     teamSubject: (reference, origin, destination, date) => `New lead ${reference}: ${origin} to ${destination} on ${date}`,
-    teamLabels: { name: 'Name', phone: 'Phone', email: 'Email', moveDate: 'Move date', route: 'Route', type: 'Type', extras: 'Extras', estimate: 'Estimate', reference: 'Reference' },
+    teamLabels: { name: 'Name', phone: 'Phone', whatsapp: 'WhatsApp', email: 'Email', moveDate: 'Move date', route: 'Route', type: 'Type', extras: 'Extras', estimate: 'Estimate', reference: 'Reference' },
     route: (origin, destination, km) => `${origin} to ${destination} (${km} km)`,
     customerSubject: (siteName) => `Your moving estimate from ${siteName}`,
     greeting: (name) => `Hi ${name},`,
@@ -59,6 +61,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     disclaimer: 'This is an estimate. We confirm the final price after a visit or video call.',
     nextStep: 'A member of our team will call you to schedule a short visit or video call and confirm the final price.',
     questions: (phone, whatsAppLink) => (whatsAppLink === '' ? `Questions? Call us at ${phone}.` : `Questions? Call us at ${phone} or write on WhatsApp: ${whatsAppLink}`),
+    statusLink: 'See your request and confirm your date',
     demoNotice: (siteName) => `${siteName} is a fictional company for a portfolio demo.`,
   },
   es: {
@@ -78,6 +81,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     teamLabels: {
       name: 'Nombre',
       phone: 'Teléfono',
+      whatsapp: 'WhatsApp',
       email: 'Correo',
       moveDate: 'Fecha de la mudanza',
       route: 'Ruta',
@@ -94,6 +98,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     disclaimer: 'Este valor es un estimado. Confirmamos el precio final después de una visita o una videollamada.',
     nextStep: 'Una persona de nuestro equipo se comunicará con usted para programar una visita corta o una videollamada y confirmar el precio final.',
     questions: (phone, whatsAppLink) => (whatsAppLink === '' ? `¿Preguntas? Llámenos al ${phone}.` : `¿Preguntas? Llámenos al ${phone} o escríbanos por WhatsApp: ${whatsAppLink}`),
+    statusLink: 'Vea su solicitud y confirme la fecha',
     demoNotice: (siteName) => `${siteName} es una empresa ficticia para una demostración de portafolio.`,
   },
 };

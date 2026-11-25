@@ -14,6 +14,7 @@ final class LeadsPage {
 
 	public static function register_hooks(): void {
 		add_action( 'admin_post_moving_quote_update_status', [ self::class, 'handle_update_status' ] );
+		add_action( 'admin_post_moving_quote_update_notes', [ self::class, 'handle_update_notes' ] );
 		add_action( 'admin_post_moving_quote_export_csv', [ self::class, 'handle_export' ] );
 		add_action( 'admin_post_moving_quote_retry_delivery', [ self::class, 'handle_retry' ] );
 		add_action( 'admin_post_moving_quote_delete_lead', [ self::class, 'handle_delete' ] );
@@ -54,6 +55,7 @@ final class LeadsPage {
 			<h1><?php esc_html_e( 'Moving quotes', 'moving-quote' ); ?></h1>
 			<?php self::render_notice(); ?>
 			<a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'moving-quote' ); ?></a>
+			<?php self::render_stats(); ?>
 			<?php
 			/*
 			 * No wrapping <form method="get">: every row prints its own POST form, and HTML drops a
@@ -68,11 +70,39 @@ final class LeadsPage {
 		<?php
 	}
 
+	/**
+	 * Three tiles under the header, above the views: leads in the last 7 days, leads won (all time),
+	 * and the win rate, whose help line says how it is worked out.
+	 */
+	private static function render_stats(): void {
+		$repository = new LeadRepository();
+		$stats      = FunnelStats::from( $repository->count_by_status(), $repository->count_created_since( gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS ) ) );
+		$tiles      = [
+			[ __( 'Last 7 days', 'moving-quote' ), (string) $stats->last_7_days, '' ],
+			[ __( 'Won (all time)', 'moving-quote' ), (string) $stats->won, '' ],
+			[ __( 'Win rate', 'moving-quote' ), null === $stats->win_rate_percent ? "\u{2014}" : sprintf( '%d%%', $stats->win_rate_percent ), __( 'Won ÷ (won + lost).', 'moving-quote' ) ],
+		];
+		?>
+		<div class="moving-quote-leads__stats">
+			<?php foreach ( $tiles as [ $label, $value, $help ] ) : ?>
+				<div class="moving-quote-leads__stat">
+					<span class="moving-quote-leads__stat-value"><?php echo esc_html( $value ); ?></span>
+					<span class="moving-quote-leads__stat-label"><?php echo esc_html( $label ); ?></span>
+					<?php if ( '' !== $help ) : ?>
+						<span class="moving-quote-leads__stat-help"><?php echo esc_html( $help ); ?></span>
+					<?php endif; ?>
+				</div>
+			<?php endforeach; ?>
+		</div>
+		<?php
+	}
+
 	private static function render_notice(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only, and the notice text itself carries no state change; the handler that redirected here already checked its own nonce.
 		$notice = self::string_field( $_GET, self::NOTICE_ARG );
 		$text   = match ( $notice ) {
 			'status_updated' => __( 'Lead status updated.', 'moving-quote' ),
+			'notes_saved'    => __( 'Notes saved.', 'moving-quote' ),
 			'retry_queued'   => __( 'The lead was queued for delivery.', 'moving-quote' ),
 			'lead_deleted'   => __( 'The lead was deleted.', 'moving-quote' ),
 			default          => '',
@@ -97,6 +127,17 @@ final class LeadsPage {
 		}
 
 		self::redirect_to_list( 'status_updated' );
+	}
+
+	public static function handle_update_notes(): void {
+		$id = self::require_id();
+		check_admin_referer( 'moving_quote_update_notes_' . $id );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- the nonce above covers the request; `update_notes()` cleans the text, and every print escapes it.
+		$value = $_POST['notes'] ?? null;
+		( new LeadRepository() )->update_notes( $id, is_string( $value ) ? wp_unslash( $value ) : '' );
+
+		self::redirect_to_list( 'notes_saved' );
 	}
 
 	public static function handle_retry(): void {

@@ -42,6 +42,13 @@ it('every file in workflows/ passes the hygiene check', () => {
     expect(checkWorkflow(wf, { file: basename(path), credentialIds, codeNodes: CODE_NODES }), path).toEqual([]);
   }
 });
+it('every node id is unique within its workflow, so n8n accepts the import', () => {
+  for (const path of listJsonFiles('workflows')) {
+    const ids = readWorkflow(path).nodes.map((n) => n.id);
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i), basename(path)).toEqual([]);
+  }
+});
+
 it('every Code node in workflows/ matches its committed manifest source', async () => {
   expect((await buildWorkflows({ check: true, workflowsDir: 'workflows', entries: CODE_NODES })).drifted).toEqual([]);
 });
@@ -383,6 +390,56 @@ describe('error-handler.json', () => {
 
   it('pins "Email operator" as plain text over Compose alert\'s to, subject and text', () => {
     const n = node(wf, 'Email operator');
+    expect(n.parameters.emailType).toBe('text');
+    expect(n.parameters.sendTo).toBe('={{ $json.to }}');
+    expect(n.parameters.subject).toBe('={{ $json.subject }}');
+    expect(n.parameters.message).toBe('={{ $json.text }}');
+    const options = n.parameters.options as { appendAttribution?: boolean; senderName?: string };
+    expect(options.appendAttribution).toBe(false);
+    expect(options.senderName).toBeUndefined();
+    expect(n.retryOnFail).toBe(true);
+    expect(n.maxTries).toBe(3);
+    expect(n.waitBetweenTries).toBe(1000);
+  });
+});
+
+describe('weekly-digest.json', () => {
+  const wf = readWorkflow('workflows/weekly-digest.json');
+
+  it('runs every Monday at 08:00 in America/Bogota', () => {
+    const trigger = node(wf, 'Every Monday 08:00');
+    expect(trigger.type).toBe('n8n-nodes-base.scheduleTrigger');
+    expect(trigger.parameters.rule).toEqual({ interval: [{ field: 'cronExpression', expression: '0 8 * * 1' }] });
+    expect((wf.settings as { timezone?: string }).timezone).toBe('America/Bogota');
+  });
+
+  it('wires Every Monday 08:00 → Read config → Parse config → Read leads → All rows → Digest input → Compose digest → Email digest', () => {
+    const chain = ['Every Monday 08:00', 'Read config', 'Parse config', 'Read leads', 'All rows', 'Digest input', 'Compose digest', 'Email digest'];
+    const expected = Object.fromEntries(chain.slice(0, -1).map((name, i) => [name, { main: [[{ node: chain[i + 1], type: 'main', index: 0 }]] }]));
+    expect(wf.connections).toEqual(expected);
+  });
+
+  it('reads the sheet and keeps no execution data on success', () => {
+    const settings = wf.settings as { errorWorkflow?: string; saveDataSuccessExecution?: string };
+    expect(settings.errorWorkflow).toBe('cvbErrorHandler1');
+    expect(settings.saveDataSuccessExecution).toBe('none');
+    const read = node(wf, 'Read leads');
+    expect(read.parameters.operation).toBe('read');
+    expect(read.alwaysOutputData).toBe(true);
+    expect(read.retryOnFail).toBe(true);
+    expect(read.maxTries).toBe(3);
+    expect(read.waitBetweenTries).toBe(1000);
+  });
+
+  it('hands Compose digest the config, every row and the Bogota time', () => {
+    const n = node(wf, 'Digest input');
+    expect(n.parameters.mode).toBe('raw');
+    expect(n.parameters.jsonOutput).toBe("={{ { config: $('Parse config').first().json.config, rows: $json.rows ?? [], now: $now.setZone('America/Bogota').toISO() } }}");
+    expect(node(wf, 'All rows').parameters).toMatchObject({ aggregate: 'aggregateAllItemData', destinationFieldName: 'rows' });
+  });
+
+  it('Email digest is plain text, without attribution, with 3 retries', () => {
+    const n = node(wf, 'Email digest');
     expect(n.parameters.emailType).toBe('text');
     expect(n.parameters.sendTo).toBe('={{ $json.to }}');
     expect(n.parameters.subject).toBe('={{ $json.subject }}');

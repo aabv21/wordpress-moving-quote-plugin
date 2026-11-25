@@ -5,7 +5,10 @@
     "title": "Where a lead's personal data goes",
     "output": "docs/diagrams/personal-data-flow.html",
     "quality_profile": "showcase",
-    "viewBox": [1000, 640]
+    "viewBox": [
+      1000,
+      640
+    ]
   },
   "stages": [
     {
@@ -127,7 +130,10 @@
       "to": "leads-table",
       "label": "lead row",
       "variant": "emphasis",
-      "labelAt": [315, 201]
+      "labelAt": [
+        315,
+        201
+      ]
     },
     {
       "id": "signed",
@@ -148,14 +154,20 @@
       "to": "process-lead",
       "label": "lead",
       "variant": "emphasis",
-      "labelAt": [530, 315]
+      "labelAt": [
+        530,
+        315
+      ]
     },
     {
       "id": "row",
       "from": "process-lead",
       "to": "sheets",
       "label": "row",
-      "labelAt": [662, 373]
+      "labelAt": [
+        662,
+        373
+      ]
     },
     {
       "id": "emails",
@@ -175,7 +187,10 @@
       "from": "leads-table",
       "to": "csv-export",
       "label": "all rows",
-      "labelAt": [315, 315]
+      "labelAt": [
+        315,
+        315
+      ]
     },
     {
       "id": "erase",
@@ -186,8 +201,14 @@
       "fromSide": "left",
       "toSide": "left",
       "via": [
-        [212, 499],
-        [212, 271]
+        [
+          212,
+          499
+        ],
+        [
+          212,
+          271
+        ]
       ]
     },
     {
@@ -206,9 +227,10 @@
       "dot": "cyan",
       "title": "Where PII lives",
       "items": [
-        "The leads table holds every field until an eraser request or uninstall",
+        "The leads table holds every field, the team's notes and the date confirmation, until an eraser request or uninstall; notes never leave WordPress",
         "The sheet row and both emails keep copies outside WordPress",
-        "Postgres keeps only the lead's event id, never a name, phone or email"
+        "Postgres keeps only the lead's event id, never a name, phone or email",
+        "The status page shows the move summary only, never a name, phone or email; the weekly summary carries counts and routes, not people"
       ]
     },
     {

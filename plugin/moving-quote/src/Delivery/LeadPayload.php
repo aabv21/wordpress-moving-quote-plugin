@@ -27,6 +27,7 @@ final class LeadPayload {
 				'phone'    => $context->contact_phone,
 				'whatsapp' => $context->contact_whatsapp,
 			],
+			'status_url'   => $context->status_url,
 			'customer'     => [
 				'name'  => $lead->customer_name,
 				'phone' => $lead->phone,

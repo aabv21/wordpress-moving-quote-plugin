@@ -301,6 +301,56 @@ final class LeadRepository {
 		return $counts;
 	}
 
+	/** Leads created at or after `$utc_datetime` (a `Y-m-d H:i:s` string in UTC). */
+	public function count_created_since( string $utc_datetime ): int {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$count = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE created_at >= %s', $this->table(), $utc_datetime ) );
+
+		return (int) $count;
+	}
+
+	/**
+	 * Trimmed, control characters other than the line feed removed, cut to 2,000 characters.
+	 */
+	public static function clean_notes( string $notes ): string {
+		$notes = str_replace( "\r\n", "\n", $notes );
+		$notes = (string) preg_replace( '/[\x00-\x09\x0B-\x1F\x7F]/', '', $notes );
+
+		return mb_substr( trim( $notes ), 0, 2000 );
+	}
+
+	/**
+	 * Stamps the customer's date confirmation once: a lead already confirmed, or lost, is left as
+	 * it is. True only when this call changed the row.
+	 */
+	public function confirm_date( string $request_uuid, string $now_utc ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$changed = $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i SET date_confirmed_at = %s WHERE request_uuid = %s AND date_confirmed_at IS NULL AND status <> %s',
+				$this->table(),
+				$now_utc,
+				$request_uuid,
+				LeadStatus::Lost->value
+			)
+		);
+
+		return 1 === $changed;
+	}
+
+	/** True when a row with `$id` exists, even if the value didn't change. */
+	public function update_notes( int $id, string $notes ): bool {
+		global $wpdb;
+
+		$changed = $wpdb->update( $this->table(), [ 'notes' => self::clean_notes( $notes ) ], [ 'id' => $id ], [ '%s' ], [ '%d' ] );
+
+		return false !== $changed && null !== $this->find( $id );
+	}
+
 	/** True when a row with `$id` exists, even if the value didn't change. */
 	public function update_status( int $id, LeadStatus $status ): bool {
 		global $wpdb;

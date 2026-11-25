@@ -2,7 +2,7 @@
 # Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
 msgid ""
 msgstr ""
-"Project-Id-Version: Moving Quote 1.3.0\n"
+"Project-Id-Version: Moving Quote 1.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
 "POT-Creation-Date: 2026-11-03 00:00-0500\n"
 "PO-Revision-Date: 2026-11-03 00:00-0500\n"
@@ -585,3 +585,68 @@ msgstr "Este valor es un estimado. Confirmamos el precio final después de una v
 #, php-format
 msgid "Prefer to talk? Call %s"
 msgstr "¿Prefiere hablar? Llame al %s"
+
+msgid "Notes"
+msgstr "Notas"
+
+msgid "Mark contacted"
+msgstr "Marcar como contactado"
+
+msgid "Edit notes"
+msgstr "Editar notas"
+
+msgid "Save notes"
+msgstr "Guardar notas"
+
+#. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
+#, php-format
+msgid "Notes for lead %s"
+msgstr "Notas de la solicitud %s"
+
+msgid "Notes saved."
+msgstr "Notas guardadas."
+
+msgid "Team notes"
+msgstr "Notas del equipo"
+
+msgid "Last 7 days"
+msgstr "Últimos 7 días"
+
+msgid "Win rate"
+msgstr "Tasa de cierre"
+
+msgid "Won ÷ (won + lost)."
+msgstr "Ganadas ÷ (ganadas + perdidas)."
+
+msgid "Won (all time)"
+msgstr "Ganadas (en total)"
+
+msgid "Date confirmed"
+msgstr "Fecha confirmada"
+
+#. translators: the customer's confirmation of the moving date, converted to America/Bogota
+msgid "Date confirmed (America/Bogota)"
+msgstr "Fecha confirmada (hora de America/Bogota)"
+
+msgid "This link isn't valid. Check the link in your email, or contact us."
+msgstr "Este enlace no es válido. Revise el enlace de su correo o contáctenos."
+
+#. translators: %s: the date and time the customer confirmed, in the business time zone
+#, php-format
+msgid "You confirmed your moving date on %s."
+msgstr "Usted confirmó la fecha de su mudanza el %s."
+
+msgid "Confirm my moving date"
+msgstr "Confirmar la fecha de mi mudanza"
+
+msgid "We received your request"
+msgstr "Recibimos su solicitud"
+
+msgid "We sent you a quote"
+msgstr "Le enviamos una cotización"
+
+msgid "Your move is booked"
+msgstr "Su mudanza está agendada"
+
+msgid "This request is closed"
+msgstr "Esta solicitud está cerrada"

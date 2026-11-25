@@ -6,7 +6,7 @@ import { clearDebugLog, pluginLogLines, site, wp, wpJson } from '../lib/stack.ts
 const execFileAsync = promisify(execFile);
 
 /** Each demo page in English, then in Spanish (Polylang needs a distinct slug per language). */
-const SLUGS = ['home', 'get-a-quote', 'thank-you', 'inicio', 'cotizar', 'gracias', 'data-policy', 'politica-de-datos'] as const;
+const SLUGS = ['home', 'get-a-quote', 'thank-you', 'inicio', 'cotizar', 'gracias', 'data-policy', 'politica-de-datos', 'my-move', 'mi-mudanza'] as const;
 
 interface WpPage {
   ID: number;

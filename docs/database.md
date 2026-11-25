@@ -97,7 +97,7 @@ It runs as the owner role, like the recovery command: `app_runtime` has no `DELE
 
 | Table/option | Personal/business data | Deleted by | When |
 |---|---|---|---|
-| `wp_moving_quote_leads` | customer name, phone, email, move details | the WordPress Personal Data eraser (`Admin\PersonalData::erase()`, Tools → Erase Personal Data, keyed by email), or `uninstall.php` (drops the whole table) | on an explicit privacy-tools erase request, or when the plugin is deleted; never automatically otherwise |
+| `wp_moving_quote_leads` | customer name, phone, email, move details, the team's `notes`, `date_confirmed_at` | the WordPress Personal Data eraser (`Admin\PersonalData::erase()`, Tools → Erase Personal Data, keyed by email), or `uninstall.php` (drops the whole table) | on an explicit privacy-tools erase request, or when the plugin is deleted; never automatically otherwise |
 | `moving_quote_settings`, `moving_quote_db_version` (options) | none (pricing/delivery config and a schema version number) | `uninstall.php` | when the plugin is deleted |
 | rate-limit transients | none (a hashed IP, never the IP itself) | WordPress's own transient expiry, and `uninstall.php` on delete | within the transient's own window, or on uninstall |
 | Moving leads sheet row / Gmail (team + customer emails) | customer name, phone, email, move details, the same `MQ-…` reference as the deleted row | nothing the eraser can reach: a row in the Sheet, and both sent emails, each exist outside WordPress's own database | removed only by hand, from the Sheet and the two inboxes directly; the eraser's `erase()` response names each erased lead's own `MQ-…` reference and these three places precisely so an admin can find and remove them |

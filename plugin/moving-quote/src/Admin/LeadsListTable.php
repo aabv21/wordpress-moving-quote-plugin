@@ -63,6 +63,7 @@ final class LeadsListTable extends WP_List_Table {
 			'estimate'    => __( 'Estimate', 'moving-quote' ),
 			'status'      => __( 'Status', 'moving-quote' ),
 			'delivery'    => __( 'Delivery', 'moving-quote' ),
+			'notes'       => __( 'Notes', 'moving-quote' ),
 		];
 	}
 
@@ -141,8 +142,10 @@ final class LeadsListTable extends WP_List_Table {
 	}
 
 	private function column_move( LeadRecord $lead ): string {
+		$confirmed = null === $lead->date_confirmed_at ? '' : sprintf( '<br /><span class="moving-quote-leads__confirmed">%s</span>', esc_html__( 'Date confirmed', 'moving-quote' ) );
+
 		return sprintf(
-			'%s<br />%s<br />%s',
+			'%s<br />%s<br />%s%s',
 			esc_html( $lead->move_date ),
 			esc_html( Labels::move_type( $lead->move_type ) ),
 			esc_html(
@@ -151,7 +154,8 @@ final class LeadsListTable extends WP_List_Table {
 					_n( '%d room', '%d rooms', $lead->rooms, 'moving-quote' ),
 					$lead->rooms
 				)
-			)
+			),
+			$confirmed
 		);
 	}
 
@@ -197,7 +201,22 @@ final class LeadsListTable extends WP_List_Table {
 			'moving_quote_delete_lead_' . $lead->id
 		);
 
-		return sprintf(
+		$contacted = LeadStatus::New === $lead->status ? sprintf(
+			'<form method="post" action="%1$s" class="moving-quote-leads__contacted">
+				<input type="hidden" name="action" value="moving_quote_update_status" />
+				<input type="hidden" name="id" value="%2$d" />
+				<input type="hidden" name="status" value="%3$s" />
+				%4$s
+				<button type="submit" class="button button-small">%5$s</button>
+			</form>',
+			esc_url( admin_url( 'admin-post.php' ) ),
+			$lead->id,
+			esc_attr( LeadStatus::Contacted->value ),
+			wp_nonce_field( 'moving_quote_update_status_' . $lead->id, '_wpnonce', true, false ),
+			esc_html__( 'Mark contacted', 'moving-quote' )
+		) : '';
+
+		return $contacted . sprintf(
 			'<form method="post" action="%1$s">
 				<input type="hidden" name="action" value="moving_quote_update_status" />
 				<input type="hidden" name="id" value="%2$d" />
@@ -222,6 +241,41 @@ final class LeadsListTable extends WP_List_Table {
 					$lead->reference()
 				)
 			)
+		);
+	}
+
+	private function column_notes( LeadRecord $lead ): string {
+		$saved = '';
+		if ( '' !== $lead->notes ) {
+			$preview = mb_strlen( $lead->notes ) > 140 ? mb_substr( $lead->notes, 0, 140 ) . "\u{2026}" : $lead->notes;
+			$saved   = sprintf( '<p class="moving-quote-leads__notes">%s</p>', nl2br( esc_html( $preview ) ) );
+		}
+
+		return $saved . sprintf(
+			'<details class="moving-quote-leads__edit-notes">
+				<summary>%1$s</summary>
+				<form method="post" action="%2$s">
+					<input type="hidden" name="action" value="moving_quote_update_notes" />
+					<input type="hidden" name="id" value="%3$d" />
+					%4$s
+					<label class="screen-reader-text" for="moving-quote-notes-%3$d">%5$s</label>
+					<textarea id="moving-quote-notes-%3$d" name="notes" maxlength="2000" rows="4">%6$s</textarea>
+					<button type="submit" class="button">%7$s</button>
+				</form>
+			</details>',
+			esc_html__( 'Edit notes', 'moving-quote' ),
+			esc_url( admin_url( 'admin-post.php' ) ),
+			$lead->id,
+			wp_nonce_field( 'moving_quote_update_notes_' . $lead->id, '_wpnonce', true, false ),
+			esc_html(
+				sprintf(
+					/* translators: %s: the lead's reference, e.g. MQ-1A2B3C4D */
+					__( 'Notes for lead %s', 'moving-quote' ),
+					$lead->reference()
+				)
+			),
+			esc_textarea( $lead->notes ),
+			esc_html__( 'Save notes', 'moving-quote' )
 		);
 	}
 

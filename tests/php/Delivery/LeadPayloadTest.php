@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 
 final class LeadPayloadTest extends TestCase {
 	public function test_body_matches_the_shared_contract_fixture(): void {
-		$body = LeadPayload::body( LeadRecord::from_row( Fixtures::lead_row() ), new PayloadContext( 'Chivabox Movers', 'team@example.com', '570000000099', '570000000099' ), new \DateTimeZone( 'America/Bogota' ) );
+		$body = LeadPayload::body( LeadRecord::from_row( Fixtures::lead_row() ), new PayloadContext( 'Chivabox Movers', 'team@example.com', '570000000099', '570000000099', 'https://example.com/my-move/?lead=6f1c2a9e-3b4d-4e8f-9a1b-2c3d4e5f6a7b&token=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' ), new \DateTimeZone( 'America/Bogota' ) );
 		self::assertSame( trim( (string) file_get_contents( dirname( __DIR__, 2 ) . '/fixtures/lead-payload.json' ) ), $body );
 	}
 

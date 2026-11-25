@@ -230,3 +230,7 @@ msgstr "Confirmamos el precio final después de una visita o una videollamada y 
 
 msgid "Back to the home page"
 msgstr "Volver al inicio"
+
+msgctxt "Pattern title"
+msgid "Your move"
+msgstr "Su mudanza"

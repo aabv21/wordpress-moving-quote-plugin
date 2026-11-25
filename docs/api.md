@@ -35,7 +35,9 @@ Each handler checks `manage_options` first (403; a missing or non-numeric `id` i
 
 | Action | Caller | Auth | Request fields | Success | Errors |
 |---|---|---|---|---|---|
-| `moving_quote_update_status` | The status form on each Leads row (POST) | `manage_options` + nonce `moving_quote_update_status_{id}` | `id`, `status` | Redirect with a notice; an unknown status is a no-op | 400, 403 |
+| `moving_quote_update_status` | The status form on each Leads row (POST) | `manage_options` + nonce `moving_quote_update_status_{id}` | `id`, `status` (the "Mark contacted" button on a `new` row posts the same action with `status=contacted`) | Redirect with a notice; an unknown status is a no-op | 400, 403 |
+| `moving_quote_update_notes` | The notes form inside a Leads row's "Edit notes" (POST) | `manage_options` + nonce `moving_quote_update_notes_{id}` | `id`, `notes` (trimmed, control characters other than line feeds removed, cut to 2,000 characters) | Redirect with a notice | 400, 403 |
+| `moving_quote_confirm_date` | "Confirm my moving date" on the customer status page (POST, public: `admin_post_nopriv_` too) | The signed token in the request (HMAC of the lead UUID, `hash_equals`); no nonce, since the visitor has no session | `lead`, `token` | Stamps `date_confirmed_at` once, then redirects to the status page with `confirmed=1` | A bad token, another lead's UUID or an erased lead redirect to the page without `confirmed` and change nothing |
 | `moving_quote_retry_delivery` | "Retry delivery" on a `failed` row (GET link) | `manage_options` + nonce `moving_quote_retry_delivery_{id}` | `id` | Redirect: queued for delivery, never "sent" | 400, 403 |
 | `moving_quote_delete_lead` | "Delete" on a row, after a `confirm()` (GET link) | `manage_options` + nonce `moving_quote_delete_lead_{id}` | `id` | Redirect with a notice | 400, 403 |
 | `moving_quote_export_csv` | "Export CSV" on the Leads page (GET link) | `manage_options` + nonce `moving_quote_export_csv` | none | `text/csv; charset=utf-8`, `moving-leads-{Y-m-d}.csv`, UTF-8 BOM, 500-row batches | 403 |
@@ -57,6 +59,7 @@ Hook `moving_quote_process_outbox` on the `moving_quote_every_minute` schedule (
 | `[moving_quote_routes]` | `quote`, `routes` (`A:B,C:D`) | Route chips with "from" prices |
 | `[moving_quote_contact]` | `layout` (`footer`, `whatsapp`, `phone`) | The business details |
 | `[moving_quote_thanks]` | `heading` (`1` or `0`) | The thank-you card |
+| `[moving_quote_status]` | none | The customer status page: the move summary and a "Confirm my moving date" button for a valid signed link (`lead` and `token` in the query); one "This link isn't valid" sentence for anything else |
 | `[moving_quote_reference]` | none | "Your reference number is MQ-…" (kept for older pages) |
 
 ## REST behavior
@@ -73,3 +76,7 @@ The codes and limits are in the table above; this is how the routes behave.
   - **`moving_quote_client_ip`.** `client_ip()` reads `REMOTE_ADDR`, which behind a reverse proxy is the proxy's address. Filter it only once `REMOTE_ADDR` is a trusted proxy, and never trust `X-Forwarded-For` or `CF-Connecting-IP` unconditionally; see "Behind a reverse proxy" in [`architecture.md`](architecture.md) for the example.
   - **`moving_quote_rate_limits`.** `Security\RateLimits::estimate()`/`::submit()` read both buckets through this filter, which receives and returns the full `['estimate' => [...], 'submit' => [...]]` shape; a missing or malformed entry falls back to the defaults (120/600 s, 5/3,600 s) for that bucket. Neither controller hardcodes a limit.
   - **Rate-limited submissions are counted.** Each `/leads` 429 calls `RateLimiter::record_rate_limited_submission()`, which increments one transient (`RATE_LIMITED_COUNT_TRANSIENT`) with no IP or per-visitor data. Its 24-hour window is fixed from the first counted 429, not rolling. `StuckDeliveryNotice` shows it.
+
+## Status link and weekly digest
+
+The lead payload gains a top-level `status_url` after `contact`: `''` when the site has no status page, else the signed `my-move` link. `parseLead()` reads it as optional (missing is `''`) and accepts only `''` or an `http(s)` URL with no whitespace, quote or angle bracket. The customer email links it as "See your request and confirm your date". The `weekly-digest` workflow has no webhook; its schedule and `digest_email` are in `docs/architecture.md`.

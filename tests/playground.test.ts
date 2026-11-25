@@ -49,7 +49,7 @@ it('every page step writes a chivabox pattern reference', () => {
   for (const path of ['playground/blueprint.json', 'playground/blueprint.local.json', 'playground/blueprint.es.json']) {
     const steps = readBlueprint(path).steps as { step: string; command?: string[] }[];
     const pages = steps.filter((step) => step.command?.includes('--post_type=page'));
-    expect(pages.length, path).toBe(4);
+    expect(pages.length, path).toBe(5);
     for (const step of pages) {
       const content = step.command?.find((arg) => arg.startsWith('--post_content='));
       expect(content, path).toMatch(/^--post_content=<!-- wp:pattern \{"slug":"chivabox\/[a-z-]+"\} \/-->$/);

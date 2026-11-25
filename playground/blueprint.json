@@ -94,6 +94,20 @@
         "create",
         "--post_type=page",
         "--post_status=publish",
+        "--post_title=Your move",
+        "--post_name=my-move",
+        "--post_excerpt=Follow your moving request.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/status\"} /-->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
         "--post_title=Data processing policy",
         "--post_name=data-policy",
         "--post_excerpt=How Chivabox Movers handles the data you send with a quote request.",

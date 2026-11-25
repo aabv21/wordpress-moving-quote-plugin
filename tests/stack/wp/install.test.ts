@@ -31,10 +31,12 @@ const CONTRACT_COLUMNS = [
   'last_error',
   'sent_at',
   'locale',
+  'notes',
+  'date_confirmed_at',
 ] as const;
 
 /** Must match `Installer::DB_VERSION`. */
-const DB_VERSION = '2';
+const DB_VERSION = '4';
 
 /**
  * Excludes the three delivery keys: `setup.sh` sets them, so they differ from the defaults.
@@ -119,7 +121,7 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
     const leadsTable = await table();
     const uuid = '22222222-2222-4222-8222-222222222222';
     // A version-1 table: no locale column, and a row saved under it.
-    await sqlWp(`ALTER TABLE ${leadsTable} DROP COLUMN locale`);
+    await sqlWp(`ALTER TABLE ${leadsTable} DROP COLUMN locale, DROP COLUMN notes, DROP COLUMN date_confirmed_at`);
     await sqlWp(
       `INSERT INTO ${leadsTable}
         (request_uuid, created_at, move_type, rooms, origin_city, destination_city, distance_km, move_date, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop)
@@ -136,6 +138,50 @@ describe('install lifecycle: leads table, settings, cron, upgrade, uninstall', (
     expect(columns.map((row) => row.Field)).toEqual([...CONTRACT_COLUMNS]);
     const rows = await sqlWp(`SELECT customer_name, locale FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
     expect(rows).toEqual([{ customer_name: 'Upgrade Customer', locale: '' }]);
+    await sqlWp(`DELETE FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
+  });
+
+  it('upgrades DB version 2 to 3 by adding notes, keeping existing rows', async () => {
+    const leadsTable = await table();
+    const uuid = '33333333-3333-4333-8333-333333333333';
+    await sqlWp(`ALTER TABLE ${leadsTable} DROP COLUMN notes, DROP COLUMN date_confirmed_at`);
+    await sqlWp(
+      `INSERT INTO ${leadsTable}
+        (request_uuid, created_at, move_type, rooms, origin_city, destination_city, distance_km, move_date, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, locale)
+       VALUES
+        ('${uuid}', '2026-11-01 00:00:00', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', 'Notes Upgrade Customer', '5700000000', 'notes-upgrade@example.com', '2026-11-01 00:00:00', 1130000, 1017000, 1243000, 'es_CO')`,
+    );
+    await wp(['option', 'update', 'moving_quote_db_version', '2']);
+
+    await wp(['option', 'get', 'siteurl']);
+
+    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);
+    const columns = await sqlWp(`SHOW COLUMNS FROM ${leadsTable}`);
+    expect(columns.map((row) => row.Field)).toEqual([...CONTRACT_COLUMNS]);
+    const rows = await sqlWp(`SELECT customer_name, locale, notes FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
+    expect(rows).toEqual([{ customer_name: 'Notes Upgrade Customer', locale: 'es_CO', notes: '' }]);
+    await sqlWp(`DELETE FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
+  });
+
+  it('upgrades DB version 3 to 4 by adding date_confirmed_at last', async () => {
+    const leadsTable = await table();
+    const uuid = '44444444-4444-4444-8444-444444444444';
+    await sqlWp(`ALTER TABLE ${leadsTable} DROP COLUMN date_confirmed_at`);
+    await sqlWp(
+      `INSERT INTO ${leadsTable}
+        (request_uuid, created_at, move_type, rooms, origin_city, destination_city, distance_km, move_date, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, notes)
+       VALUES
+        ('${uuid}', '2026-11-01 00:00:00', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', 'Status Upgrade Customer', '5700000000', 'status-upgrade@example.com', '2026-11-01 00:00:00', 1130000, 1017000, 1243000, 'kept')`,
+    );
+    await wp(['option', 'update', 'moving_quote_db_version', '3']);
+
+    await wp(['option', 'get', 'siteurl']);
+
+    await expect(wp(['option', 'get', 'moving_quote_db_version'])).resolves.toBe(`${DB_VERSION}\n`);
+    const columns = await sqlWp(`SHOW COLUMNS FROM ${leadsTable}`);
+    expect(columns.map((row) => row.Field)).toEqual([...CONTRACT_COLUMNS]);
+    const rows = await sqlWp(`SELECT customer_name, notes, date_confirmed_at FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
+    expect(rows).toEqual([{ customer_name: 'Status Upgrade Customer', notes: 'kept', date_confirmed_at: null }]);
     await sqlWp(`DELETE FROM ${leadsTable} WHERE request_uuid = '${uuid}'`);
   });
 

@@ -13,7 +13,7 @@ Chivabox Movers' moving-quote plugin: a WordPress plugin that prices a move in a
 - `site/mu-plugins/`: the demo site's own glue (Polylang for navigation menus), not part of the plugin.
 - `src/frontend/`: the browser TypeScript (`quote-form.ts`, `thank-you.ts`, `form/`, `lib/`), bundled by esbuild into `plugin/moving-quote/assets/`.
 - `src/nodes/`: the Code-node sources (`lead.ts`, `locale.ts`, `verify-request.ts`, `map-lead.ts` over `messages.ts`, `sheet-row.ts` and `emails.ts`, `error-alert.ts`), bundled into each node's `jsCode`.
-- `workflows/`: `lead-intake`, `process-lead`, `error-handler`, mounted read-only into n8n.
+- `workflows/`: `lead-intake`, `process-lead`, `error-handler`, `weekly-digest` (also `src/nodes/weekly-digest.ts`), mounted read-only into n8n.
 - `scripts/`: the TypeScript CLIs. `scripts/lib/manifest.ts` is the source of truth for fixed workflow, credential and Code-node IDs; a CLI imports only `scripts/lib/` (`migrations.ts`, `build.ts`, `compose.ts`), never another CLI.
 - `tests/`: Vitest (`frontend/`, `nodes/`, `tooling/`, `scripts/`, `dom/`, top-level suites), PHPUnit in `tests/php/`, the stack suite in `tests/stack/`, `fixtures/`, `lib/`.
 - `compose.yaml`, `compose.queue.yaml`, `docker/php/`: the stack and the PHP tools image. `setup.sh` installs WordPress against it.
@@ -60,7 +60,7 @@ n8n workflows (`docs/architecture.md`, "Rules a workflow change must keep"):
 - Postgres stays at node v2.8; the validator's "exceeds maximum supported version 2.7" is stale data. Never downgrade.
 - Anchor cross-node references with `.first()`, never `.item`.
 - Append the sheet row matching `request_uuid`, never `reference`.
-- The team email is plain text with no links; the customer email is escaped HTML. Never set `options.senderName` on a Gmail node; `appendAttribution` stays `false`.
+- The team email is plain text with no `tel:` or `mailto:` links; its one link is `https://wa.me/<digits>`, built by `whatsAppLink()` from validated digits. The customer email is escaped HTML. Never set `options.senderName` on a Gmail node; `appendAttribution` stays `false`.
 - No `$n` in a Postgres query's SQL comments: n8n substitutes inside them.
 - Publish workflows (`pnpm run setup`) before updating the plugin. Follow "Changing a workflow" in the same doc.
 - `pnpm run setup` never re-imports an existing credential without `--refresh <id>`: it drops a Google sign-in.
@@ -72,6 +72,7 @@ PHP and WordPress (`docs/plugin.md`, `docs/api.md`):
 - Admin handlers check `manage_options` first (403), then the nonce. Never run list-table cell markup through `wp_kses_post()`.
 - The estimate route never receives a nonce from the frontend. Neither route has an `args` schema.
 - Every PHP file starts with `declare(strict_types=1);`. `src/` classes have no `ABSPATH` guard so PHPUnit can load them; `moving-quote.php`, `templates/quote-form.php` and each `site/mu-plugins/` file start with `defined( 'ABSPATH' ) || exit;`, and `uninstall.php` with `defined( 'WP_UNINSTALL_PLUGIN' ) || exit;` (`docs/architecture.md`, "Code conventions and guardrails").
+- The status link's HMAC key is `StatusShortcode::key()`, derived from `wp_salt( 'auth' )`; verify with `StatusToken::verify()` (`hash_equals`). Every failure prints the same invalid-link sentence. `Installer::DB_VERSION` is 4 (`notes`, then `date_confirmed_at`, each appended last).
 - NOTE: `apply_sync()` is not fenced on the lease; the upgrade path is in `docs/plugin.md`, "Delivery".
 
 Tests and the stack:

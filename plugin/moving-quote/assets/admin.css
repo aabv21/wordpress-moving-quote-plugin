@@ -15,11 +15,75 @@
 
 /* Core's list table is table-layout: fixed, so the column takes a width, not a min-width. */
 .wp-list-table .column-customer {
-  width: 16rem;
+  width: 13.5rem;
 }
 
 .wp-list-table .moving-quote-leads__delete {
   display: inline-block;
   margin-top: 0.75rem;
   color: #b32d2e;
+}
+
+.moving-quote-leads__contacted {
+  margin-bottom: 0.5rem;
+}
+
+.moving-quote-leads__notes {
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.moving-quote-leads__edit-notes textarea {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.moving-quote-leads__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0 0.25rem;
+}
+
+.moving-quote-leads__stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 8rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid #c3c4c7;
+}
+
+.moving-quote-leads__stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.moving-quote-leads__stat-label {
+  color: #50575e;
+}
+
+.moving-quote-leads__confirmed {
+  color: #1d6b32;
+  font-weight: 600;
+}
+
+.moving-quote-leads__stat-help {
+  margin-top: 0.25rem;
+  color: #50575e;
+  font-size: 0.8125rem;
+}
+
+/* The status select and its buttons fill their own column instead of spilling into Delivery. */
+.wp-list-table .column-status {
+  width: 8.5rem;
+}
+
+.wp-list-table .column-status select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 0.5rem;
 }

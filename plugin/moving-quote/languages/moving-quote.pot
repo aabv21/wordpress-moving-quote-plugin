@@ -1,14 +1,14 @@
 # Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
 msgid ""
 msgstr ""
-"Project-Id-Version: Moving Quote 1.3.0\n"
+"Project-Id-Version: Moving Quote 1.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-25T12:15:23+00:00\n"
+"POT-Creation-Date: 2026-11-25T13:37:29+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: moving-quote\n"
@@ -50,8 +50,14 @@ msgstr ""
 msgid "Delivery"
 msgstr ""
 
+msgid "Notes"
+msgstr ""
+
 msgctxt "leads list view"
 msgid "All"
+msgstr ""
+
+msgid "Date confirmed"
 msgstr ""
 
 #. translators: %d: number of rooms
@@ -64,6 +70,9 @@ msgstr[1] ""
 #. translators: %s: distance in kilometres, already formatted for the site language
 #, php-format
 msgid "%s km"
+msgstr ""
+
+msgid "Mark contacted"
 msgstr ""
 
 msgctxt "button: save the selected lead status"
@@ -79,6 +88,17 @@ msgstr ""
 #. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
 #, php-format
 msgid "Status of lead %s"
+msgstr ""
+
+msgid "Edit notes"
+msgstr ""
+
+#. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
+#, php-format
+msgid "Notes for lead %s"
+msgstr ""
+
+msgid "Save notes"
 msgstr ""
 
 #. translators: 1: delivery status label (Pending, Sent, or Failed), 2: attempt count
@@ -100,7 +120,22 @@ msgstr ""
 msgid "Export CSV"
 msgstr ""
 
+msgid "Last 7 days"
+msgstr ""
+
+msgid "Won (all time)"
+msgstr ""
+
+msgid "Win rate"
+msgstr ""
+
+msgid "Won ÷ (won + lost)."
+msgstr ""
+
 msgid "Lead status updated."
+msgstr ""
+
+msgid "Notes saved."
 msgstr ""
 
 msgid "The lead was queued for delivery."
@@ -169,6 +204,13 @@ msgid "Estimate low (COP)"
 msgstr ""
 
 msgid "Estimate high (COP)"
+msgstr ""
+
+msgid "Team notes"
+msgstr ""
+
+#. translators: the customer's confirmation of the moving date, converted to America/Bogota
+msgid "Date confirmed (America/Bogota)"
 msgstr ""
 
 #. translators: the site language the request was submitted in, e.g. es_CO
@@ -365,6 +407,29 @@ msgid "Choose a city"
 msgstr ""
 
 msgid "See my price"
+msgstr ""
+
+msgid "This link isn't valid. Check the link in your email, or contact us."
+msgstr ""
+
+#. translators: %s: the date and time the customer confirmed, in the business time zone
+#, php-format
+msgid "You confirmed your moving date on %s."
+msgstr ""
+
+msgid "Confirm my moving date"
+msgstr ""
+
+msgid "We received your request"
+msgstr ""
+
+msgid "We sent you a quote"
+msgstr ""
+
+msgid "Your move is booked"
+msgstr ""
+
+msgid "This request is closed"
 msgstr ""
 
 #. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D

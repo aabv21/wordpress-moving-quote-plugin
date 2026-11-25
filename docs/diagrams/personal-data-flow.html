@@ -5636,9 +5636,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Where PII lives</h3>
         </div>
         <ul>
-          <li>The leads table holds every field until an eraser request or uninstall</li>
+          <li>The leads table holds every field, the team&#39;s notes and the date confirmation, until an eraser request or uninstall; notes never leave WordPress</li>
           <li>The sheet row and both emails keep copies outside WordPress</li>
           <li>Postgres keeps only the lead&#39;s event id, never a name, phone or email</li>
+          <li>The status page shows the move summary only, never a name, phone or email; the weekly summary carries counts and routes, not people</li>
         </ul>
       </div>
 
