@@ -70,7 +70,7 @@ test('pnpm effective config carries every supply-chain setting', async () => {
 test('trustPolicyExclude holds exactly the owner-approved exceptions', async () => {
   const config = await pnpmConfig();
   // A new entry needs an exact name@version, a reason, this list extended, and the owner's
-  // approval. See AGENTS.md's "Supply-chain hardening".
+  // approval. See docs/supply-chain.md.
   expect(config.trustPolicyExclude).toEqual([
     '@octokit/endpoint@9.0.6',
     '@octokit/plugin-paginate-rest@9.2.2',

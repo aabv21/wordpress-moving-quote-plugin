@@ -45,8 +45,10 @@ describe('README', () => {
   });
 
   it('the live retry check gives an executable second retry and says each retry resends both emails', () => {
-    const retry = README.split('\n').find((line) => line.includes('Rename the `Moving leads` tab'));
-    expect(retry).toBeDefined();
+    const start = README.indexOf('### Retrying a failed execution');
+    expect(start).toBeGreaterThan(-1);
+    const retry = README.slice(start, README.indexOf('\n## ', start));
+    expect(retry).toMatch(/^1\. /m);
     expect(retry).toContain('/api/v1/executions/');
     expect(retry).toContain('/retry');
     expect(retry).toContain('$N8N_API_KEY');
