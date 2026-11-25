@@ -352,7 +352,7 @@ The root `composer.json`'s `config.policy` uses Composer 2.11's `policy.*` keys,
 
 - `main` holds released code and is the default branch; `develop` is the integration branch. Both take changes only through a pull request with CI green, and repository rulesets block direct pushes, force pushes, and deletion.
 - Work on a short-lived branch from `develop` (`feat/…`, `fix/…`, `docs/…`, `chore/…`) and open the pull request into `develop`, titled in Conventional Commits form. It's squash-merged, so the title becomes the commit.
-- A release is a pull request from `develop` into `main` titled `release: vX.Y.Z` (a summary may follow), merged with a merge commit. `.github/workflows/release.yml` then tags the merge commit `vX.Y.Z` and publishes a GitHub release with generated notes; a `release:` title without a version makes neither.
+- A release is a pull request from `develop` (or `release/vX.Y.Z`) into `main` titled `release: vX.Y.Z` (a summary may follow), merged with a merge commit. `.github/workflows/release.yml` then tags the merge commit `vX.Y.Z` and publishes a GitHub release with generated notes. Only a PR whose head is `develop`, or `release/vX.Y.Z` when `main` has diverged, is tagged; a PR from any other branch is skipped. A version that isn't newer than the latest published release (drafts and prereleases don't count) fails the job; a `release:` title without a version makes neither tag nor release.
 - Dependabot opens its pull requests against `develop`.
 
 ## Definition of done

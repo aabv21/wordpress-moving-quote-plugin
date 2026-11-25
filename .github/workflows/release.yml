@@ -1,7 +1,8 @@
 name: Release
 
-# A merged pull request into main titled `release: vX.Y.Z` (optionally followed by a summary)
-# gets the tag vX.Y.Z on its merge commit and a GitHub release with generated notes.
+# A merged pull request into main titled `release: vX.Y.Z` (optionally followed by a summary),
+# from `develop` or a `release/` branch, gets the tag vX.Y.Z on its merge commit and a GitHub
+# release with generated notes. A version that isn't newer than the latest release is refused.
 on:
   pull_request:
     types: [closed]
@@ -13,7 +14,7 @@ permissions:
 jobs:
   release:
     name: Tag and publish
-    if: github.event.pull_request.merged && startsWith(github.event.pull_request.title, 'release:')
+    if: github.event.pull_request.merged && startsWith(github.event.pull_request.title, 'release:') && (github.event.pull_request.head.ref == 'develop' || startsWith(github.event.pull_request.head.ref, 'release/'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -30,5 +31,17 @@ jobs:
           if [ -z "$version" ]; then
             echo "::notice::No vX.Y.Z after 'release: ' in the title, so no tag or release was made."
             exit 0
+          fi
+          # The latest published release: drafts and prereleases don't count. A 404 means none yet.
+          latest=""
+          if response=$(gh api "repos/$REPO/releases/latest" --jq .tag_name 2>&1); then
+            latest=$response
+          elif [ "${response#*HTTP 404}" = "$response" ]; then
+            echo "::error::Could not read the latest release: $response"
+            exit 1
+          fi
+          if [ -n "$latest" ] && { [ "$version" = "$latest" ] || [ "$(printf '%s\n%s\n' "$latest" "$version" | sort -V | tail -n 1)" != "$version" ]; }; then
+            echo "::error::$version is not newer than the latest release $latest."
+            exit 1
           fi
           gh release create "$version" --repo "$REPO" --target "$SHA" --title "$version" --generate-notes

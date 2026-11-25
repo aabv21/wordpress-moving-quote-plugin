@@ -1,9 +1,12 @@
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const CI = readFileSync('.github/workflows/ci.yml', 'utf8');
 const CODEQL = readFileSync('.github/workflows/codeql.yml', 'utf8');
+const RELEASE = readFileSync('.github/workflows/release.yml', 'utf8');
 
 /** One job's lines, from `  <id>:` up to the next two-space-indented key. No YAML dependency. */
 function jobBlock(text: string, id: string): string {
@@ -78,5 +81,46 @@ describe('CI', () => {
   it('test:stack:n8n scopes the stack config to tests/stack/n8n', () => {
     const scripts = (JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> }).scripts;
     expect(scripts['test:stack:n8n']).toBe('vitest run --config vitest.stack.config.ts tests/stack/n8n');
+  });
+});
+
+describe('release', () => {
+  it('releases only a merged release: PR from develop or a release/ branch', () => {
+    const condition = jobBlock(RELEASE, 'release').split('\n').find((line) => line.trim().startsWith('if:'));
+    expect(condition).toContain("github.event.pull_request.head.ref == 'develop'");
+    expect(condition).toContain("startsWith(github.event.pull_request.head.ref, 'release/')");
+  });
+
+  /** The `run: |` script, dedented. */
+  function releaseScript(): string {
+    const lines = RELEASE.split('\n');
+    const start = lines.findIndex((line) => line.trim() === 'run: |');
+    return lines
+      .slice(start + 1)
+      .map((line) => line.slice(10))
+      .join('\n');
+  }
+
+  it.each([
+    ['v1.1.0', 'release: v1.1.0', 1, ''],
+    ['v1.1.0', 'release: v1.0.9', 1, ''],
+    ['v1.9.0', 'release: v1.10.0', 0, 'v1.10.0'],
+    ['', 'release: v1.0.0', 0, 'v1.0.0'],
+    ['v1.1.0', 'release: no version', 0, ''],
+    ['', 'release: v1.0.0', 1, '', 'gh: HTTP 502'],
+  ])('the release script with latest %j and title %j exits %i and creates %j (API error %j)', (latest, title, code, created, apiError = '') => {
+    const dir = mkdtempSync(join(tmpdir(), 'release-'));
+    const log = join(dir, 'gh.log');
+    writeFileSync(join(dir, 'gh'), '#!/bin/sh\nif [ "$1" = "api" ]; then\n  if [ -n "$FAKE_API_ERROR" ]; then echo "$FAKE_API_ERROR" >&2; exit 1; fi\n  if [ -z "$FAKE_LATEST" ]; then echo "gh: Not Found (HTTP 404)" >&2; exit 1; fi\n  echo "$FAKE_LATEST"\nelse echo "$@" >> "$GH_LOG"; fi\n');
+    chmodSync(join(dir, 'gh'), 0o755);
+    writeFileSync(log, '');
+    const result = spawnSync('bash', ['-c', releaseScript()], {
+      env: { PATH: `${dir}:${process.env['PATH'] ?? ''}`, REPO: 'o/r', SHA: 'abc', TITLE: title, FAKE_LATEST: latest, FAKE_API_ERROR: apiError, GH_LOG: log },
+      encoding: 'utf8',
+    });
+    expect(result.status, result.stdout + result.stderr).toBe(code);
+    const logged = readFileSync(log, 'utf8');
+    if (created === '') expect(logged).toBe('');
+    else expect(logged).toContain(`release create ${created} `);
   });
 });
