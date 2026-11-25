@@ -103,4 +103,4 @@ Tests and the stack:
 - `docs/testing.md`: every suite, CI, the local stack, the command reference, Playground.
 - `docs/supply-chain.md`: pnpm, Composer, image pinning, Dependabot.
 - `docs/diagrams/README.md`: how to regenerate a diagram, and the diagram list.
-- Diagrams: `docs/diagrams/architecture.svg`, `docs/diagrams/lead-sequence.svg`, and the other archify sources next to them (`.json` source, `.html` page, `.svg` image).
+- Diagrams (each a `.json` source, a `.html` page and a `.svg` image): `docs/diagrams/architecture.svg`, `docs/diagrams/lead-sequence.svg`, `docs/diagrams/delivery-lifecycle.svg`, `docs/diagrams/personal-data-flow.svg`, `docs/diagrams/queue-mode.svg`.

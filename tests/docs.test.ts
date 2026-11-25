@@ -63,4 +63,17 @@ describe('agent docs', () => {
     }
     expect(stale).toEqual([]);
   });
+
+  it('every archify diagram is cited by README.md, AGENTS.md and docs/architecture.md', () => {
+    const names = readdirSync('docs/diagrams').filter((file) => file.endsWith('.json') && !file.endsWith('.delivery.json')).map((file) => file.replace(/\.json$/, ''));
+    expect(names.length).toBeGreaterThanOrEqual(5);
+    const missing: string[] = [];
+    for (const file of ['README.md', 'AGENTS.md', 'docs/architecture.md']) {
+      const text = readFileSync(file, 'utf8');
+      for (const name of names) {
+        if (!text.includes(`diagrams/${name}.svg`) && !text.includes(`diagrams/${name}.html`)) missing.push(`${file}: ${name}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
 });

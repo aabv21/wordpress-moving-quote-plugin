@@ -6,7 +6,7 @@
     "locale": "en",
     "output": "docs/diagrams/architecture.html",
     "quality_profile": "showcase",
-    "viewBox": [1230, 680]
+    "viewBox": [1142, 480]
   },
   "components": [
     {
@@ -47,7 +47,7 @@
       "type": "backend",
       "label": "lead-intake",
       "sublabel": "JWT verify · gate",
-      "pos": [628, 110],
+      "pos": [580, 110],
       "size": [120, 64]
     },
     {
@@ -55,7 +55,7 @@
       "type": "backend",
       "label": "process-lead",
       "sublabel": "row · 2 emails",
-      "pos": [824, 110],
+      "pos": [776, 110],
       "size": [120, 64]
     },
     {
@@ -63,7 +63,7 @@
       "type": "backend",
       "label": "error-handler",
       "sublabel": "plain-text alert",
-      "pos": [824, 310],
+      "pos": [776, 310],
       "size": [120, 64]
     },
     {
@@ -72,7 +72,7 @@
       "label": "Postgres 17",
       "sublabel": "processed_events",
       "brand": "postgresql",
-      "pos": [628, 310],
+      "pos": [580, 310],
       "size": [120, 64]
     },
     {
@@ -80,7 +80,7 @@
       "type": "external",
       "label": "Google Sheets",
       "sublabel": "Moving leads tab",
-      "pos": [1030, 40],
+      "pos": [982, 40],
       "size": [120, 64]
     },
     {
@@ -88,7 +88,7 @@
       "type": "external",
       "label": "Gmail",
       "sublabel": "team · customer",
-      "pos": [1030, 180],
+      "pos": [982, 180],
       "size": [120, 64]
     },
     {
@@ -98,6 +98,22 @@
       "sublabel": "rates · delivery",
       "pos": [40, 310],
       "size": [120, 64]
+    },
+    {
+      "id": "polylang",
+      "type": "backend",
+      "label": "Polylang",
+      "sublabel": "English | Español",
+      "pos": [452, 30],
+      "size": [120, 64]
+    },
+    {
+      "id": "theme",
+      "type": "frontend",
+      "label": "Chivabox theme",
+      "sublabel": "patterns · JSON-LD",
+      "pos": [40, 20],
+      "size": [120, 64]
     }
   ],
   "connections": [
@@ -105,7 +121,9 @@
       "id": "estimate",
       "from": "browser",
       "to": "rest",
-      "label": "estimate · submit"
+      "label": "form calls",
+      "fromSide": "right",
+      "toSide": "left"
     },
     {
       "id": "insert",
@@ -120,7 +138,7 @@
       "from": "settings",
       "to": "rest",
       "label": "Options::all()",
-      "fromSide": "top",
+      "fromSide": "right",
       "toSide": "left"
     },
     {
@@ -199,6 +217,23 @@
       "label": "operator alert",
       "fromSide": "right",
       "toSide": "bottom"
+    },
+    {
+      "id": "page-language",
+      "from": "polylang",
+      "to": "rest",
+      "label": "page language → ?locale=",
+      "fromSide": "left",
+      "toSide": "top"
+    },
+    {
+      "id": "serve-page",
+      "from": "theme",
+      "to": "browser",
+      "label": "serves the page",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [123, 92]
     }
   ],
   "cards": [
@@ -208,7 +243,8 @@
       "items": [
         "REST API validates, prices, and inserts a lead once per submission_id",
         "An inline delivery attempt runs right after the insert",
-        "The cron sidecar's outbox retries a failed attempt with backoff"
+        "The cron sidecar's outbox retries a failed attempt with backoff",
+        "The Polylang page language travels as ?locale= and sets the lead's language"
       ]
     },
     {
@@ -217,7 +253,8 @@
       "items": [
         "lead-intake verifies the HS256 JWT and records the request once in Postgres",
         "process-lead appends or updates the lead's sheet row by request_uuid, then emails the team and the customer",
-        "error-handler is the shared alert every other workflow's errorWorkflow points to"
+        "error-handler is the shared alert every other workflow's errorWorkflow points to",
+        "locale and contact ride in the signed payload to process-lead, which picks the customer email's language"
       ]
     },
     {

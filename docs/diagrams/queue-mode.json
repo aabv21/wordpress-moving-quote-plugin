@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Queue Mode Stack",
+    "locale": "en",
+    "output": "docs/diagrams/queue-mode.html",
+    "quality_profile": "showcase",
+    "viewBox": [860, 520]
+  },
+  "components": [
+    {
+      "id": "wordpress",
+      "type": "frontend",
+      "label": "WordPress",
+      "sublabel": "REST API · outbox",
+      "pos": [40, 110],
+      "size": [130, 64]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "MySQL 8.4",
+      "sublabel": "leads table",
+      "brand": "mysql",
+      "pos": [40, 330],
+      "size": [130, 64]
+    },
+    {
+      "id": "cron",
+      "type": "backend",
+      "label": "cron",
+      "sublabel": "every 60 s",
+      "pos": [250, 330],
+      "size": [130, 64]
+    },
+    {
+      "id": "n8n",
+      "type": "backend",
+      "label": "n8n main",
+      "sublabel": "webhooks · queue",
+      "pos": [250, 110],
+      "size": [130, 64]
+    },
+    {
+      "id": "redis",
+      "type": "messagebus",
+      "label": "Redis",
+      "sublabel": "job queue",
+      "brand": "redis",
+      "pos": [460, 110],
+      "size": [130, 64]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "n8n-worker x N",
+      "sublabel": "run executions",
+      "pos": [670, 110],
+      "size": [130, 64]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "Postgres 17",
+      "sublabel": "n8n state · events",
+      "brand": "postgresql",
+      "pos": [670, 330],
+      "size": [130, 64]
+    }
+  ],
+  "connections": [
+    {
+      "id": "outbox-insert",
+      "from": "wordpress",
+      "to": "db",
+      "label": "insert · sync state",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cron-claim",
+      "from": "cron",
+      "to": "db",
+      "label": "claim due rows",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "signed-post",
+      "from": "wordpress",
+      "to": "n8n",
+      "label": "signed JWT POST",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cron-post",
+      "from": "cron",
+      "to": "n8n",
+      "label": "retry",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "enqueue",
+      "from": "n8n",
+      "to": "redis",
+      "label": "enqueue run",
+      "variant": "emphasis"
+    },
+    {
+      "id": "pick-up",
+      "from": "redis",
+      "to": "worker",
+      "label": "job",
+      "variant": "emphasis"
+    },
+    {
+      "id": "worker-state",
+      "from": "worker",
+      "to": "postgres",
+      "label": "executions · event gate",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "What queue mode changes",
+      "items": [
+        "The main n8n process takes the webhook and enqueues the run in Redis",
+        "A worker, not the main process, executes lead-intake and process-lead",
+        "n8n-worker extends the n8n service, so key, database and mounts match"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "What stays the same",
+      "items": [
+        "WordPress, the outbox and the cron sidecar are unchanged",
+        "Idempotency still lives in Postgres processed_events; the main process keeps workflows and credentials there too",
+        "Redis has no published port and no password: add one before production"
+      ]
+    }
+  ]
+}

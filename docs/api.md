@@ -23,7 +23,8 @@ Field rules come from `LeadValidator::quote()` (the estimate fields) and `LeadVa
 | Claims | `iat`, `exp` (`iat + 300`), `jti` (JWT ID, equal to `request_uuid`), `body_sha256` (the SHA-256 of the exact body bytes) |
 | Body | The lead payload: `request_uuid`, `reference`, `submitted_at`, `site_name`, `team_email`, `locale`, `contact` (`phone`, `whatsapp`; optional for a lead queued by an older plugin), `customer`, `move`, `estimate`. `src/nodes/lead.ts` (`parseLead()`) is the contract, and `tests/fixtures/lead-payload.json` its fixed example. |
 | 200 | `{"status": "accepted"}` or `{"status": "duplicate"}` |
-| 401 | `missing_claims`, `token_lifetime`, `token_not_yet_valid`, `token_expired`, `body_hash_mismatch`, `jti_mismatch`, or the `jwtAuth` node's own rejection |
+| 401 | `missing_claims`, `token_lifetime`, `token_not_yet_valid`, `token_expired`, `body_hash_mismatch`, `jti_mismatch` |
+| 403 | A missing token or a bad signature, rejected by the Webhook node's own `jwtAuth` check before any execution starts (plain text) |
 | 422 | `invalid_payload` |
 
 The payload contract changes in four places together: `LeadPayload::body()`, `parseLead()`, `tests/fixtures/lead-payload.json` and both parity tests.

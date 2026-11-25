@@ -2,10 +2,13 @@
 
 Every diagram is an archify typed JSON source in this folder, rendered to an interactive page (`.html`) and an exported image (`.svg`). Edit the JSON, then regenerate the other two; never edit the SVG by hand.
 
-| Diagram | Type | Embedded in |
-|---|---|---|
-| `architecture` | `architecture` | `README.md`, `docs/architecture.md` |
-| `lead-sequence` | `sequence` | `README.md`, `docs/architecture.md` |
+| Diagram | Type | Shows | Embedded in |
+|---|---|---|---|
+| `architecture` | `architecture` | The system: browser, WordPress, n8n, Google | `README.md`, `docs/architecture.md` |
+| `lead-sequence` | `sequence` | One lead from the form to the emails, with the retry and reject paths | `docs/architecture.md` |
+| `delivery-lifecycle` | `lifecycle` | A lead's delivery states and retries | `docs/architecture.md` |
+| `personal-data-flow` | `dataflow` | Where personal data is stored, copied and erased | `docs/architecture.md` |
+| `queue-mode` | `architecture` | The optional Redis and `n8n-worker` stack | `docs/architecture.md` |
 
 ## Regenerating a diagram
 
@@ -16,4 +19,4 @@ Every diagram is an archify typed JSON source in this folder, rendered to an int
 3. Open the page, choose **Export**, then **SVG · Auto**, and save over `docs/diagrams/<name>.svg`.
 4. Optionally, check the page at four desktop sizes: `node ../archify/archify/bin/archify.mjs visual-check docs/diagrams/<name>.html --json --out-dir ../archify-evidence`.
 
-Every diagram is cited by `README.md`, `AGENTS.md` and `docs/architecture.md`; `tests/docs.test.ts` fails on one that isn't.
+Every diagram is linked from `README.md`, `AGENTS.md` and `docs/architecture.md`; `tests/docs.test.ts` fails on one that isn't.
