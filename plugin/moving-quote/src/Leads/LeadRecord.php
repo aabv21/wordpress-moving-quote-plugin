@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Leads;
 
 /**
- * `locale` and `notes` are `''` for a row saved before those columns existed.
+ * `locale` and `notes` are `''`, and `date_confirmed_at` null, for a row saved before those columns existed.
  */
 final readonly class LeadRecord {
 	/** @param list<string> $extras */
@@ -33,7 +33,8 @@ final readonly class LeadRecord {
 		public string $last_error,
 		public ?string $sent_at,
 		public string $locale = '',
-		public string $notes = ''
+		public string $notes = '',
+		public ?string $date_confirmed_at = null
 	) {
 	}
 
@@ -66,7 +67,8 @@ final readonly class LeadRecord {
 			(string) $row['last_error'],
 			$row['sent_at'],
 			(string) ( $row['locale'] ?? '' ),
-			(string) ( $row['notes'] ?? '' )
+			(string) ( $row['notes'] ?? '' ),
+			$row['date_confirmed_at'] ?? null
 		);
 	}
 

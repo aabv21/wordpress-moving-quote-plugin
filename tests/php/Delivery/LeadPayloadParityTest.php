@@ -16,6 +16,7 @@ final class LeadPayloadParityTest extends TestCase {
 	private const SITE_NAME  = 'Chivabox Movers';
 	private const TEAM_EMAIL = 'team@example.com';
 	private const PHONE      = '570000000099';
+	private const TOKEN      = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 
 	/**
 	 * @param array<string, string|null> $overrides
@@ -53,7 +54,7 @@ final class LeadPayloadParityTest extends TestCase {
 		);
 	}
 
-	/** @return iterable<string, array{string, array<string, string|null>, string, 3?: string}> */
+	/** @return iterable<string, array{string, array<string, string|null>, string, 3?: string, 4?: string}> */
 	public static function cases(): iterable {
 		yield 'range zero with an amount not a multiple of 1,000' => [
 			'range-zero-amount-not-rounded',
@@ -147,6 +148,8 @@ final class LeadPayloadParityTest extends TestCase {
 			'spanish-locale',
 			self::row( [ 'locale' => 'es_CO' ] ),
 			self::SITE_NAME,
+			self::PHONE,
+			'https://example.com/es/mi-mudanza/?lead=6f1c2a9e-3b4d-4e8f-9a1b-2c3d4e5f6a7b&token=' . self::TOKEN,
 		];
 
 		yield 'a row saved before the locale column existed' => [
@@ -165,8 +168,8 @@ final class LeadPayloadParityTest extends TestCase {
 
 	/** @param array<string, string|null> $row */
 	#[DataProvider( 'cases' )]
-	public function test_body_matches_its_fixture( string $fixture, array $row, string $site_name, string $phone = self::PHONE ): void {
-		$context  = new PayloadContext( $site_name, self::TEAM_EMAIL, $phone, $phone );
+	public function test_body_matches_its_fixture( string $fixture, array $row, string $site_name, string $phone = self::PHONE, string $status_url = '' ): void {
+		$context  = new PayloadContext( $site_name, self::TEAM_EMAIL, $phone, $phone, $status_url );
 		$body     = LeadPayload::body( LeadRecord::from_row( $row ), $context, new \DateTimeZone( 'America/Bogota' ) );
 		$expected = trim( (string) file_get_contents( dirname( __DIR__, 2 ) . '/fixtures/lead-payloads/' . $fixture . '.json' ) );
 		self::assertSame( $expected, $body );

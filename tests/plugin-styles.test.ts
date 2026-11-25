@@ -19,4 +19,16 @@ describe("the plugin's stylesheet", () => {
     expect(tokens.size).toBeGreaterThan(10);
     for (const [name, value] of tokens) expect(value, name).toMatch(/^#[0-9a-f]{3,8}$/i);
   });
+
+  it('defines the color tokens on the status card and on its invalid-link sentence, which prints alone', () => {
+    const scope = /([^{}]*)\{[^{}]*--mq-color-text:/.exec(QUOTE_FORM_CSS)?.[1] ?? '';
+    expect(scope).toContain('.moving-quote-status,');
+    expect(scope).toContain('.moving-quote-status__invalid');
+  });
+
+  it("is mapped onto the theme's palette for every block, the status card included", () => {
+    const theme = readFileSync('site/theme/style.css', 'utf8');
+    const scope = /([^{}]*)\{[^{}]*--mq-color-text:/.exec(theme)?.[1] ?? '';
+    for (const block of ['.moving-quote', '.moving-quote-start', '.moving-quote-routes', '.moving-quote-thanks', '.moving-quote-status', '.moving-quote-status__invalid']) expect(scope).toContain(block);
+  });
 });

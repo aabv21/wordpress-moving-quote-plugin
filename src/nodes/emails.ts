@@ -97,6 +97,7 @@ function customerEmail(lead: Lead, m: Messages): string {
     emailRow(`<table role="presentation" width="100%" style="border-collapse:collapse;font-size:15px;line-height:1.4">\n${details}\n</table>`, 'padding:16px 0 0'),
     emailRow(m.disclaimer, body),
     emailRow(m.nextStep, body),
+    ...(lead.status_url === '' ? [] : [emailRow(`<a href="${escapeHtml(lead.status_url)}">${m.statusLink}</a>`, body)]),
     ...(contact.phone === '' ? [] : [emailRow(m.questions(formatPhoneDisplay(contact.phone), whatsAppLink), body)]),
     ...(siteName === '' ? [] : [emailRow(m.demoNotice(siteName), `padding:24px 0 0;font-size:12px;color:${EMAIL_MUTED}`)]),
     '</table>',

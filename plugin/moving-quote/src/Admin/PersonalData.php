@@ -152,6 +152,11 @@ final class PersonalData {
 					'value' => $lead->notes,
 				],
 				[
+					/* translators: the customer's confirmation of the moving date, converted to America/Bogota */
+					'name'  => __( 'Date confirmed (America/Bogota)', 'moving-quote' ),
+					'value' => null === $lead->date_confirmed_at ? '' : self::bogota_time( $lead->date_confirmed_at, $tz ),
+				],
+				[
 					/* translators: the site language the request was submitted in, e.g. es_CO */
 					'name'  => __( 'Language', 'moving-quote' ),
 					'value' => $lead->locale,

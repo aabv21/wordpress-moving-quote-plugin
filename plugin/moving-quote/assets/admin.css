@@ -15,7 +15,7 @@
 
 /* Core's list table is table-layout: fixed, so the column takes a width, not a min-width. */
 .wp-list-table .column-customer {
-  width: 16rem;
+  width: 13.5rem;
 }
 
 .wp-list-table .moving-quote-leads__delete {
@@ -63,4 +63,27 @@
 
 .moving-quote-leads__stat-label {
   color: #50575e;
+}
+
+.moving-quote-leads__confirmed {
+  color: #1d6b32;
+  font-weight: 600;
+}
+
+.moving-quote-leads__stat-help {
+  margin-top: 0.25rem;
+  color: #50575e;
+  font-size: 0.8125rem;
+}
+
+/* The status select and its buttons fill their own column instead of spilling into Delivery. */
+.wp-list-table .column-status {
+  width: 8.5rem;
+}
+
+.wp-list-table .column-status select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 0.5rem;
 }

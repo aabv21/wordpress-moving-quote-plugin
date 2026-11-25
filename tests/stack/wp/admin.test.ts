@@ -254,7 +254,7 @@ describe('admin: leads list, status, export, retry', () => {
     const buffer = Buffer.from(await res.arrayBuffer());
     expect(buffer.subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
     const body = stripBom(buffer.toString('utf8'));
-    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status,locale,notes')).toBe(true);
+    expect(body.startsWith('received_at,reference,status,name,phone,email,move_date,move_type,rooms,origin,destination,distance_km,extras,estimate_cop,estimate_low_cop,estimate_high_cop,sync_status,locale,notes,date_confirmed_at')).toBe(true);
     expect(body).toContain('"\'=HYPERLINK(""http://example.com"",""x"")"');
 
     const contactedHref = exportHref.includes('?') ? `${exportHref}&status=contacted` : `${exportHref}?status=contacted`;
@@ -590,13 +590,35 @@ echo 'ok';
         return valueAt === -1 || labelAt === -1 ? undefined : html.slice(valueAt, labelAt).replace(/<[^>]+>/g, '').trim();
       };
       expect(tile('Last 7 days')).toBe(String(recent?.n));
-      expect(tile('Won')).toBe(String(won?.n));
+      expect(tile('Won (all time)')).toBe(String(won?.n));
       expect(tile('Win rate')).toBe(`${String(rate)}%`);
-      expect(html).toContain('Won ÷ (won + lost).');
+      // The help line belongs to the Win rate tile, and the tiles sit after the header's Export CSV action.
+      const rateTile = html.slice(html.indexOf('moving-quote-leads__stat-label">Win rate'));
+      expect(rateTile.indexOf('Won ÷ (won + lost).')).toBeGreaterThan(-1);
+      expect(rateTile.indexOf('Won ÷ (won + lost).')).toBeLessThan(rateTile.indexOf('</div>') + 300);
+      expect(html.indexOf('>Export CSV<')).toBeLessThan(html.indexOf('moving-quote-leads__stats'));
       expect(html.indexOf('moving-quote-leads__stats')).toBeLessThan(html.indexOf('<table class="wp-list-table'));
     } finally {
       await sqlWp(`DELETE FROM ${leadsTable} WHERE customer_name = 'Funnel ${marker}'`);
     }
+  });
+
+  it('shows a "Date confirmed" badge in the Move column once the customer confirmed, and exports the time', async () => {
+    const lead = validLead({ name: 'Confirmed Customer' });
+    expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    const uuid = lead.submission_id as string;
+    const leadsTable = await table();
+
+    const before = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(before).not.toContain('moving-quote-leads__confirmed');
+
+    await sqlWp(`UPDATE ${leadsTable} SET date_confirmed_at = '2026-11-05 15:30:00' WHERE request_uuid = '${uuid}'`);
+    const after = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+    expect(after).toContain('<span class="moving-quote-leads__confirmed">Date confirmed</span>');
+
+    const exportHref = scrapeHref(after, 'Export CSV');
+    const body = stripBom(await (await fetch(new URL(exportHref, site('/')), { headers: { Cookie: adminCookies } })).text());
+    expect(body).toContain(',"2026-11-05 10:30"');
   });
 
   it('logs nothing from the plugin', async () => {

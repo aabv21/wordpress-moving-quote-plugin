@@ -6,8 +6,8 @@ import { site, wp, wpJson } from '../lib/stack.ts';
 const execFileAsync = promisify(execFile);
 
 /** Every page `setup.sh` builds, in both languages, English the default. */
-const PAGE_PATHS = ['/', '/get-a-quote/', '/thank-you/', '/data-policy/', '/es/', '/es/cotizar/', '/es/gracias/', '/es/politica-de-datos/'];
-const PAGE_SLUGS = ['home', 'get-a-quote', 'thank-you', 'data-policy', 'inicio', 'cotizar', 'gracias', 'politica-de-datos'];
+const PAGE_PATHS = ['/', '/get-a-quote/', '/thank-you/', '/data-policy/', '/my-move/', '/es/', '/es/cotizar/', '/es/gracias/', '/es/politica-de-datos/', '/es/mi-mudanza/'];
+const PAGE_SLUGS = ['home', 'get-a-quote', 'thank-you', 'data-policy', 'inicio', 'cotizar', 'gracias', 'politica-de-datos', 'my-move', 'mi-mudanza'];
 
 /** Curly apostrophes become straight ones too, since WordPress texturizes content. One pass, so `&#038;amp;` stays `&amp;`. */
 const ENTITIES: Record<string, string> = { '&quot;': '"', '&#039;': "'", '&#8217;': "'", '&lt;': '<', '&gt;': '>', '&#038;': '&', '&amp;': '&' };

@@ -82,9 +82,10 @@ final class Shortcode {
 	/**
 	 * Null when the page doesn't exist. With Polylang active, the slug names any page of a
 	 * translation group, and the URL is the one in the visitor's language. Polylang is optional:
-	 * without it, the slug's own page.
+	 * without it, the slug's own page. `$language` (a Polylang code such as `es`) names the language
+	 * when there is no visitor, as in the delivery cron.
 	 */
-	public static function page_url( string $slug ): ?string {
+	public static function page_url( string $slug, ?string $language = null ): ?string {
 		$page = get_page_by_path( $slug );
 		if ( null === $page ) {
 			return null;
@@ -92,7 +93,7 @@ final class Shortcode {
 
 		$page_id = $page->ID;
 		if ( function_exists( 'pll_get_post' ) ) {
-			$page_id = TranslatedPage::id( $page_id, pll_get_post( $page_id ) );
+			$page_id = TranslatedPage::id( $page_id, pll_get_post( $page_id, $language ?? '' ) );
 		}
 
 		$url = get_permalink( $page_id );

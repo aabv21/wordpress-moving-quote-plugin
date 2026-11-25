@@ -19,6 +19,8 @@ export interface Lead {
     phone: string;
     whatsapp: string;
   };
+  /** The signed customer status page, or `''` when the site has none; the customer email links it. */
+  status_url: string;
   customer: {
     name: string;
     phone: string;
@@ -209,7 +211,7 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
   return { currency, amount, low, high };
 }
 
-const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'contact', 'customer', 'move', 'estimate'] as const;
+const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'contact', 'status_url', 'customer', 'move', 'estimate'] as const;
 
 const CONTACT_NUMBER_RE = /^\d{10,15}$/;
 
@@ -225,6 +227,18 @@ function parseContact(value: unknown): Lead['contact'] | null {
   return valid(phone) && valid(whatsapp) ? { phone, whatsapp } : null;
 }
 
+const STATUS_URL_RE = /^https?:\/\/[^\s"<>]+$/;
+
+/**
+ * Optional: a lead queued by a plugin version without the status page still parses, as no link.
+ * Otherwise `''` or an http(s) URL with no whitespace, quote or angle bracket, so no other scheme
+ * and nothing that could break out of the email's `href`.
+ */
+function parseStatusUrl(value: unknown): string | null {
+  if (value === undefined) return '';
+  return typeof value === 'string' && (value === '' || STATUS_URL_RE.test(value)) ? value : null;
+}
+
 /**
  * Optional: a lead from an older plugin version can still be in the retry queue. Missing, empty,
  * or unknown reads as the default language; a non-string is a contract violation (null).
@@ -237,7 +251,7 @@ function parseLocale(value: unknown): Locale | null {
 
 export function parseLead(value: unknown): Lead | null {
   if (!isRecord(value) || !hasOnlyKeys(value, LEAD_KEYS)) return null;
-  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, contact, customer, move, estimate } = value;
+  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, contact, status_url: statusUrl, customer, move, estimate } = value;
 
   if (typeof requestUuid !== 'string' || !UUID_V4_RE.test(requestUuid)) return null;
 
@@ -254,6 +268,9 @@ export function parseLead(value: unknown): Lead | null {
 
   const parsedContact = parseContact(contact);
   if (!parsedContact) return null;
+
+  const parsedStatusUrl = parseStatusUrl(statusUrl);
+  if (parsedStatusUrl === null) return null;
 
   const parsedCustomer = parseCustomer(customer);
   if (!parsedCustomer) return null;
@@ -274,6 +291,7 @@ export function parseLead(value: unknown): Lead | null {
     team_email: teamEmail,
     locale: parsedLocale,
     contact: parsedContact,
+    status_url: parsedStatusUrl,
     customer: parsedCustomer,
     move: parsedMove,
     estimate: parsedEstimate,

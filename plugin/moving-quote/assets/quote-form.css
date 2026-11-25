@@ -1,6 +1,6 @@
 /*
- * The plugin's stylesheet: the quote form, the home page's start form and route chips, and the
- * thank-you card. Every color, radius, and spacing value is a --mq-* token with a literal default:
+ * The plugin's stylesheet: the quote form, the home page's start form and route chips, the
+ * thank-you card, and the customer's status page. Every color, radius, and spacing value is a --mq-* token with a literal default:
  * the blocks draw their own light surfaces, so contrast holds under any theme, a dark one included.
  * A theme that wants them in its own colors sets the tokens itself (the Chivabox theme does).
  * Selectors are scoped under each block's own class so a theme's element styles never outrank them.
@@ -9,7 +9,9 @@
 .moving-quote,
 .moving-quote-start,
 .moving-quote-routes,
-.moving-quote-thanks {
+.moving-quote-thanks,
+.moving-quote-status,
+.moving-quote-status__invalid {
   /* Color: each pair is checked against WCAG AA in docs/architecture.md, "The design tokens". */
   --mq-color-text: #111418;
   --mq-color-primary: #111418;
@@ -72,7 +74,8 @@
 @media (min-width: 37.5em) {
   .moving-quote,
   .moving-quote-start,
-  .moving-quote-thanks {
+  .moving-quote-thanks,
+  .moving-quote-status {
     --mq-card-padding: var(--mq-space-5);
   }
 }
@@ -933,6 +936,84 @@
 
 .moving-quote-thanks .moving-quote-thanks__whatsapp {
   flex: 0 0 auto;
+}
+
+/* The customer's status page: a card with the move summary and one confirm button. */
+.moving-quote-status {
+  display: grid;
+  gap: var(--mq-space-4);
+  justify-items: start;
+  box-sizing: border-box;
+  max-width: 40rem;
+  padding: var(--mq-space-6) var(--mq-card-padding);
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-divider);
+  border-radius: var(--mq-radius);
+  color: var(--mq-color-text);
+  color-scheme: light;
+}
+
+.moving-quote-status__invalid {
+  margin: 0;
+  padding: var(--mq-space-4);
+  color: var(--mq-color-error);
+  background-color: var(--mq-color-surface);
+  border: 1px solid var(--mq-color-error);
+  border-radius: var(--mq-radius);
+}
+
+.moving-quote-status .moving-quote-status__state {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.moving-quote-status .moving-quote-status__summary {
+  display: grid;
+  gap: var(--mq-space-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--mq-space-4) 0;
+  border-block: 1px solid var(--mq-color-divider);
+}
+
+.moving-quote-status .moving-quote-status__summary dt {
+  color: var(--mq-color-muted);
+  font-size: 0.875em;
+}
+
+.moving-quote-status .moving-quote-status__summary dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.moving-quote-status .moving-quote-status__confirmed {
+  margin: 0;
+  color: var(--mq-color-success);
+  font-weight: 600;
+}
+
+.moving-quote-status .moving-quote-status__button {
+  min-width: var(--mq-target);
+  min-height: var(--mq-target);
+  padding: var(--mq-space-3) var(--mq-space-5);
+  color: var(--mq-color-on-fill);
+  font: inherit;
+  font-weight: 600;
+  background-color: var(--mq-color-primary);
+  border: 0;
+  border-radius: var(--mq-radius-pill);
+  cursor: pointer;
+}
+
+.moving-quote-status .moving-quote-status__button:hover {
+  background-color: var(--mq-color-primary-hover);
+}
+
+.moving-quote-status :focus-visible {
+  outline: 2px solid var(--mq-color-accent);
+  outline-offset: 2px;
 }
 
 @keyframes mq-fade-in {

@@ -321,6 +321,27 @@ final class LeadRepository {
 		return mb_substr( trim( $notes ), 0, 2000 );
 	}
 
+	/**
+	 * Stamps the customer's date confirmation once: a lead already confirmed, or lost, is left as
+	 * it is. True only when this call changed the row.
+	 */
+	public function confirm_date( string $request_uuid, string $now_utc ): bool {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$changed = $wpdb->query(
+			$wpdb->prepare(
+				'UPDATE %i SET date_confirmed_at = %s WHERE request_uuid = %s AND date_confirmed_at IS NULL AND status <> %s',
+				$this->table(),
+				$now_utc,
+				$request_uuid,
+				LeadStatus::Lost->value
+			)
+		);
+
+		return 1 === $changed;
+	}
+
 	/** True when a row with `$id` exists, even if the value didn't change. */
 	public function update_notes( int $id, string $notes ): bool {
 		global $wpdb;

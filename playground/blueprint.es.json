@@ -98,6 +98,20 @@
         "create",
         "--post_type=page",
         "--post_status=publish",
+        "--post_title=Su mudanza",
+        "--post_name=my-move",
+        "--post_excerpt=Consulte su solicitud de mudanza.",
+        "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/status\"} /-->"
+      ]
+    },
+    {
+      "step": "wp-cli",
+      "command": [
+        "wp",
+        "post",
+        "create",
+        "--post_type=page",
+        "--post_status=publish",
         "--post_title=Política de tratamiento de datos",
         "--post_name=data-policy",
         "--post_excerpt=Cómo trata Chivabox Movers los datos que envía con una solicitud de cotización.",

@@ -36,7 +36,9 @@ Domain Path: /languages
 .moving-quote,
 .moving-quote-start,
 .moving-quote-routes,
-.moving-quote-thanks {
+.moving-quote-thanks,
+.moving-quote-status,
+.moving-quote-status__invalid {
 	--mq-color-text: var(--wp--preset--color--contrast);
 	--mq-color-primary: var(--wp--preset--color--contrast);
 	--mq-color-primary-hover: var(--wp--preset--color--contrast-hover);

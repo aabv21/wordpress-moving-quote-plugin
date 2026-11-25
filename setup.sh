@@ -76,10 +76,12 @@ load_copy() {
       home_title="Moving company on Colombia's Caribbean coast"
       quote_title="Get a quote"
       thanks_title="Request received"
+      status_title="Your move"
       policy_title="Data processing policy"
       home_excerpt="Home and office moves between Barranquilla, Cartagena and Santa Marta. See an instant estimate and book a crew."
       quote_excerpt="Answer three short steps and see your moving estimate in Colombian pesos right away."
       thanks_excerpt="Your moving request was received. Here is what happens next."
+      status_excerpt="Follow your moving request."
       policy_excerpt="How Chivabox Movers handles the data you send with a quote request."
       nav_quote="Get a quote"
       ;;
@@ -88,10 +90,12 @@ load_copy() {
       home_title="Empresa de mudanzas en la costa Caribe de Colombia"
       quote_title="Cotice su mudanza"
       thanks_title="Solicitud recibida"
+      status_title="Su mudanza"
       policy_title="Política de tratamiento de datos"
       home_excerpt="Mudanzas de hogares y oficinas entre Barranquilla, Cartagena y Santa Marta. Vea un precio estimado al instante y reserve su cuadrilla."
       quote_excerpt="Responda tres pasos cortos y vea al instante el precio estimado de su mudanza en pesos colombianos."
       thanks_excerpt="Recibimos su solicitud de mudanza. Esto es lo que sigue."
+      status_excerpt="Consulte su solicitud de mudanza."
       policy_excerpt="Cómo trata Chivabox Movers los datos que envía con una solicitud de cotización."
       nav_quote="Cotizar"
       ;;
@@ -106,6 +110,7 @@ load_slugs() {
       home_slug="home"
       quote_slug="get-a-quote"
       thanks_slug="thank-you"
+      status_slug="my-move"
       policy_slug="data-policy"
       nav_slug="primary-navigation"
       nav_title="Primary navigation"
@@ -114,6 +119,7 @@ load_slugs() {
       home_slug="inicio"
       quote_slug="cotizar"
       thanks_slug="gracias"
+      status_slug="mi-mudanza"
       policy_slug="politica-de-datos"
       nav_slug="navegacion-principal"
       nav_title="Navegación principal"
@@ -410,6 +416,8 @@ for locale in en_US es_CO; do
   home_id=$(ensure_post "$lang" page "$home_slug" "$home_title" "$(pattern_block home)" "$home_excerpt" "$refresh_pages")
   quote_id=$(ensure_post "$lang" page "$quote_slug" "$quote_title" "$(pattern_block quote)" "$quote_excerpt" "$refresh_pages")
   thanks_id=$(ensure_post "$lang" page "$thanks_slug" "$thanks_title" "$(pattern_block thank-you)" "$thanks_excerpt" "$refresh_pages")
+  # The customer's status page, opened from the link in their email; it isn't in any menu.
+  status_id=$(ensure_post "$lang" page "$status_slug" "$status_title" "$(pattern_block status)" "$status_excerpt" "$refresh_pages")
   # Core's own draft "Privacy Policy" (slug privacy-policy) stays untouched; this page is the one
   # the consent line links to.
   policy_id=$(ensure_post "$lang" page "$policy_slug" "$policy_title" "$(pattern_block data-policy)" "$policy_excerpt" "$refresh_pages")
@@ -427,9 +435,9 @@ ${switcher_block}" "" 0)
   relink_post "$nav_id" "$previous_home_path" "$home_path" "$previous_quote_path" "$quote_path"
 
   if [ "$lang" = "en" ]; then
-    en_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id" "$policy_id")
+    en_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id" "$policy_id" "$status_id")
   else
-    es_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id" "$policy_id")
+    es_ids=("$home_id" "$quote_id" "$thanks_id" "$nav_id" "$policy_id" "$status_id")
   fi
   if [ "$lang" = "$default_lang" ]; then
     front_page_id="$home_id"

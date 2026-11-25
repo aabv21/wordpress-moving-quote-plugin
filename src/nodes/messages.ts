@@ -35,6 +35,8 @@ export interface Messages {
   routeValue: (origin: string, destination: string) => string;
   disclaimer: string;
   nextStep: string;
+  /** The link text for the signed status page. */
+  statusLink: string;
   /** `whatsAppLink` is an `<a>` already built from validated digits, or '' to leave that half out. */
   questions: (phone: string, whatsAppLink: string) => string;
   demoNotice: (siteName: string) => string;
@@ -59,6 +61,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     disclaimer: 'This is an estimate. We confirm the final price after a visit or video call.',
     nextStep: 'A member of our team will call you to schedule a short visit or video call and confirm the final price.',
     questions: (phone, whatsAppLink) => (whatsAppLink === '' ? `Questions? Call us at ${phone}.` : `Questions? Call us at ${phone} or write on WhatsApp: ${whatsAppLink}`),
+    statusLink: 'See your request and confirm your date',
     demoNotice: (siteName) => `${siteName} is a fictional company for a portfolio demo.`,
   },
   es: {
@@ -95,6 +98,7 @@ export const MESSAGES: Record<Locale, Messages> = {
     disclaimer: 'Este valor es un estimado. Confirmamos el precio final después de una visita o una videollamada.',
     nextStep: 'Una persona de nuestro equipo se comunicará con usted para programar una visita corta o una videollamada y confirmar el precio final.',
     questions: (phone, whatsAppLink) => (whatsAppLink === '' ? `¿Preguntas? Llámenos al ${phone}.` : `¿Preguntas? Llámenos al ${phone} o escríbanos por WhatsApp: ${whatsAppLink}`),
+    statusLink: 'Vea su solicitud y confirme la fecha',
     demoNotice: (siteName) => `${siteName} es una empresa ficticia para una demostración de portafolio.`,
   },
 };

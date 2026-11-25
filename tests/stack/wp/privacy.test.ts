@@ -120,6 +120,7 @@ describe('personal data: export and erase', () => {
     const exported = await exportFor(email);
 
     expect(exported.data[0]!.data).toContainEqual({ name: 'Team notes', value: 'Prefers calls after 5' });
+    expect(exported.data[0]!.data).toContainEqual({ name: 'Date confirmed (America/Bogota)', value: '' });
   });
 
   it('erases every matching lead through the registered eraser filter, and reports no items removed for an email with none', async () => {

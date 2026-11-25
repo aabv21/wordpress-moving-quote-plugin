@@ -47,6 +47,23 @@ describe('parseLead', () => {
     expect(parseLead({ ...valid, contact: 'x' })).toBeNull();
   });
 
+  it('accepts a lead without status_url as an empty link', () => {
+    const withoutStatus: Record<string, unknown> = { ...valid };
+    delete withoutStatus.status_url;
+    expect(parseLead(withoutStatus)?.status_url).toBe('');
+    expect(parseLead({ ...valid, status_url: '' })?.status_url).toBe('');
+  });
+
+  it('reads the status_url PHP emits', () => {
+    expect(parseLead(valid)?.status_url).toBe(valid.status_url);
+  });
+
+  it('rejects a status_url with a quote or a javascript: scheme', () => {
+    for (const status_url of ['javascript:alert(1)', 'https://example.com/"onmouseover="x', 'https://example.com/<b>', 'https://example.com/a b', 'ftp://example.com/', '//example.com/', 42, null]) {
+      expect(parseLead({ ...valid, status_url }), String(status_url)).toBeNull();
+    }
+  });
+
   it('falls back to en for an in-flight lead sent by a plugin version without the locale field', () => {
     const withoutLocale: Record<string, unknown> = { ...valid };
     delete withoutLocale.locale;

@@ -35,6 +35,7 @@ final class Schema {
 			sent_at datetime NULL,
 			locale varchar(20) NOT NULL DEFAULT '',
 			notes varchar(2000) NOT NULL DEFAULT '',
+			date_confirmed_at datetime NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY request_uuid (request_uuid),
 			KEY status_created (status,created_at),

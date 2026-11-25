@@ -37,6 +37,7 @@ Each handler checks `manage_options` first (403; a missing or non-numeric `id` i
 |---|---|---|---|---|---|
 | `moving_quote_update_status` | The status form on each Leads row (POST) | `manage_options` + nonce `moving_quote_update_status_{id}` | `id`, `status` (the "Mark contacted" button on a `new` row posts the same action with `status=contacted`) | Redirect with a notice; an unknown status is a no-op | 400, 403 |
 | `moving_quote_update_notes` | The notes form inside a Leads row's "Edit notes" (POST) | `manage_options` + nonce `moving_quote_update_notes_{id}` | `id`, `notes` (trimmed, control characters other than line feeds removed, cut to 2,000 characters) | Redirect with a notice | 400, 403 |
+| `moving_quote_confirm_date` | "Confirm my moving date" on the customer status page (POST, public: `admin_post_nopriv_` too) | The signed token in the request (HMAC of the lead UUID, `hash_equals`); no nonce, since the visitor has no session | `lead`, `token` | Stamps `date_confirmed_at` once, then redirects to the status page with `confirmed=1` | A bad token, another lead's UUID or an erased lead redirect to the page without `confirmed` and change nothing |
 | `moving_quote_retry_delivery` | "Retry delivery" on a `failed` row (GET link) | `manage_options` + nonce `moving_quote_retry_delivery_{id}` | `id` | Redirect: queued for delivery, never "sent" | 400, 403 |
 | `moving_quote_delete_lead` | "Delete" on a row, after a `confirm()` (GET link) | `manage_options` + nonce `moving_quote_delete_lead_{id}` | `id` | Redirect with a notice | 400, 403 |
 | `moving_quote_export_csv` | "Export CSV" on the Leads page (GET link) | `manage_options` + nonce `moving_quote_export_csv` | none | `text/csv; charset=utf-8`, `moving-leads-{Y-m-d}.csv`, UTF-8 BOM, 500-row batches | 403 |
@@ -58,6 +59,7 @@ Hook `moving_quote_process_outbox` on the `moving_quote_every_minute` schedule (
 | `[moving_quote_routes]` | `quote`, `routes` (`A:B,C:D`) | Route chips with "from" prices |
 | `[moving_quote_contact]` | `layout` (`footer`, `whatsapp`, `phone`) | The business details |
 | `[moving_quote_thanks]` | `heading` (`1` or `0`) | The thank-you card |
+| `[moving_quote_status]` | none | The customer status page: the move summary and a "Confirm my moving date" button for a valid signed link (`lead` and `token` in the query); one "This link isn't valid" sentence for anything else |
 | `[moving_quote_reference]` | none | "Your reference number is MQ-…" (kept for older pages) |
 
 ## REST behavior

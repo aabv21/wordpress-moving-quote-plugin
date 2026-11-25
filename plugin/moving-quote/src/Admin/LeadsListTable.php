@@ -142,8 +142,10 @@ final class LeadsListTable extends WP_List_Table {
 	}
 
 	private function column_move( LeadRecord $lead ): string {
+		$confirmed = null === $lead->date_confirmed_at ? '' : sprintf( '<br /><span class="moving-quote-leads__confirmed">%s</span>', esc_html__( 'Date confirmed', 'moving-quote' ) );
+
 		return sprintf(
-			'%s<br />%s<br />%s',
+			'%s<br />%s<br />%s%s',
 			esc_html( $lead->move_date ),
 			esc_html( Labels::move_type( $lead->move_type ) ),
 			esc_html(
@@ -152,7 +154,8 @@ final class LeadsListTable extends WP_List_Table {
 					_n( '%d room', '%d rooms', $lead->rooms, 'moving-quote' ),
 					$lead->rooms
 				)
-			)
+			),
+			$confirmed
 		);
 	}
 

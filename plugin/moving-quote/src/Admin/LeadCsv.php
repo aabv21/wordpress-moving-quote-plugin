@@ -7,7 +7,16 @@ use Chivabox\MovingQuote\Leads\LeadRecord;
 
 final class LeadCsv {
 	/** @var list<string> */
-	public const HEADER = [ 'received_at', 'reference', 'status', 'name', 'phone', 'email', 'move_date', 'move_type', 'rooms', 'origin', 'destination', 'distance_km', 'extras', 'estimate_cop', 'estimate_low_cop', 'estimate_high_cop', 'sync_status', 'locale', 'notes' ];
+	public const HEADER = [ 'received_at', 'reference', 'status', 'name', 'phone', 'email', 'move_date', 'move_type', 'rooms', 'origin', 'destination', 'distance_km', 'extras', 'estimate_cop', 'estimate_low_cop', 'estimate_high_cop', 'sync_status', 'locale', 'notes', 'date_confirmed_at' ];
+
+	/** The confirmation time (UTC in the table) in `$tz`, or an empty cell. */
+	private static function confirmed_at( LeadRecord $lead, \DateTimeZone $tz ): string {
+		if ( null === $lead->date_confirmed_at ) {
+			return '';
+		}
+
+		return ( new \DateTimeImmutable( $lead->date_confirmed_at, new \DateTimeZone( 'UTC' ) ) )->setTimezone( $tz )->format( 'Y-m-d H:i' );
+	}
 
 	/**
 	 * `received_at` is `created_at` (UTC) in `$tz`. Every other field is the raw stored value, not
@@ -38,6 +47,7 @@ final class LeadCsv {
 			CsvEscaper::cell( $lead->sync_status->value ),
 			CsvEscaper::cell( $lead->locale ),
 			CsvEscaper::cell( $lead->notes ),
+			CsvEscaper::cell( self::confirmed_at( $lead, $tz ) ),
 		];
 	}
 }
