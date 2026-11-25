@@ -76,3 +76,7 @@ The codes and limits are in the table above; this is how the routes behave.
   - **`moving_quote_client_ip`.** `client_ip()` reads `REMOTE_ADDR`, which behind a reverse proxy is the proxy's address. Filter it only once `REMOTE_ADDR` is a trusted proxy, and never trust `X-Forwarded-For` or `CF-Connecting-IP` unconditionally; see "Behind a reverse proxy" in [`architecture.md`](architecture.md) for the example.
   - **`moving_quote_rate_limits`.** `Security\RateLimits::estimate()`/`::submit()` read both buckets through this filter, which receives and returns the full `['estimate' => [...], 'submit' => [...]]` shape; a missing or malformed entry falls back to the defaults (120/600 s, 5/3,600 s) for that bucket. Neither controller hardcodes a limit.
   - **Rate-limited submissions are counted.** Each `/leads` 429 calls `RateLimiter::record_rate_limited_submission()`, which increments one transient (`RATE_LIMITED_COUNT_TRANSIENT`) with no IP or per-visitor data. Its 24-hour window is fixed from the first counted 429, not rolling. `StuckDeliveryNotice` shows it.
+
+## Status link and weekly digest
+
+The lead payload gains a top-level `status_url` after `contact`: `''` when the site has no status page, else the signed `my-move` link. `parseLead()` reads it as optional (missing is `''`) and accepts only `''` or an `http(s)` URL with no whitespace, quote or angle bracket. The customer email links it as "See your request and confirm your date". The `weekly-digest` workflow has no webhook; its schedule and `digest_email` are in `docs/architecture.md`.
