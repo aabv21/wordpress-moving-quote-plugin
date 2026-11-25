@@ -6,6 +6,7 @@ namespace Chivabox\MovingQuote\Rest;
 use Chivabox\MovingQuote\Delivery\Outbox;
 use Chivabox\MovingQuote\Leads\{FieldErrors, LeadDraft, LeadRecord, LeadRepository, LeadValidator};
 use Chivabox\MovingQuote\Pricing\{Calculator, Estimate};
+use Chivabox\MovingQuote\Plugin;
 use Chivabox\MovingQuote\Security\{RateLimiter, RateLimits};
 use Chivabox\MovingQuote\Settings\Options;
 use DateTimeImmutable;
@@ -60,7 +61,7 @@ final class LeadController {
 	 * Runs in `$locale`, the page's language, which the lead also stores.
 	 */
 	private static function respond( WP_REST_Request $request, string $locale ): WP_REST_Response|WP_Error {
-		$input = self::json_object( $request );
+		$input = Responses::json_object( $request );
 
 		if ( '' !== ( $input['website'] ?? '' ) ) {
 			// A bot filled the honeypot: answer success, but save and count nothing.
@@ -68,9 +69,9 @@ final class LeadController {
 		}
 
 		$now   = time();
-		$draft = LeadValidator::lead( $input, Options::distances(), ( new DateTimeImmutable() )->setTimestamp( $now ), new DateTimeZone( 'America/Bogota' ) );
+		$draft = LeadValidator::lead( $input, Options::distances(), ( new DateTimeImmutable() )->setTimestamp( $now ), new DateTimeZone( Plugin::TIMEZONE ) );
 		if ( $draft instanceof FieldErrors ) {
-			return self::invalid( $draft );
+			return Responses::invalid( $draft->errors );
 		}
 
 		$estimate   = Calculator::estimate( $draft->quote, Options::rates(), Options::distances() );
@@ -86,7 +87,7 @@ final class LeadController {
 		$retry_after = $limiter->hit( 'submit', $bucket['limit'], $bucket['window_seconds'] );
 		if ( 0 !== $retry_after ) {
 			RateLimiter::record_rate_limited_submission();
-			return self::rate_limited( $retry_after );
+			return Responses::rate_limited( $retry_after );
 		}
 
 		return self::insert( $repository, $draft, $estimate, $now, $locale );
@@ -97,7 +98,7 @@ final class LeadController {
 			$record = $repository->insert( $draft, $estimate, $now, $now + Outbox::LEASE_SECONDS, $locale );
 		} catch ( Throwable $e ) {
 			error_log( 'moving-quote: lead insert failed: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- no dedicated logging service exists; the message carries no PII.
-			return self::save_failed();
+			return Responses::save_failed();
 		}
 
 		if ( null === $record ) {
@@ -108,7 +109,7 @@ final class LeadController {
 				return self::saved( $winner );
 			}
 			// Unreachable under insert()'s contract; a safety net if that contract changes.
-			return self::save_failed();
+			return Responses::save_failed();
 		}
 
 		self::attempt_delivery( $record );
@@ -133,59 +134,15 @@ final class LeadController {
 	}
 
 	private static function saved( LeadRecord $record, int $status = 200 ): WP_REST_Response {
+		$estimate = new Estimate( $record->estimate_cop, $record->estimate_low_cop, $record->estimate_high_cop, $record->distance_km );
+
 		return new WP_REST_Response(
 			[
 				'ok'        => true,
 				'reference' => $record->reference(),
-				'estimate'  => [
-					'amount'      => $record->estimate_cop,
-					'low'         => $record->estimate_low_cop,
-					'high'        => $record->estimate_high_cop,
-					'distance_km' => $record->distance_km,
-					'currency'    => 'COP',
-					'display'     => Messages::display( new Estimate( $record->estimate_cop, $record->estimate_low_cop, $record->estimate_high_cop, $record->distance_km ) ),
-				],
+				'estimate'  => Responses::estimate_body( $estimate, Messages::display( $estimate ) ),
 			],
 			$status
 		);
-	}
-
-	private static function invalid( FieldErrors $errors ): WP_Error {
-		$messages = Messages::fields( $errors->errors );
-		return new WP_Error(
-			'moving_quote_invalid',
-			__( 'Please fix the highlighted fields.', 'moving-quote' ),
-			[
-				'status' => 422,
-				'errors' => $messages,
-			]
-		);
-	}
-
-	private static function rate_limited( int $retry_after ): WP_Error {
-		header( 'Retry-After: ' . $retry_after );
-		return new WP_Error(
-			'moving_quote_rate_limited',
-			__( 'Too many requests. Please try again later.', 'moving-quote' ),
-			[ 'status' => 429 ]
-		);
-	}
-
-	private static function save_failed(): WP_Error {
-		return new WP_Error(
-			'moving_quote_save_failed',
-			__( 'Something went wrong. Please try again.', 'moving-quote' ),
-			[ 'status' => 500 ]
-		);
-	}
-
-	/**
-	 * The stub types get_json_params() as array, but a top-level JSON scalar decodes to that scalar.
-	 *
-	 * @return array<string, mixed>
-	 */
-	private static function json_object( WP_REST_Request $request ): array {
-		$params = $request->get_json_params(); // @phpstan-ignore-next-line function.alreadyNarrowedType (see the note above: the stub is optimistic)
-		return is_array( $params ) ? $params : [];
 	}
 }

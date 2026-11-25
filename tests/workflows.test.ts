@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { checkWorkflow } from '../scripts/check-workflows.ts';
-import { buildWorkflows } from '../scripts/build-workflows.ts';
+import { buildWorkflows } from '../scripts/lib/build.ts';
 import { listJsonFiles } from '../scripts/lib/list-json-files.ts';
 import { CODE_NODES, CREDENTIALS } from '../scripts/lib/manifest.ts';
 import { SHEET_HEADERS } from '../src/nodes/map-lead.ts';

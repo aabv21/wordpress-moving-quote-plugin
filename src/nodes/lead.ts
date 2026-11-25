@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, normalizeLocale, type Locale } from './locale.ts';
+import { CURRENCY, DEFAULT_LOCALE, normalizeLocale, type Locale } from './locale.ts';
 
 export type MoveType = 'apartment' | 'house' | 'office';
 export type Extra = 'packing' | 'furniture_assembly' | 'storage' | 'piano_fragile';
@@ -34,7 +34,7 @@ export interface Lead {
     extras: Extra[];
   };
   estimate: {
-    currency: 'COP';
+    currency: typeof CURRENCY;
     amount: number;
     low: number;
     high: number;
@@ -55,11 +55,11 @@ const EMAIL_WHITESPACE_OR_CONTROL_RE = /[\s\x00-\x1f\x7f]/;
 
 /**
  * One `@`, non-empty parts, a dot in the domain, and none of `" , ; < > ( ) [ ] : \`, whitespace,
- * or controls: the rule `LeadValidator::is_simple_email()` applies. A quoted local part like
+ * or controls: the rule `EmailRule::is_simple()` applies. A quoted local part like
  * `"a,b"@example.com` would make Gmail's `sendTo` add a second recipient. Plain string operations,
  * not a nested-quantifier regex, so there's no backtracking blow-up.
  */
-function isSimpleEmail(value: string): boolean {
+export function isSimpleEmail(value: string): boolean {
   if (EMAIL_WHITESPACE_OR_CONTROL_RE.test(value)) return false;
   for (const char of value) {
     if (FORBIDDEN_EMAIL_CHARS.has(char)) return false;
@@ -200,7 +200,7 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
   if (!isRecord(value) || !hasOnlyKeys(value, ['currency', 'amount', 'low', 'high'])) return null;
   const { currency, amount, low, high } = value;
 
-  if (currency !== 'COP') return null;
+  if (currency !== CURRENCY) return null;
   if (!isNonNegativeSafeInteger(amount)) return null;
   if (!isNonNegativeSafeInteger(low)) return null;
   if (!isNonNegativeSafeInteger(high)) return null;

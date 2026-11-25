@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Admin;
 
+use Chivabox\MovingQuote\Leads\Labels;
 use Chivabox\MovingQuote\Pricing\DistanceTable;
 use Chivabox\MovingQuote\Rest\Messages;
 use Chivabox\MovingQuote\Settings\{Options, SettingsSanitizer};
@@ -199,20 +200,9 @@ final class SettingsPage {
 
 	/** @param SettingsShape $settings */
 	private static function render_rates_section( array $settings ): void {
-		$move_type_labels = [
-			'apartment' => __( 'Apartment', 'moving-quote' ),
-			'house'     => __( 'House', 'moving-quote' ),
-			'office'    => __( 'Office', 'moving-quote' ),
-		];
-		$extra_labels     = [
-			'packing'            => __( 'Packing', 'moving-quote' ),
-			'furniture_assembly' => __( 'Furniture disassembly and assembly', 'moving-quote' ),
-			'storage'            => __( 'Temporary storage', 'moving-quote' ),
-			'piano_fragile'      => __( 'Piano or fragile items', 'moving-quote' ),
-		];
 		?>
 		<table class="form-table" role="presentation">
-			<?php foreach ( $move_type_labels as $key => $label ) : ?>
+			<?php foreach ( Labels::move_types() as $key => $label ) : ?>
 				<tr>
 					<th scope="row"><label for="mq-base-rate-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
 					<td>
@@ -228,7 +218,7 @@ final class SettingsPage {
 				<th scope="row"><label for="mq-per-km"><?php esc_html_e( 'Per km', 'moving-quote' ); ?></label></th>
 				<td><input type="text" id="mq-per-km" name="<?php echo esc_attr( Options::NAME ); ?>[per_km]" value="<?php echo esc_attr( (string) $settings['per_km'] ); ?>" class="regular-text" /></td>
 			</tr>
-			<?php foreach ( $extra_labels as $key => $label ) : ?>
+			<?php foreach ( Labels::extras() as $key => $label ) : ?>
 				<tr>
 					<th scope="row"><label for="mq-extra-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
 					<td>

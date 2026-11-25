@@ -156,6 +156,16 @@ final class SettingsSanitizerTest extends TestCase {
 		self::assertSame( str_repeat( 'b', 64 ), $saved->settings['webhook_secret'] );
 	}
 
+	public function test_secret_length_boundary_is_32_characters(): void {
+		$too_short = self::sanitize_form( self::form( [ 'webhook_secret' => str_repeat( 'c', 31 ) ] ) );
+		self::assertSame( 'short_secret', $too_short->errors['webhook_secret'] );
+		self::assertSame( str_repeat( 'a', 64 ), $too_short->settings['webhook_secret'] );
+
+		$exact = self::sanitize_form( self::form( [ 'webhook_secret' => str_repeat( 'c', 32 ) ] ) );
+		self::assertArrayNotHasKey( 'webhook_secret', $exact->errors );
+		self::assertSame( str_repeat( 'c', 32 ), $exact->settings['webhook_secret'] );
+	}
+
 	public function test_secret_survives_unchanged_with_tricky_characters(): void {
 		$tricky = str_repeat( 'x', 20 ) . ' %41 <tag> \\ ' . str_repeat( 'y', 20 );
 		$r      = self::sanitize_form( self::form( [ 'webhook_secret' => $tricky ] ) );
@@ -173,7 +183,7 @@ final class SettingsSanitizerTest extends TestCase {
 	}
 
 	/**
-	 * A saved team address must pass `LeadValidator::is_simple_email()`, or delivery fails later.
+	 * A saved team address must pass `EmailRule::is_simple()`, or delivery fails later.
 	 */
 	public function test_team_email_rejects_a_quoted_local_part_filter_validate_email_alone_would_accept(): void {
 		$result = self::sanitize_form( self::form( [ 'team_email' => '"a,b"@example.com' ] ) );

@@ -1,5 +1,5 @@
-import { execFile } from 'node:child_process';
 import { existingCredentialIds } from '../../../scripts/setup-credentials.ts';
+import { compose } from '../../../scripts/lib/compose.ts';
 import { CREDENTIALS, googleCredentialIds } from '../../../scripts/lib/manifest.ts';
 
 process.loadEnvFile('.env');
@@ -12,19 +12,8 @@ export function required(name: string): string {
   return value;
 }
 
-/** `execFile` has no `input` option (only the `*Sync` functions do), so stdin is written by hand. */
-function runDocker(args: string[], input?: string): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    const child = execFile('docker', args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
-      if (err) reject(err instanceof Error ? err : new Error(err.message));
-      else resolve(stdout);
-    });
-    if (input !== undefined) child.stdin?.end(input);
-  });
-}
-
-export function wp(args: string[], input?: string): Promise<string> {
-  return runDocker(['compose', 'exec', '-T', 'wpcli', 'wp', ...args], input);
+export async function wp(args: string[], input?: string): Promise<string> {
+  return (await compose(['exec', '-T', 'wpcli', 'wp', ...args], input === undefined ? undefined : { input })).stdout;
 }
 
 export async function wpJson<T>(args: string[]): Promise<T> {
@@ -66,7 +55,7 @@ export async function table(): Promise<string> {
  * command line `ps` could read.
  */
 export async function psqlAs(role: string, database: string, query: string): Promise<string> {
-  const stdout = await runDocker(['compose', 'exec', '-T', 'postgres', 'psql', '-U', role, '-d', database, '-tAc', query]);
+  const { stdout } = await compose(['exec', '-T', 'postgres', 'psql', '-U', role, '-d', database, '-tAc', query]);
   return stdout.trim();
 }
 
@@ -135,12 +124,12 @@ export async function disableDelivery(): Promise<() => Promise<void>> {
 }
 
 export async function clearDebugLog(): Promise<void> {
-  await runDocker(['compose', 'exec', '-T', 'wordpress', 'sh', '-c', ': > /var/www/html/wp-content/debug.log']);
+  await compose(['exec', '-T', 'wordpress', 'sh', '-c', ': > /var/www/html/wp-content/debug.log']);
 }
 
 export async function pluginLogLines(): Promise<string[]> {
   try {
-    const stdout = await runDocker(['compose', 'exec', '-T', 'wordpress', 'cat', '/var/www/html/wp-content/debug.log']);
+    const { stdout } = await compose(['exec', '-T', 'wordpress', 'cat', '/var/www/html/wp-content/debug.log']);
     return stdout.split('\n').filter((line) => /moving-quote|chivabox/i.test(line));
   } catch {
     // The file doesn't exist yet when nothing has ever logged.

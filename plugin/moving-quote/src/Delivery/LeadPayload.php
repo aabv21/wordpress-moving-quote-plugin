@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Chivabox\MovingQuote\Delivery;
 
 use Chivabox\MovingQuote\Leads\LeadRecord;
+use Chivabox\MovingQuote\Pricing\Estimate;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -41,7 +42,7 @@ final class LeadPayload {
 				'extras'      => $lead->extras,
 			],
 			'estimate'     => [
-				'currency' => 'COP',
+				'currency' => Estimate::CURRENCY,
 				'amount'   => $lead->estimate_cop,
 				'low'      => $lead->estimate_low_cop,
 				'high'     => $lead->estimate_high_cop,

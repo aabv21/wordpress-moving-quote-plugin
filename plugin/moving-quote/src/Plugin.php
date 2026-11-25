@@ -12,6 +12,9 @@ use Chivabox\MovingQuote\Rest\{EstimateController, LeadController};
 final class Plugin {
 	public const VERSION = '1.3.0';
 
+	/** The business's time zone: lead dates, the Leads table, exports and the form's minimum date read in it. */
+	public const TIMEZONE = 'America/Bogota';
+
 	public static function boot( string $plugin_file ): void {
 		add_action(
 			'init',

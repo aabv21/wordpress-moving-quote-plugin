@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Admin;
 
-use Chivabox\MovingQuote\Leads\{LeadRecord, LeadRepository, LeadStatus, SyncStatus};
+use Chivabox\MovingQuote\Leads\{Labels, LeadRecord, LeadRepository, LeadStatus, SyncStatus};
+use Chivabox\MovingQuote\Plugin;
 use Chivabox\MovingQuote\Rest\Messages;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -79,7 +80,7 @@ final class LeadsListTable extends WP_List_Table {
 		$views['all'] = self::view_link( $base, null === $current, _x( 'All', 'leads list view', 'moving-quote' ), $counts['all'] ?? 0 );
 		foreach ( LeadStatus::cases() as $case ) {
 			$url                   = add_query_arg( 'status', $case->value, $base );
-			$views[ $case->value ] = self::view_link( $url, $current === $case, self::status_label( $case ), $counts[ $case->value ] ?? 0 );
+			$views[ $case->value ] = self::view_link( $url, $current === $case, Labels::status( $case ), $counts[ $case->value ] ?? 0 );
 		}
 
 		return $views;
@@ -122,7 +123,7 @@ final class LeadsListTable extends WP_List_Table {
 	}
 
 	private function column_received_at( LeadRecord $lead ): string {
-		$local = ( new DateTimeImmutable( $lead->created_at, new DateTimeZone( 'UTC' ) ) )->setTimezone( new DateTimeZone( 'America/Bogota' ) );
+		$local = ( new DateTimeImmutable( $lead->created_at, new DateTimeZone( 'UTC' ) ) )->setTimezone( new DateTimeZone( Plugin::TIMEZONE ) );
 		return esc_html( $local->format( 'Y-m-d H:i' ) );
 	}
 
@@ -143,7 +144,7 @@ final class LeadsListTable extends WP_List_Table {
 		return sprintf(
 			'%s<br />%s<br />%s',
 			esc_html( $lead->move_date ),
-			esc_html( self::move_type_label( $lead->move_type ) ),
+			esc_html( Labels::move_type( $lead->move_type ) ),
 			esc_html(
 				sprintf(
 					/* translators: %d: number of rooms */
@@ -181,7 +182,7 @@ final class LeadsListTable extends WP_List_Table {
 				'<option value="%s"%s>%s</option>',
 				esc_attr( $case->value ),
 				$case === $lead->status ? ' selected="selected"' : '',
-				esc_html( self::status_label( $case ) )
+				esc_html( Labels::status( $case ) )
 			);
 		}
 
@@ -228,7 +229,7 @@ final class LeadsListTable extends WP_List_Table {
 		$label = sprintf(
 			/* translators: 1: delivery status label (Pending, Sent, or Failed), 2: attempt count */
 			_n( '%1$s (%2$d attempt)', '%1$s (%2$d attempts)', $lead->attempts, 'moving-quote' ),
-			self::sync_label( $lead->sync_status ),
+			Labels::sync( $lead->sync_status ),
 			$lead->attempts
 		);
 
@@ -289,48 +290,5 @@ final class LeadsListTable extends WP_List_Table {
 				$is_primary ? 'th' : 'td'
 			);
 		}
-	}
-
-	/** The raw value for a move type this plugin version doesn't know. */
-	public static function move_type_label( string $move_type ): string {
-		$labels = [
-			'apartment' => __( 'Apartment', 'moving-quote' ),
-			'house'     => __( 'House', 'moving-quote' ),
-			'office'    => __( 'Office', 'moving-quote' ),
-		];
-		return $labels[ $move_type ] ?? $move_type;
-	}
-
-	/** The raw value for an extra this plugin version doesn't know. */
-	public static function extra_label( string $extra ): string {
-		$labels = [
-			'packing'            => __( 'Packing', 'moving-quote' ),
-			'furniture_assembly' => __( 'Furniture disassembly and assembly', 'moving-quote' ),
-			'storage'            => __( 'Temporary storage', 'moving-quote' ),
-			'piano_fragile'      => __( 'Piano or fragile items', 'moving-quote' ),
-		];
-		return $labels[ $extra ] ?? $extra;
-	}
-
-	/** Context-tagged: "New" or "Won" agree in gender with "lead" in some languages. */
-	public static function status_label( LeadStatus $status ): string {
-		$labels = [
-			LeadStatus::New->value       => _x( 'New', 'lead status', 'moving-quote' ),
-			LeadStatus::Contacted->value => _x( 'Contacted', 'lead status', 'moving-quote' ),
-			LeadStatus::Quoted->value    => _x( 'Quoted', 'lead status', 'moving-quote' ),
-			LeadStatus::Won->value       => _x( 'Won', 'lead status', 'moving-quote' ),
-			LeadStatus::Lost->value      => _x( 'Lost', 'lead status', 'moving-quote' ),
-		];
-		return $labels[ $status->value ];
-	}
-
-	/** Context-tagged: "Sent" or "Failed" alone don't say what was sent. */
-	public static function sync_label( SyncStatus $status ): string {
-		$labels = [
-			SyncStatus::Pending->value => _x( 'Pending', 'delivery status', 'moving-quote' ),
-			SyncStatus::Sent->value    => _x( 'Sent', 'delivery status', 'moving-quote' ),
-			SyncStatus::Failed->value  => _x( 'Failed', 'delivery status', 'moving-quote' ),
-		];
-		return $labels[ $status->value ];
 	}
 }

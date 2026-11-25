@@ -20,6 +20,8 @@ final class RateLimiter {
 	/**
 	 * Returns 0 when allowed (and counted), otherwise the seconds until the window resets.
 	 *
+	 * A denied hit only reads the bucket: it neither counts nor moves the reset.
+	 *
 	 * Fails closed: if the lock times out or errors, answers as rate-limited with a short wait
 	 * rather than let an uncounted hit through.
 	 */
@@ -38,10 +40,44 @@ final class RateLimiter {
 	}
 
 	private function count_hit( string $key, int $limit, int $window_seconds ): int {
-		$now  = time();
+		$now     = time();
+		$current = self::current_window( $key, $now );
+
+		// A denied hit only reads: a flood after the budget is spent writes nothing.
+		if ( null !== $current && $current['count'] >= $limit ) {
+			return $current['reset'] - $now;
+		}
+
+		self::bump( $key, $window_seconds, $now );
+		return 0;
+	}
+
+	/**
+	 * The key's window while it is open, or null when there is none or it has ended.
+	 *
+	 * @return array{count: int, reset: int}|null
+	 */
+	private static function current_window( string $key, int $now ): ?array {
 		$data = get_transient( $key );
 
 		if ( ! is_array( $data ) || ! isset( $data['count'], $data['reset'] ) || ! is_int( $data['count'] ) || ! is_int( $data['reset'] ) || $data['reset'] <= $now ) {
+			return null;
+		}
+
+		return [
+			'count' => $data['count'],
+			'reset' => $data['reset'],
+		];
+	}
+
+	/**
+	 * Counts one allowed hit in the key's fixed window, starting a new window when there is none or
+	 * it has ended. The caller holds the key's lock.
+	 */
+	private static function bump( string $key, int $window_seconds, int $now ): void {
+		$current = self::current_window( $key, $now );
+
+		if ( null === $current ) {
 			set_transient(
 				$key,
 				[
@@ -50,22 +86,17 @@ final class RateLimiter {
 				],
 				$window_seconds
 			);
-			return 0;
-		}
-
-		if ( $data['count'] >= $limit ) {
-			return $data['reset'] - $now;
+			return;
 		}
 
 		set_transient(
 			$key,
 			[
-				'count' => $data['count'] + 1,
-				'reset' => $data['reset'],
+				'count' => $current['count'] + 1,
+				'reset' => $current['reset'],
 			],
-			$data['reset'] - $now
+			$current['reset'] - $now
 		);
-		return 0;
 	}
 
 	private static function acquire_lock( string $key ): bool {
@@ -100,29 +131,7 @@ final class RateLimiter {
 		}
 
 		try {
-			$now  = time();
-			$data = get_transient( self::RATE_LIMITED_COUNT_TRANSIENT );
-
-			if ( ! is_array( $data ) || ! isset( $data['count'], $data['reset'] ) || ! is_int( $data['count'] ) || ! is_int( $data['reset'] ) || $data['reset'] <= $now ) {
-				set_transient(
-					self::RATE_LIMITED_COUNT_TRANSIENT,
-					[
-						'count' => 1,
-						'reset' => $now + self::RATE_LIMITED_COUNT_WINDOW,
-					],
-					self::RATE_LIMITED_COUNT_WINDOW
-				);
-				return;
-			}
-
-			set_transient(
-				self::RATE_LIMITED_COUNT_TRANSIENT,
-				[
-					'count' => $data['count'] + 1,
-					'reset' => $data['reset'],
-				],
-				$data['reset'] - $now
-			);
+			self::bump( self::RATE_LIMITED_COUNT_TRANSIENT, self::RATE_LIMITED_COUNT_WINDOW, time() );
 		} finally {
 			self::release_lock( self::RATE_LIMITED_COUNT_TRANSIENT );
 		}
@@ -161,10 +170,6 @@ final class RateLimiter {
 		if ( false === $binary || 16 !== strlen( $binary ) ) {
 			// IPv4 packs into 4 bytes, not 16.
 			return $ip;
-		}
-
-		if ( false !== filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
-			return $ip; // Unreachable (IPv4 returned above); a defensive no-op.
 		}
 
 		// ::ffff:a.b.c.d is an IPv4 client with no /64 of its own.

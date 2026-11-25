@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MIGRATIONS_DIR, missingEnv, missingEnvError, orderMigrations, pendingMigrations } from './db-migrate.ts';
+import { MIGRATIONS_DIR, missingEnv, missingEnvError, orderMigrations, pendingMigrations } from './lib/migrations.ts';
 import { listJsonFiles } from './lib/list-json-files.ts';
 import { loadDotEnv, runPsql, type PsqlOptions, type PsqlResult } from './lib/runtime.ts';
 import type { WorkflowJson } from './lib/workflow-types.ts';

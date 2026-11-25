@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Settings;
 
-use Chivabox\MovingQuote\Leads\LeadValidator;
+use Chivabox\MovingQuote\Leads\{EmailRule, LeadValidator};
 
 /**
  * Pure. A field that fails validation keeps its current value and reports a stable error code.
@@ -43,9 +43,10 @@ final class SettingsSanitizer {
 	 * @param SettingsShape        $current the settings to fall back to on a per-field error
 	 */
 	public static function sanitize( array $input, array $current ): SanitizedSettings {
-		$errors = [];
+		$errors   = [];
+		$defaults = Defaults::settings();
 
-		[ $base_rates, $base_rate_errors ] = self::sanitize_base_rates( is_array( $input['base_rates'] ?? null ) ? $input['base_rates'] : [], $current['base_rates'] );
+		[ $base_rates, $base_rate_errors ] = self::sanitize_amounts( is_array( $input['base_rates'] ?? null ) ? $input['base_rates'] : [], $current['base_rates'], array_keys( $defaults['base_rates'] ) );
 		foreach ( $base_rate_errors as $key => $code ) {
 			$errors[ "base_rates.{$key}" ] = $code;
 		}
@@ -60,7 +61,7 @@ final class SettingsSanitizer {
 			$errors['per_km'] = $per_km_error;
 		}
 
-		[ $extras, $extras_errors ] = self::sanitize_extras( is_array( $input['extras'] ?? null ) ? $input['extras'] : [], $current['extras'] );
+		[ $extras, $extras_errors ] = self::sanitize_amounts( is_array( $input['extras'] ?? null ) ? $input['extras'] : [], $current['extras'], array_keys( $defaults['extras'] ) );
 		foreach ( $extras_errors as $key => $code ) {
 			$errors[ "extras.{$key}" ] = $code;
 		}
@@ -131,70 +132,27 @@ final class SettingsSanitizer {
 	}
 
 	/**
-	 * @param array<string, mixed>                            $input
-	 * @param array{apartment: int, house: int, office: int} $current
-	 * @return array{array{apartment: int, house: int, office: int}, array<string, string>}
+	 * One amount per key, each keeping its current value when the posted one is not an amount.
+	 *
+	 * @template T of array<string, int>
+	 * @param array<array-key, mixed> $input
+	 * @param T                       $current
+	 * @param list<string>            $keys    every key `Defaults` names for this group
+	 * @return array{T, array<string, string>}
 	 */
-	private static function sanitize_base_rates( array $input, array $current ): array {
-		$errors = [];
+	private static function sanitize_amounts( array $input, array $current, array $keys ): array {
+		$amounts = [];
+		$errors  = [];
 
-		[ $apartment, $apartment_error ] = self::sanitize_amount( $input['apartment'] ?? null, $current['apartment'] );
-		if ( null !== $apartment_error ) {
-			$errors['apartment'] = $apartment_error;
-		}
-		[ $house, $house_error ] = self::sanitize_amount( $input['house'] ?? null, $current['house'] );
-		if ( null !== $house_error ) {
-			$errors['house'] = $house_error;
-		}
-		[ $office, $office_error ] = self::sanitize_amount( $input['office'] ?? null, $current['office'] );
-		if ( null !== $office_error ) {
-			$errors['office'] = $office_error;
+		foreach ( $keys as $key ) {
+			[ $amounts[ $key ], $error ] = self::sanitize_amount( $input[ $key ] ?? null, $current[ $key ] );
+			if ( null !== $error ) {
+				$errors[ $key ] = $error;
+			}
 		}
 
-		return [
-			[
-				'apartment' => $apartment,
-				'house'     => $house,
-				'office'    => $office,
-			],
-			$errors,
-		];
-	}
-
-	/**
-	 * @param array<string, mixed>                                                            $input
-	 * @param array{packing: int, furniture_assembly: int, storage: int, piano_fragile: int} $current
-	 * @return array{array{packing: int, furniture_assembly: int, storage: int, piano_fragile: int}, array<string, string>}
-	 */
-	private static function sanitize_extras( array $input, array $current ): array {
-		$errors = [];
-
-		[ $packing, $packing_error ] = self::sanitize_amount( $input['packing'] ?? null, $current['packing'] );
-		if ( null !== $packing_error ) {
-			$errors['packing'] = $packing_error;
-		}
-		[ $furniture_assembly, $furniture_error ] = self::sanitize_amount( $input['furniture_assembly'] ?? null, $current['furniture_assembly'] );
-		if ( null !== $furniture_error ) {
-			$errors['furniture_assembly'] = $furniture_error;
-		}
-		[ $storage, $storage_error ] = self::sanitize_amount( $input['storage'] ?? null, $current['storage'] );
-		if ( null !== $storage_error ) {
-			$errors['storage'] = $storage_error;
-		}
-		[ $piano_fragile, $piano_error ] = self::sanitize_amount( $input['piano_fragile'] ?? null, $current['piano_fragile'] );
-		if ( null !== $piano_error ) {
-			$errors['piano_fragile'] = $piano_error;
-		}
-
-		return [
-			[
-				'packing'            => $packing,
-				'furniture_assembly' => $furniture_assembly,
-				'storage'            => $storage,
-				'piano_fragile'      => $piano_fragile,
-			],
-			$errors,
-		];
+		// The loop fills every key `Defaults` names, which is what T's shape holds.
+		return [ $amounts, $errors ]; // @phpstan-ignore return.type
 	}
 
 	/** @return array{int, string|null} */
@@ -257,59 +215,25 @@ final class SettingsSanitizer {
 		$seen_pairs = [];
 
 		foreach ( array_values( $input ) as $index => $row ) {
-			$row_number = $index + 1;
-			if ( ! is_array( $row ) ) {
+			$key = 'routes.' . ( $index + 1 );
+
+			[ $route, $error ] = self::sanitize_route_row( $row );
+			if ( null !== $error ) {
+				$errors[ $key ] = $error;
+				continue;
+			}
+			if ( null === $route ) {
 				continue;
 			}
 
-			$from = is_string( $row['from'] ?? null ) ? trim( $row['from'] ) : '';
-			$to   = is_string( $row['to'] ?? null ) ? trim( $row['to'] ) : '';
-			$km   = $row['km'] ?? null;
-
-			if ( '' === $from && '' === $to ) {
-				continue;
-			}
-
-			if ( ! empty( $row['remove'] ) ) {
-				continue;
-			}
-
-			$key = "routes.{$row_number}";
-
-			if ( mb_strlen( $from ) < self::CITY_MIN_LEN || mb_strlen( $from ) > self::CITY_MAX_LEN
-				|| mb_strlen( $to ) < self::CITY_MIN_LEN || mb_strlen( $to ) > self::CITY_MAX_LEN
-			) {
-				$errors[ $key ] = 'invalid_city';
-				continue;
-			}
-
-			if ( 0 === strcasecmp( $from, $to ) ) {
-				$errors[ $key ] = 'same_city';
-				continue;
-			}
-
-			if ( ( ! is_string( $km ) && ! is_int( $km ) ) || 1 !== preg_match( '/^\d+$/', (string) $km ) ) {
-				$errors[ $key ] = 'invalid_km';
-				continue;
-			}
-			$km_value = (int) $km;
-			if ( $km_value < self::KM_MIN || $km_value > self::KM_MAX ) {
-				$errors[ $key ] = 'invalid_km';
-				continue;
-			}
-
-			$pair_key = self::pair_key( $from, $to );
+			$pair_key = self::pair_key( $route['from'], $route['to'] );
 			if ( isset( $seen_pairs[ $pair_key ] ) ) {
 				$errors[ $key ] = 'duplicate_route';
 				continue;
 			}
 			$seen_pairs[ $pair_key ] = true;
 
-			$rows[] = [
-				'from' => $from,
-				'to'   => $to,
-				'km'   => $km_value,
-			];
+			$rows[] = $route;
 		}
 
 		if ( [] === $errors && [] === $rows ) {
@@ -321,6 +245,56 @@ final class SettingsSanitizer {
 		}
 
 		return [ $rows, $errors ];
+	}
+
+	/**
+	 * Null route and null error for a blank or removed row, which is skipped without a message.
+	 *
+	 * @return array{0: RouteSetting|null, 1: string|null}
+	 */
+	private static function sanitize_route_row( mixed $row ): array {
+		if ( ! is_array( $row ) ) {
+			return [ null, null ];
+		}
+
+		$from = is_string( $row['from'] ?? null ) ? trim( $row['from'] ) : '';
+		$to   = is_string( $row['to'] ?? null ) ? trim( $row['to'] ) : '';
+		$km   = $row['km'] ?? null;
+
+		if ( '' === $from && '' === $to ) {
+			return [ null, null ];
+		}
+
+		if ( ! empty( $row['remove'] ) ) {
+			return [ null, null ];
+		}
+
+		if ( mb_strlen( $from ) < self::CITY_MIN_LEN || mb_strlen( $from ) > self::CITY_MAX_LEN
+			|| mb_strlen( $to ) < self::CITY_MIN_LEN || mb_strlen( $to ) > self::CITY_MAX_LEN
+		) {
+			return [ null, 'invalid_city' ];
+		}
+
+		if ( 0 === strcasecmp( $from, $to ) ) {
+			return [ null, 'same_city' ];
+		}
+
+		if ( ( ! is_string( $km ) && ! is_int( $km ) ) || 1 !== preg_match( '/^\d+$/', (string) $km ) ) {
+			return [ null, 'invalid_km' ];
+		}
+		$km_value = (int) $km;
+		if ( $km_value < self::KM_MIN || $km_value > self::KM_MAX ) {
+			return [ null, 'invalid_km' ];
+		}
+
+		return [
+			[
+				'from' => $from,
+				'to'   => $to,
+				'km'   => $km_value,
+			],
+			null,
+		];
 	}
 
 	private static function pair_key( string $from, string $to ): string {
@@ -359,7 +333,7 @@ final class SettingsSanitizer {
 	}
 
 	/**
-	 * Uses `LeadValidator::is_simple_email()`, so a saved team address never fails n8n's
+	 * Uses `EmailRule::is_simple()`, so a saved team address never fails n8n's
 	 * `isSimpleEmail()` later and silently blocks delivery.
 	 *
 	 * @return array{string, string|null}
@@ -371,7 +345,7 @@ final class SettingsSanitizer {
 		if ( '' === $input ) {
 			return [ '', null ];
 		}
-		if ( ! LeadValidator::is_simple_email( $input ) ) {
+		if ( ! EmailRule::is_simple( $input ) ) {
 			return [ $current, 'invalid_email' ];
 		}
 		return [ $input, null ];

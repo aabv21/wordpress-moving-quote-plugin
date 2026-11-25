@@ -142,6 +142,31 @@ describe('personal data: export and erase', () => {
     expect(emptyErase.messages).toEqual([]);
   });
 
+  it('the eraser names exactly the leads it deleted', async () => {
+    // Three leads in a row would spend the submit budget the earlier tests already used.
+    await resetRateLimits();
+    const email = `privacy-erase-names-${crypto.randomUUID()}@example.com`;
+    const other = `privacy-erase-other-${crypto.randomUUID()}@example.com`;
+    const first = validLead({ email, name: 'Erase Names One' });
+    const second = validLead({ email, name: 'Erase Names Two' });
+    const bystander = validLead({ email: other, name: 'Erase Names Bystander' });
+    for (const lead of [first, second, bystander]) {
+      expect((await rest(LEADS_PATH, lead, { nonce })).status).toBe(201);
+    }
+
+    const erased = await eraseFor(email);
+    expect(erased.items_removed).toBe(true);
+    const message = erased.messages.join(' ');
+    expect(message).toContain(referenceFor(first.submission_id as string));
+    expect(message).toContain(referenceFor(second.submission_id as string));
+    expect(message).not.toContain(referenceFor(bystander.submission_id as string));
+    expect(message).toContain('7 days');
+
+    const leadsTable = await table();
+    expect(await sqlWp(`SELECT id FROM ${leadsTable} WHERE email = '${email}'`)).toHaveLength(0);
+    expect(await sqlWp(`SELECT id FROM ${leadsTable} WHERE email = '${other}'`)).toHaveLength(1);
+  });
+
   it('erases a lead whose status is unparseable, which the exporter would have skipped', async () => {
     const leadsTable = await table();
     const email = `privacy-erase-poison-${crypto.randomUUID()}@example.com`;

@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Chivabox\MovingQuote\Frontend;
 
+use Chivabox\MovingQuote\Leads\Labels;
+
 /**
  * `[moving_quote_start quote="get-a-quote"]`: the quote's first questions, for a home page's hero.
  * A plain GET form to the quote page, whose form arrives prefilled (`Prefill`) and shows the price.
@@ -35,7 +37,7 @@ final class StartShortcode {
 			<p class="moving-quote-start__field">
 				<label for="mq-start-type"><?php esc_html_e( 'What are you moving?', 'moving-quote' ); ?></label>
 				<select id="mq-start-type" name="<?php echo esc_attr( Prefill::TYPE_ARG ); ?>">
-					<?php foreach ( Shortcode::move_type_labels() as $value => $label ) : ?>
+					<?php foreach ( Labels::move_types() as $value => $label ) : ?>
 						<option value="<?php echo esc_attr( $value ); ?>"><?php echo esc_html( $label ); ?></option>
 					<?php endforeach; ?>
 				</select>

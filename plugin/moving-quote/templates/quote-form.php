@@ -19,14 +19,8 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 
-$move_types = \Chivabox\MovingQuote\Frontend\Shortcode::move_type_labels();
-
-$extras = [
-	'packing'            => __( 'Packing', 'moving-quote' ),
-	'furniture_assembly' => __( 'Furniture disassembly and assembly', 'moving-quote' ),
-	'storage'            => __( 'Temporary storage', 'moving-quote' ),
-	'piano_fragile'      => __( 'Piano or fragile items', 'moving-quote' ),
-];
+$move_types = \Chivabox\MovingQuote\Leads\Labels::move_types();
+$extras     = \Chivabox\MovingQuote\Leads\Labels::extras();
 
 $steps = [
 	__( 'Your move', 'moving-quote' ),
@@ -34,9 +28,9 @@ $steps = [
 	__( 'Your details', 'moving-quote' ),
 ];
 
-// America/Bogota, like LeadValidator::validate_move_date(), not the site timezone, so min always
+// The business time zone, like LeadValidator::validate_move_date(), not the site timezone, so min always
 // matches what the REST API accepts.
-$today        = ( new DateTimeImmutable( 'now', new DateTimeZone( 'America/Bogota' ) ) )->format( 'Y-m-d' );
+$today        = ( new DateTimeImmutable( 'now', new DateTimeZone( \Chivabox\MovingQuote\Plugin::TIMEZONE ) ) )->format( 'Y-m-d' );
 $encoded_json = wp_json_encode( $config );
 $config_json  = false !== $encoded_json ? $encoded_json : '{}';
 ?>
