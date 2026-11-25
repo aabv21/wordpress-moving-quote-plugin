@@ -586,8 +586,10 @@ echo 'ok';
       const html = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
       const tile = (label: string): string | undefined => {
         const labelAt = html.indexOf(`<span class="moving-quote-leads__stat-label">${label}</span>`);
-        const valueAt = html.lastIndexOf('<span class="moving-quote-leads__stat-value">', labelAt);
-        return valueAt === -1 || labelAt === -1 ? undefined : html.slice(valueAt, labelAt).replace(/<[^>]+>/g, '').trim();
+        const open = '<span class="moving-quote-leads__stat-value">';
+        const valueAt = html.lastIndexOf(open, labelAt);
+        // The value span holds escaped text only, so slicing to its closing tag reads it without stripping markup.
+        return valueAt === -1 || labelAt === -1 ? undefined : html.slice(valueAt + open.length, html.indexOf('</span>', valueAt)).trim();
       };
       expect(tile('Last 7 days')).toBe(String(recent?.n));
       expect(tile('Won (all time)')).toBe(String(won?.n));
