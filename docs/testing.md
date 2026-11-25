@@ -47,6 +47,8 @@ Part of the same `pnpm test` run (`tests/supply-chain.test.ts`), checking the se
 - **Composer policy.** `composer.json`'s `config.policy.advisories.block` and `config.policy.abandoned.audit` are both set to fail the build on an insecure or abandoned package; its cooldown period is at least 3 days; there's no deprecated `config.audit` key; `config.allow-plugins` is an object (never a bare `true`) listing only installed plugins; and `minimum-stability`/`prefer-stable` keep the project on stable releases.
 - **zizmor.** `.github/workflows/ci.yml` installs it with `pip install --require-hashes -r .github/zizmor-requirements.txt`, and that requirements file pins `zizmor==1.31.1` with at least one `--hash=sha256:…` line.
 
+`pnpm audit` reports one moderate advisory, GHSA-g3hv-75wg-m249 in minimatch, reached only through eslint (development only). CI fails on high and above, so it passes; revisit when eslint depends on minimatch 11.0.1 or later.
+
 **Staying deterministic and clean:** every check reads real config (pnpm's own effective settings, the merged Compose config, the committed `composer.json`/workflow files) rather than re-asserting a copy of a value, so a change to the underlying setting is what the test actually verifies, not a restatement of it.
 
 ## PHP (PHPCS, PHPStan level 9, PHPUnit)
