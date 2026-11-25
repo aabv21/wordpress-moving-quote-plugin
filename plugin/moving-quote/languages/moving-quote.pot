@@ -8,7 +8,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-25T12:45:34+00:00\n"
+"POT-Creation-Date: 2026-11-25T12:49:14+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: moving-quote\n"
@@ -115,6 +115,18 @@ msgid "Moving quotes"
 msgstr ""
 
 msgid "Export CSV"
+msgstr ""
+
+msgid "Last 7 days"
+msgstr ""
+
+msgid "Won"
+msgstr ""
+
+msgid "Win rate"
+msgstr ""
+
+msgid "Won ÷ (won + lost)."
 msgstr ""
 
 msgid "Lead status updated."

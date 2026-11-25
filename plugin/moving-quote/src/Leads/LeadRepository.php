@@ -301,6 +301,16 @@ final class LeadRepository {
 		return $counts;
 	}
 
+	/** Leads created at or after `$utc_datetime` (a `Y-m-d H:i:s` string in UTC). */
+	public function count_created_since( string $utc_datetime ): int {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- %i interpolates the table name inside prepare() itself.
+		$count = $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE created_at >= %s', $this->table(), $utc_datetime ) );
+
+		return (int) $count;
+	}
+
 	/**
 	 * Trimmed, control characters other than the line feed removed, cut to 2,000 characters.
 	 */

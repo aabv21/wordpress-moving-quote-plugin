@@ -1,0 +1,295 @@
+{
+  "id": "cvbWeeklyDigest1",
+  "name": "Weekly digest",
+  "description": null,
+  "nodes": [
+    {
+      "id": "stickyWeeklyDigest01",
+      "name": "Sticky Note: Weekly digest",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        -260
+      ],
+      "parameters": {
+        "content": "## Weekly digest\nEvery Monday at 08:00 (America/Bogota) this reads the `Moving leads` sheet and emails `digest_email` a plain-text summary of the last seven days: the number of leads, their estimated value, the average, the top routes and the move types, in the team's language (`team_locale`). It sends no customer names, phones or emails. A failure alerts the operator through `errorWorkflow`, and a successful run stores no execution data.",
+        "height": 300,
+        "width": 760,
+        "color": 4
+      }
+    },
+    {
+      "id": "nodeEveryMonday0001",
+      "name": "Every Monday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -20,
+        100
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "nodeReadConfig0003",
+      "name": "Read config",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        100
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/files/config/config.json"
+      }
+    },
+    {
+      "id": "nodeParseConfig003",
+      "name": "Parse config",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        420,
+        100
+      ],
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "data",
+        "destinationKey": "config"
+      }
+    },
+    {
+      "id": "nodeReadLeads000001",
+      "name": "Read leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        100
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Parse config').first().json.config.google.leads_sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Parse config').first().json.config.google.leads_tab }}"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cvbCredGSheets01",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "id": "nodeAllRows00000001",
+      "name": "All rows",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        860,
+        100
+      ],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "rows",
+        "options": {}
+      }
+    },
+    {
+      "id": "stickyDigestCompose01",
+      "name": "Sticky Note: Compose digest",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        -260
+      ],
+      "parameters": {
+        "content": "## Compose and send the digest\n`Digest input` hands `Compose digest` the config, every sheet row and the Bogota time (`$now`), so the Code node stays free of the clock. `Compose digest` keeps the rows received in the last seven days, counts them and writes the summary in `team_locale`; it throws when `digest_email` is not set, which alerts the operator. `Email digest` sends its `to`, `subject` and `text` as plain text.",
+        "height": 300,
+        "width": 760,
+        "color": 7
+      }
+    },
+    {
+      "id": "nodeDigestInput00001",
+      "name": "Digest input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1080,
+        100
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ { config: $('Parse config').first().json.config, rows: $json.rows ?? [], now: $now.setZone('America/Bogota').toISO() } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "nodeComposeDigest001",
+      "name": "Compose digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Why Code: one tested function keeps the last seven days of sheet rows, counts them by route and move type, and writes the summary in team_locale. Generated from src/nodes/weekly-digest.ts by pnpm run build:workflows; edit the source.\n\"use strict\";\nvar __node = (() => {\n  var __defProp = (obj, key, desc) => { obj[key] = desc && \"get\" in desc ? desc.get() : desc.value; return obj; };\n  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;\n  var __getOwnPropNames = Object.getOwnPropertyNames;\n  var __hasOwnProp = Object.prototype.hasOwnProperty;\n  var __export = (target, all) => {\n    for (var name in all)\n      __defProp(target, name, { get: all[name], enumerable: true });\n  };\n  var __copyProps = (to, from, except, desc) => {\n    if (from && typeof from === \"object\" || typeof from === \"function\") {\n      for (let key of __getOwnPropNames(from))\n        if (!__hasOwnProp.call(to, key) && key !== except)\n          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });\n    }\n    return to;\n  };\n  var __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n  // src/nodes/weekly-digest.ts\n  var weekly_digest_exports = {};\n  __export(weekly_digest_exports, {\n    DIGEST_MESSAGES: () => DIGEST_MESSAGES,\n    run: () => run\n  });\n\n  // src/nodes/locale.ts\n  var LOCALES = [\"en\", \"es\"];\n  var DEFAULT_LOCALE = \"en\";\n  var BUSINESS_TIMEZONE = \"America/Bogota\";\n  var TEAM_LOCALE_NOTE = 'Note: config.team_locale is not \"en\" or \"es\", so this email is in English. Fix config/config.json.';\n  function isLocale(value) {\n    return LOCALES.includes(value);\n  }\n  function parseTeamLocale(config) {\n    const value = config.team_locale;\n    if (value === void 0) return DEFAULT_LOCALE;\n    if (typeof value === \"string\" && isLocale(value)) return value;\n    throw new Error(`config.team_locale must be \"en\" or \"es\", got ${JSON.stringify(value)}`);\n  }\n  function teamLocaleOrDefault(config) {\n    try {\n      return { locale: parseTeamLocale(config), valid: true };\n    } catch {\n      return { locale: DEFAULT_LOCALE, valid: false };\n    }\n  }\n\n  // src/nodes/lead.ts\n  var FORBIDDEN_EMAIL_CHARS = /* @__PURE__ */ new Set(['\"', \",\", \";\", \":\", \"<\", \">\", \"(\", \")\", \"[\", \"]\", \"\\\\\"]);\n  var EMAIL_WHITESPACE_OR_CONTROL_RE = /[\\s\\x00-\\x1f\\x7f]/;\n  function isSimpleEmail(value) {\n    if (EMAIL_WHITESPACE_OR_CONTROL_RE.test(value)) return false;\n    for (const char of value) {\n      if (FORBIDDEN_EMAIL_CHARS.has(char)) return false;\n    }\n    const atIndex = value.indexOf(\"@\");\n    if (atIndex <= 0 || atIndex !== value.lastIndexOf(\"@\")) return false;\n    const domain = value.slice(atIndex + 1);\n    return domain.length > 0 && domain.includes(\".\") && !domain.startsWith(\".\") && !domain.endsWith(\".\");\n  }\n  var CONTROL_CHARACTER_RE = /[\\x00-\\x1f\\x7f\\u0085\\u2028\\u2029]/;\n  function oneLine(s) {\n    return Array.from(s, (char) => CONTROL_CHARACTER_RE.test(char) ? \" \" : char).join(\"\");\n  }\n\n  // src/nodes/weekly-digest.ts\n  var MOVE_TYPES = [\"Apartment\", \"House\", \"Office\"];\n  var WINDOW_DAYS = 7;\n  var MAX_ROUTES = 3;\n  var DIGEST_MESSAGES = {\n    en: {\n      numberLocale: \"en-US\",\n      subject: (count, from, to) => `[Chivabox Movers] Weekly summary: ${count} leads, ${from} to ${to}`,\n      leads: \"Leads\",\n      value: \"Estimated value\",\n      average: \"Average estimate\",\n      notAvailable: \"n/a\",\n      routes: \"Top routes\",\n      none: \"none\",\n      routeValue: (origin, destination, count) => `${origin} to ${destination} (${String(count)})`,\n      byType: \"By move type\",\n      moveTypes: { Apartment: \"Apartment\", House: \"House\", Office: \"Office\" },\n      sheet: \"Sheet\"\n    },\n    es: {\n      numberLocale: \"es-CO\",\n      subject: (count, from, to) => `[Chivabox Movers] Resumen semanal: ${count} solicitudes, del ${from} al ${to}`,\n      leads: \"Solicitudes\",\n      value: \"Valor estimado\",\n      average: \"Estimado promedio\",\n      notAvailable: \"no aplica\",\n      routes: \"Rutas principales\",\n      none: \"ninguna\",\n      routeValue: (origin, destination, count) => `${origin} a ${destination} (${String(count)})`,\n      byType: \"Por tipo\",\n      moveTypes: { Apartment: \"Apartamento\", House: \"Casa\", Office: \"Oficina\" },\n      sheet: \"Hoja\"\n    }\n  };\n  function isRecord(value) {\n    return typeof value === \"object\" && value !== null && !Array.isArray(value);\n  }\n  function cell(row, key) {\n    const value = row[key];\n    return typeof value === \"string\" || typeof value === \"number\" ? String(value) : \"\";\n  }\n  function countedRow(raw, start, end) {\n    if (!isRecord(raw)) return null;\n    const receivedAt = DateTime.fromFormat(cell(raw, \"received_at\"), \"yyyy-LL-dd HH:mm\", { zone: BUSINESS_TIMEZONE });\n    const estimateText = cell(raw, \"estimate_cop\").trim();\n    const estimate = Number(estimateText);\n    if (!receivedAt.isValid || receivedAt < start || receivedAt >= end) return null;\n    if (estimateText === \"\" || !Number.isFinite(estimate)) return null;\n    return { estimate, route: { origin: oneLine(cell(raw, \"origin\")), destination: oneLine(cell(raw, \"destination\")) }, moveType: cell(raw, \"move_type\") };\n  }\n  function run(input) {\n    const { config, rows, now } = input;\n    const to = config.digest_email;\n    if (to === void 0 || to === \"\") throw new Error(\"config.digest_email is not set\");\n    if (typeof to !== \"string\" || !isSimpleEmail(to)) throw new Error(\"config.digest_email is not a simple email address\");\n    const teamLocale = teamLocaleOrDefault(config);\n    const m = DIGEST_MESSAGES[teamLocale.locale];\n    const number = (n) => new Intl.NumberFormat(m.numberLocale).format(n);\n    const end = DateTime.fromISO(now, { zone: BUSINESS_TIMEZONE }).startOf(\"day\");\n    const start = end.minus({ days: WINDOW_DAYS });\n    const counted = rows.map((row) => countedRow(row, start, end)).filter((row) => row !== null);\n    const sum = counted.reduce((total, row) => total + row.estimate, 0);\n    const average = counted.length === 0 ? m.notAvailable : `COP ${number(Math.round(sum / counted.length / 1e3) * 1e3)}`;\n    const perRoute = /* @__PURE__ */ new Map();\n    for (const { route } of counted) {\n      const key = `${route.origin}\\0${route.destination}`;\n      perRoute.set(key, { ...route, count: (perRoute.get(key)?.count ?? 0) + 1 });\n    }\n    const topRoutes = [...perRoute.entries()].sort(([keyA, a], [keyB, b]) => b.count - a.count || (keyA < keyB ? -1 : keyA > keyB ? 1 : 0)).slice(0, MAX_ROUTES).map(([, route]) => m.routeValue(route.origin, route.destination, route.count));\n    const byType = MOVE_TYPES.map((type) => `${m.moveTypes[type]} ${String(counted.filter((row) => row.moveType === type).length)}`);\n    const sheetId = config.google?.leads_sheet_id;\n    const text = [\n      `${m.leads}: ${String(counted.length)}`,\n      `${m.value}: COP ${number(sum)}`,\n      `${m.average}: ${average}`,\n      `${m.routes}: ${topRoutes.length === 0 ? m.none : topRoutes.join(\", \")}`,\n      `${m.byType}: ${byType.join(\", \")}`,\n      ...typeof sheetId === \"string\" && sheetId !== \"\" ? [`${m.sheet}: https://docs.google.com/spreadsheets/d/${oneLine(sheetId)}`] : [],\n      ...teamLocale.valid ? [] : [TEAM_LOCALE_NOTE]\n    ].join(\"\\n\");\n    const subject = m.subject(number(counted.length), start.toFormat(\"yyyy-LL-dd\"), end.minus({ days: 1 }).toFormat(\"yyyy-LL-dd\"));\n    return { to, subject: oneLine(subject), text };\n  }\n  return __toCommonJS(weekly_digest_exports);\n})();\nreturn [{ json: __node.run($input.first().json) }];\n"
+      },
+      "notes": "Why Code: one tested function keeps the last seven days of sheet rows, counts them by route and move type, and writes the summary in team_locale"
+    },
+    {
+      "id": "nodeEmailDigest00001",
+      "name": "Email digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1520,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cvbCredGmail0001",
+          "name": "Gmail"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Monday 08:00": {
+      "main": [
+        [
+          {
+            "node": "Read config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read config": {
+      "main": [
+        [
+          {
+            "node": "Parse config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse config": {
+      "main": [
+        [
+          {
+            "node": "Read leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read leads": {
+      "main": [
+        [
+          {
+            "node": "All rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All rows": {
+      "main": [
+        [
+          {
+            "node": "Digest input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Digest input": {
+      "main": [
+        [
+          {
+            "node": "Compose digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose digest": {
+      "main": [
+        [
+          {
+            "node": "Email digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "cvbErrorHandler1",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

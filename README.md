@@ -110,6 +110,7 @@ Format the `phone` column as Plain text. `request_uuid` is how a retried run fin
 | `google.leads_tab` | The tab name, `Moving leads`. |
 | `alerts.error_email` | Where workflow-failure alerts go. |
 | `team_locale` | The team email's and the alert's language, `en` or `es`. Anything else falls back to English, with a note in each email. |
+| `digest_email` | Where the Monday summary of the last seven days' leads goes. A simple email address; when it is missing or invalid the weekly run fails and the operator is alerted. |
 
 **Business details.** Moving quotes → Settings → Business details holds the phone, WhatsApp number, street address, city, opening hours and tax ID. The site footer, the header's phone and WhatsApp links, the quote page, the thank-you card, the customer email and the home page's structured data all read them, and a blank field hides its line everywhere. `./setup.sh` fills in the fictional demo values (`+57 000 000 0099`, `Calle 00 # 00-00, Barranquilla`, 07:00 to 18:00, `NIT 000.000.000-0`; the footer says in each language that the company and tax ID are fictional) only while every business field is blank, so the owner's own values survive a rerun.
 

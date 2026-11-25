@@ -564,6 +564,41 @@ echo 'ok';
     expect(markContactedForm(afterHtml, leadId)).toBeNull();
   });
 
+  it('shows the last-7-days, won and win-rate numbers above the list', async () => {
+    const leadsTable = await table();
+    const marker = crypto.randomUUID().replaceAll('-', '').slice(0, 12);
+    const uuids = [0, 1, 2].map((i) => `00000000-0000-4000-a000-${marker.slice(0, 10)}0${String(i)}`);
+    const insert = (uuid: string, status: string, createdAt: string) =>
+      sqlWp(
+        `INSERT INTO ${leadsTable} (request_uuid, created_at, status, move_type, rooms, origin_city, destination_city, distance_km, move_date, extras, customer_name, phone, email, consent_at, estimate_cop, estimate_low_cop, estimate_high_cop, sync_status, attempts, next_attempt_at, last_error, sent_at)
+         VALUES ('${uuid}', ${createdAt}, '${status}', 'apartment', 2, 'Barranquilla', 'Cartagena', 120, '2026-11-20', '', 'Funnel ${marker}', '570000000006', 'funnel-${marker}@example.com', UTC_TIMESTAMP(), 1130000, 1017000, 1243000, 'sent', 0, 0, '', NULL)`,
+      );
+    await insert(uuids[0]!, 'won', 'UTC_TIMESTAMP()');
+    await insert(uuids[1]!, 'won', 'UTC_TIMESTAMP()');
+    await insert(uuids[2]!, 'lost', 'DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)');
+
+    try {
+      const [recent] = await sqlWp(`SELECT COUNT(*) AS n FROM ${leadsTable} WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)`);
+      const [won] = await sqlWp(`SELECT COUNT(*) AS n FROM ${leadsTable} WHERE status = 'won'`);
+      const [lost] = await sqlWp(`SELECT COUNT(*) AS n FROM ${leadsTable} WHERE status = 'lost'`);
+      const rate = Math.round((100 * Number(won?.n)) / (Number(won?.n) + Number(lost?.n)));
+
+      const html = await (await fetch(site(LEADS_PAGE), { headers: { Cookie: adminCookies } })).text();
+      const tile = (label: string): string | undefined => {
+        const labelAt = html.indexOf(`<span class="moving-quote-leads__stat-label">${label}</span>`);
+        const valueAt = html.lastIndexOf('<span class="moving-quote-leads__stat-value">', labelAt);
+        return valueAt === -1 || labelAt === -1 ? undefined : html.slice(valueAt, labelAt).replace(/<[^>]+>/g, '').trim();
+      };
+      expect(tile('Last 7 days')).toBe(String(recent?.n));
+      expect(tile('Won')).toBe(String(won?.n));
+      expect(tile('Win rate')).toBe(`${String(rate)}%`);
+      expect(html).toContain('Won ÷ (won + lost).');
+      expect(html.indexOf('moving-quote-leads__stats')).toBeLessThan(html.indexOf('<table class="wp-list-table'));
+    } finally {
+      await sqlWp(`DELETE FROM ${leadsTable} WHERE customer_name = 'Funnel ${marker}'`);
+    }
+  });
+
   it('logs nothing from the plugin', async () => {
     await expect(pluginLogLines()).resolves.toEqual([]);
   });

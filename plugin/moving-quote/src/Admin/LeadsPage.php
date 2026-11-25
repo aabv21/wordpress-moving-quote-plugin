@@ -54,6 +54,7 @@ final class LeadsPage {
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Moving quotes', 'moving-quote' ); ?></h1>
 			<?php self::render_notice(); ?>
+			<?php self::render_stats(); ?>
 			<a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'moving-quote' ); ?></a>
 			<?php
 			/*
@@ -66,6 +67,28 @@ final class LeadsPage {
 			<?php $table->views(); ?>
 			<?php $table->display(); ?>
 		</div>
+		<?php
+	}
+
+	/** Three tiles above the views: leads in the last 7 days, leads won, and the win rate. */
+	private static function render_stats(): void {
+		$repository = new LeadRepository();
+		$stats      = FunnelStats::from( $repository->count_by_status(), $repository->count_created_since( gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS ) ) );
+		$tiles      = [
+			[ __( 'Last 7 days', 'moving-quote' ), (string) $stats->last_7_days ],
+			[ __( 'Won', 'moving-quote' ), (string) $stats->won ],
+			[ __( 'Win rate', 'moving-quote' ), null === $stats->win_rate_percent ? "\u{2014}" : sprintf( '%d%%', $stats->win_rate_percent ) ],
+		];
+		?>
+		<div class="moving-quote-leads__stats">
+			<?php foreach ( $tiles as [ $label, $value ] ) : ?>
+				<div class="moving-quote-leads__stat">
+					<span class="moving-quote-leads__stat-value"><?php echo esc_html( $value ); ?></span>
+					<span class="moving-quote-leads__stat-label"><?php echo esc_html( $label ); ?></span>
+				</div>
+			<?php endforeach; ?>
+		</div>
+		<p class="description"><?php esc_html_e( 'Won ÷ (won + lost).', 'moving-quote' ); ?></p>
 		<?php
 	}
 

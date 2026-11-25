@@ -608,3 +608,15 @@ msgstr "Notas guardadas."
 
 msgid "Team notes"
 msgstr "Notas del equipo"
+
+msgid "Last 7 days"
+msgstr "Últimos 7 días"
+
+msgid "Win rate"
+msgstr "Tasa de cierre"
+
+msgid "Won ÷ (won + lost)."
+msgstr "Ganadas ÷ (ganadas + perdidas)."
+
+msgid "Won"
+msgstr "Ganadas"
