@@ -9,17 +9,10 @@ const execFileAsync = promisify(execFile);
 const PAGE_PATHS = ['/', '/get-a-quote/', '/thank-you/', '/data-policy/', '/es/', '/es/cotizar/', '/es/gracias/', '/es/politica-de-datos/'];
 const PAGE_SLUGS = ['home', 'get-a-quote', 'thank-you', 'data-policy', 'inicio', 'cotizar', 'gracias', 'politica-de-datos'];
 
-/** Curly apostrophes become straight ones too, since WordPress texturizes content. */
+/** Curly apostrophes become straight ones too, since WordPress texturizes content. One pass, so `&#038;amp;` stays `&amp;`. */
+const ENTITIES: Record<string, string> = { '&quot;': '"', '&#039;': "'", '&#8217;': "'", '&lt;': '<', '&gt;': '>', '&#038;': '&', '&amp;': '&' };
 function decodeHtmlEntities(text: string): string {
-  return text
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#039;', "'")
-    .replaceAll('&#8217;', "'")
-    .replaceAll('’', "'")
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&#038;', '&')
-    .replaceAll('&amp;', '&');
+  return text.replaceAll('\u2019', "'").replace(/&(?:quot|#039|#8217|lt|gt|#038|amp);/g, (entity) => ENTITIES[entity] ?? entity);
 }
 
 async function page(path: string): Promise<string> {
