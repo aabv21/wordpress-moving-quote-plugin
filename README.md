@@ -10,7 +10,7 @@ A custom WordPress plugin that gives instant moving estimates in English and Spa
 
 ![System architecture: the browser submits to WordPress's REST API, which inserts into the leads table and sends a signed request to n8n's lead-intake workflow; lead-intake records the request once in Postgres and hands off to process-lead, which appends or updates a row in Google Sheets and emails the team and the customer; error-handler alerts the operator on any workflow failure](docs/diagrams/architecture.svg)
 
-Open the [interactive diagram](docs/diagrams/architecture.html) to read it full-size, pan, and inspect each node. [`docs/architecture.md`](docs/architecture.md) covers the components, the workflows node by node, the data model, failure modes with recovery steps, scaling limits, and security, with the [lead-delivery sequence diagram](docs/diagrams/lead-sequence.html). [`docs/testing.md`](docs/testing.md) covers every test suite and what continuous integration (CI) runs.
+Open the [interactive diagram](docs/diagrams/architecture.html) to read it full-size, pan, and inspect each node. The same folder has the [lead-delivery sequence](docs/diagrams/lead-sequence.svg) ([interactive page](docs/diagrams/lead-sequence.html)), the [delivery states](docs/diagrams/delivery-lifecycle.svg), the [personal-data flow](docs/diagrams/personal-data-flow.svg) and the [queue-mode stack](docs/diagrams/queue-mode.svg); each has an interactive `.html` page beside it. [`docs/architecture.md`](docs/architecture.md) covers the components, the workflows node by node, the data model, failure modes with recovery steps, scaling limits, and security. [`docs/testing.md`](docs/testing.md) covers every test suite and what continuous integration (CI) runs. The rest of the reference: [`docs/plugin.md`](docs/plugin.md) (the plugin and the site theme), [`docs/api.md`](docs/api.md) (routes, webhook, shortcodes), [`docs/i18n.md`](docs/i18n.md) (translations and the language switcher), [`docs/database.md`](docs/database.md), and [`docs/supply-chain.md`](docs/supply-chain.md).
 
 ## What it does
 
@@ -132,7 +132,7 @@ Automated suites, each with its own section in [`docs/testing.md`](docs/testing.
 - `pnpm run php composer check`: PHPCS, PHPStan level 9, and PHPUnit for every pure PHP class.
 - `pnpm run test:stack:wp`: WordPress on the real stack, covering install, settings, the REST API, the form, the Leads admin, delivery, and both languages.
 - `pnpm run test:stack:n8n`: the three workflows on the real stack, from a signed lead to the operator alert.
-- The queue-mode run: `docker compose -f compose.yaml -f compose.queue.yaml up -d --wait --scale n8n-worker=2`, then `pnpm exec vitest run --config vitest.stack.config.ts tests/stack/n8n/intake.test.ts`.
+- The queue-mode run: follow ["The queue-mode run"](docs/testing.md#the-queue-mode-run), then run `pnpm exec vitest run --config vitest.stack.config.ts tests/stack/n8n/intake.test.ts`.
 
 By hand, on the local stack. A stack test already covers each scenario's WordPress half; these confirm the whole path with a real Google account:
 
@@ -163,12 +163,23 @@ Then:
 | Scenarios 1–6 above | As listed. |
 | Switch to ES in the header, then send scenario 1 from `/es/cotizar/` | Lands on `/es/gracias/?reference=MQ-…`. The lead's CSV row has `es_CO`. The customer email is `Su cotización de mudanza de …` with `COP 1.017.000 – 1.243.000`. With `team_locale: "en"` the team email is English; with `"es"`, the next one is `Nueva solicitud MQ-…`. |
 | Set `team_locale` to `"ES"`, submit, then restore it | The team email is English and ends with `Note: config.team_locale is not "en" or "es"…`. The customer email is still in the lead's language. |
-| Rename the `Moving leads` tab, then submit scenario 1 | After 3 tries, one `[Chivabox demo] Workflow failed: Process lead` email reaches `alerts.error_email`, naming "Append lead row". Rename the tab back and choose Retry on the failed execution in n8n's executions list: it resumes at "Append lead row", adds the row, and sends both emails. n8n then hides Retry on that execution, so retry it once more through n8n's API: create a key in n8n under Settings → n8n API, run `read -rs N8N_API_KEY && export N8N_API_KEY` and paste it, then `curl -fsS -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" -H 'Content-Type: application/json' -d '{}' http://localhost:5678/api/v1/executions/<execution id>/retry`, with the failed execution's ID from its URL. It answers with `"mode":"retry"`. Still one row for that lead, updated in place by its `request_uuid`, and both emails again: each retry resends the team and customer emails. |
+| Rename the `Moving leads` tab, then submit scenario 1 | After 3 tries, one `[Chivabox demo] Workflow failed: Process lead` email reaches `alerts.error_email`, naming "Append lead row". Then follow "Retrying a failed execution" below: still one row for that lead, updated in place by its `request_uuid`, and both emails again. |
 | The same with `team_locale: "es"`, then restore it | The subject is `[Chivabox demo] Falló el flujo: Process lead`, with Spanish labels. |
 | With both Google credentials signed in, `pnpm run test:stack:n8n` | Every case that would reach `process-lead` or `error-handler` prints its skip message. No test row and no email. |
 | The Gmail consent and the sender name | The consent is send-only, and the sender name shows on both emails. |
 | Send scenario 1, then open the customer email in Gmail | A header with "Chivabox Movers", the estimate as a large figure, rows for route, date, type, extras and reference, and a line "Questions? Call us at +57 000 000 0099 or write on WhatsApp" whose link opens `https://wa.me/570000000099`. |
 | Both Playground links above, once this version is on `main` | `blueprint.json` shows the redesigned English home with the Chivabox theme; `blueprint.es.json` the Spanish one. |
+
+### Retrying a failed execution
+
+Run this after the tab-rename check above. Each retry resends the team and customer emails.
+
+1. Rename the tab back to `Moving leads`.
+2. In n8n's executions list, choose Retry on the failed `process-lead` execution. It resumes at "Append lead row", adds the row, and sends both emails.
+3. n8n now hides Retry on that execution, so retry it once more through its API. Create a key in n8n under Settings → n8n API.
+4. Run `read -rs N8N_API_KEY && export N8N_API_KEY` and paste the key.
+5. Take the failed execution's ID from its URL, then run `curl -fsS -X POST -H "X-N8N-API-KEY: $N8N_API_KEY" -H 'Content-Type: application/json' -d '{}' http://localhost:5678/api/v1/executions/<execution id>/retry`. It answers with `"mode":"retry"`.
+6. Check the sheet: still one row for that lead, and both emails again.
 
 ## Design decisions
 

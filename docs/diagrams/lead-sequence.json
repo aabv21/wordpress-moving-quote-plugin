@@ -7,33 +7,109 @@
     "output": "docs/diagrams/lead-sequence.html",
     "quality_profile": "showcase",
     "column_fit": "spread",
-    "viewBox": [1520, 980],
+    "viewBox": [1680, 1080],
     "legend": {
       "entries": {
-        "emphasis": { "label": "main path" },
-        "default": { "label": "call" },
-        "return": { "label": "reply" },
-        "dashed": { "label": "retry loop" }
+        "emphasis": {
+          "label": "main path"
+        },
+        "default": {
+          "label": "call"
+        },
+        "return": {
+          "label": "reply"
+        },
+        "dashed": {
+          "label": "retry loop"
+        }
       }
     }
   },
   "participants": [
-    { "id": "browser", "type": "frontend", "label": "Browser" },
-    { "id": "rest", "type": "backend", "label": "REST API" },
-    { "id": "wpdb", "type": "database", "label": "Leads table", "brand": "mysql" },
-    { "id": "cron", "type": "backend", "label": "Cron sidecar" },
-    { "id": "intake", "type": "backend", "label": "lead-intake" },
-    { "id": "pg", "type": "database", "label": "Postgres", "brand": "postgresql" },
-    { "id": "process", "type": "backend", "label": "process-lead" },
-    { "id": "google", "type": "external", "label": "Sheets · Gmail" }
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Browser"
+    },
+    {
+      "id": "rest",
+      "type": "backend",
+      "label": "REST API"
+    },
+    {
+      "id": "wpdb",
+      "type": "database",
+      "label": "Leads table",
+      "brand": "mysql"
+    },
+    {
+      "id": "cron",
+      "type": "backend",
+      "label": "Cron sidecar"
+    },
+    {
+      "id": "intake",
+      "type": "backend",
+      "label": "lead-intake"
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "Postgres",
+      "brand": "postgresql"
+    },
+    {
+      "id": "process",
+      "type": "backend",
+      "label": "process-lead"
+    },
+    {
+      "id": "alert",
+      "type": "backend",
+      "label": "error-handler"
+    },
+    {
+      "id": "google",
+      "type": "external",
+      "label": "Sheets · Gmail"
+    }
   ],
   "segments": [
-    { "from": 160, "to": 250, "label": "1 Estimate" },
-    { "from": 270, "to": 360, "label": "2 Submit and insert" },
-    { "from": 380, "to": 420, "label": "3 Signed POST and verify" },
-    { "from": 488, "to": 550, "label": "4 Record and respond" },
-    { "from": 570, "to": 640, "label": "5 Hand off to process-lead" },
-    { "from": 660, "to": 852, "label": "6 Retry on failure (alternative)" }
+    {
+      "from": 166,
+      "to": 218,
+      "label": "1 Estimate"
+    },
+    {
+      "from": 254,
+      "to": 334,
+      "label": "2 Submit and insert"
+    },
+    {
+      "from": 370,
+      "to": 394,
+      "label": "3 Signed POST and verify"
+    },
+    {
+      "from": 430,
+      "to": 538,
+      "label": "4 Record and respond"
+    },
+    {
+      "from": 574,
+      "to": 626,
+      "label": "5 Hand off to process-lead"
+    },
+    {
+      "from": 662,
+      "to": 798,
+      "label": "6 Retry on failure (alternative)"
+    },
+    {
+      "from": 834,
+      "to": 970,
+      "label": "7 Rejection and failure (alternative)"
+    }
   ],
   "messages": [
     {
@@ -53,98 +129,140 @@
     {
       "from": "browser",
       "to": "rest",
-      "y": 288,
+      "y": 266,
       "label": "POST /leads, X-WP-Nonce",
       "variant": "emphasis"
     },
     {
       "from": "rest",
       "to": "wpdb",
-      "y": 316,
+      "y": 294,
       "label": "insert by submission_id",
       "variant": "emphasis"
     },
     {
       "from": "wpdb",
       "to": "rest",
-      "y": 344,
+      "y": 322,
       "label": "new row, lease set",
       "variant": "return"
     },
     {
       "from": "rest",
       "to": "intake",
-      "y": 398,
+      "y": 382,
       "label": "Authorization: Bearer <JWT>",
       "variant": "emphasis"
     },
     {
       "from": "intake",
       "to": "pg",
-      "y": 508,
+      "y": 442,
       "label": "verified; INSERT ... ON CONFLICT DO NOTHING",
       "variant": "emphasis"
     },
     {
       "from": "pg",
       "to": "intake",
-      "y": 536,
+      "y": 470,
       "label": "event_id, or none if duplicate",
       "variant": "return"
     },
     {
       "from": "intake",
       "to": "rest",
-      "y": 590,
+      "y": 498,
       "label": "200 accepted / duplicate",
       "variant": "return"
     },
     {
       "from": "rest",
       "to": "browser",
-      "y": 618,
+      "y": 526,
       "label": "201 ok, reference, estimate",
       "variant": "return"
     },
     {
       "from": "intake",
       "to": "process",
-      "y": 672,
+      "y": 586,
       "label": "fire-and-forget (accepted only)",
       "variant": "emphasis"
     },
     {
       "from": "process",
       "to": "google",
-      "y": 700,
+      "y": 614,
       "label": "append or update row, then email team + customer"
     },
     {
       "from": "wpdb",
       "to": "cron",
-      "y": 740,
+      "y": 674,
       "label": "due rows (pending, backoff elapsed)",
       "variant": "dashed"
     },
     {
       "from": "cron",
+      "to": "wpdb",
+      "y": 702,
+      "label": "claim the row with a 120 s lease",
+      "variant": "dashed"
+    },
+    {
+      "from": "cron",
       "to": "intake",
-      "y": 768,
+      "y": 730,
       "label": "same submission_id, fresh JWT",
       "variant": "dashed"
     },
     {
       "from": "intake",
       "to": "cron",
-      "y": 796,
+      "y": 758,
       "label": "accepted, or duplicate if the first attempt landed",
       "variant": "dashed"
     },
     {
       "from": "cron",
       "to": "wpdb",
-      "y": 832,
+      "y": 786,
       "label": "apply_sync: sent, or pending with new backoff",
+      "variant": "dashed"
+    },
+    {
+      "from": "intake",
+      "to": "rest",
+      "y": 846,
+      "label": "reject: 401 / 403 / 422",
+      "variant": "dashed"
+    },
+    {
+      "from": "rest",
+      "to": "wpdb",
+      "y": 874,
+      "label": "row stays pending; outbox retries with backoff",
+      "variant": "dashed"
+    },
+    {
+      "from": "intake",
+      "to": "alert",
+      "y": 902,
+      "label": "workflow failure: alert the operator",
+      "variant": "dashed"
+    },
+    {
+      "from": "process",
+      "to": "alert",
+      "y": 930,
+      "label": "run failed: alert the operator",
+      "variant": "dashed"
+    },
+    {
+      "from": "alert",
+      "to": "google",
+      "y": 958,
+      "label": "operator email",
       "variant": "dashed"
     }
   ],

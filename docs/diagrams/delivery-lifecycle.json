@@ -1,0 +1,170 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Lead Delivery States",
+    "locale": "en",
+    "output": "docs/diagrams/delivery-lifecycle.html",
+    "animation": "trace",
+    "quality_profile": "showcase"
+  },
+  "mainPath": [
+    "inserted",
+    "due",
+    "claimed",
+    "sent"
+  ],
+  "states": [
+    {
+      "id": "inserted",
+      "type": "start",
+      "label": "Inserted",
+      "sublabel": "pending, lease 120 s",
+      "tag": "entry",
+      "step": "01"
+    },
+    {
+      "id": "due",
+      "type": "active",
+      "label": "Pending, due",
+      "sublabel": "next_attempt_at passed",
+      "tag": "outbox",
+      "step": "02"
+    },
+    {
+      "id": "claimed",
+      "type": "active",
+      "label": "Claimed",
+      "sublabel": "pending, lease 120 s",
+      "tag": "cron",
+      "step": "03"
+    },
+    {
+      "id": "sent",
+      "type": "success",
+      "label": "Sent",
+      "sublabel": "accepted or duplicate",
+      "tag": "done",
+      "step": "04"
+    },
+    {
+      "id": "attempt-failed",
+      "type": "decision",
+      "label": "Attempt failed",
+      "sublabel": "attempts + 1",
+      "tag": "outcome"
+    },
+    {
+      "id": "backoff",
+      "type": "waiting",
+      "label": "Pending, backoff",
+      "sublabel": "60 x 2^(n-1) s, cap 6 h",
+      "tag": "wait"
+    },
+    {
+      "id": "failed",
+      "type": "failure",
+      "label": "Failed",
+      "sublabel": "10 attempts used",
+      "tag": "stuck notice"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "inserted-sent",
+      "from": "inserted",
+      "to": "sent",
+      "label": "inline ok"
+    },
+    {
+      "id": "inserted-attempt",
+      "from": "inserted",
+      "to": "attempt-failed",
+      "label": "inline fails",
+      "variant": "security"
+    },
+    {
+      "id": "inserted-due",
+      "from": "inserted",
+      "to": "due",
+      "label": "lease ends",
+      "variant": "dashed"
+    },
+    {
+      "id": "due-claimed",
+      "from": "due",
+      "to": "claimed",
+      "label": "claim"
+    },
+    {
+      "id": "claimed-sent",
+      "from": "claimed",
+      "to": "sent",
+      "label": "accepted"
+    },
+    {
+      "id": "claimed-attempt",
+      "from": "claimed",
+      "to": "attempt-failed",
+      "label": "send fails",
+      "variant": "security"
+    },
+    {
+      "id": "attempt-failed-failed",
+      "from": "attempt-failed",
+      "to": "failed",
+      "label": "10th attempt",
+      "variant": "security"
+    },
+    {
+      "id": "claimed-due",
+      "from": "claimed",
+      "to": "due",
+      "label": "lease ends",
+      "variant": "dashed"
+    },
+    {
+      "id": "backoff-due",
+      "from": "backoff",
+      "to": "due",
+      "label": "delay passes",
+      "variant": "dashed"
+    },
+    {
+      "id": "failed-due",
+      "from": "failed",
+      "to": "due",
+      "label": "Retry delivery",
+      "variant": "dashed"
+    },
+    {
+      "id": "attempt-backoff",
+      "from": "attempt-failed",
+      "to": "backoff",
+      "label": "under 10",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Main path",
+      "items": [
+        "A new lead is delivered inline right after the insert, with no claim",
+        "The cron outbox claims a due row with a 120 s lease, then sends it",
+        "A 2xx with status accepted or duplicate is the only success"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Retries and recovery",
+      "items": [
+        "Every failed attempt counts: attempts + 1, then the delay 60 x 2^(n-1) s, capped at 6 h (about 8.5 h in all)",
+        "The 10th failure stops at Failed and raises the stuck-delivery notice",
+        "A row whose status can't be read counts as a failed attempt and is skipped, so the batch goes on",
+        "Retry delivery sends a failed lead back to due with 0 attempts",
+        "With delivery off, leads stay pending and nothing is sent"
+      ]
+    }
+  ]
+}

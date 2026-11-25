@@ -19,13 +19,13 @@ Two databases back this repo: MySQL, which WordPress itself owns (the leads tabl
 
 ## Every statement and what covers it
 
-Exactly one Postgres node exists across every workflow in `workflows/`: `lead-intake`'s "Record request". No other workflow, and no Chat Memory node, touches Postgres at all — checked by reading every `n8n-nodes-base.postgres` node straight from `workflows/*.json` (see `tests/check-db.test.ts`'s "workflow statements" describe block, which asserts there is exactly one).
+Exactly one Postgres node exists across every workflow in `workflows/`: `lead-intake`'s "Record request". No other workflow, and no Chat Memory node, touches Postgres at all, checked by reading every `n8n-nodes-base.postgres` node straight from `workflows/*.json` (see `tests/check-db.test.ts`'s "workflow statements" describe block, which asserts there is exactly one).
 
 | Workflow › node | Statement | Privileges it needs | Served by |
 |---|---|---|---|
 | `lead-intake` › Record request | `INSERT INTO processed_events (source, event_id) VALUES ('wordpress-lead', $1) ON CONFLICT DO NOTHING RETURNING event_id` | `INSERT` on `processed_events`; `SELECT` for the `ON CONFLICT` conflict check and the `RETURNING` read | primary key `(source, event_id)`, as the conflict arbiter |
 
-So `app_runtime` holds exactly `SELECT, INSERT` on `processed_events` — no `UPDATE` (nothing ever updates a row; a replay just returns no `event_id`), no `DELETE` (nothing ever deletes one; see Retention below), and no DDL. `processed_events` has no serial or identity column, so there is no sequence to grant either (unlike a `GENERATED ALWAYS AS IDENTITY` primary key, whose implicit `nextval()` would still need no grant — demo 2 proved that case empirically; it doesn't arise here at all, since this table's key is `(source, event_id)`, not a sequence).
+So `app_runtime` holds exactly `SELECT, INSERT` on `processed_events`: no `UPDATE` (nothing ever updates a row; a replay just returns no `event_id`), no `DELETE` (nothing ever deletes one; see Retention below), and no DDL. `processed_events` has no serial or identity column, so there is no sequence to grant either (unlike a `GENERATED ALWAYS AS IDENTITY` primary key, whose implicit `nextval()` would still need no grant: demo 2 proved that case empirically, and it doesn't arise here at all, since this table's key is `(source, event_id)`, not a sequence).
 
 ## The checklist
 
@@ -45,13 +45,13 @@ So `app_runtime` holds exactly `SELECT, INSERT` on `processed_events` — no `UP
 ### 2. Schema
 
 - **Primary key:** `processed_events (source, event_id)`; `schema_migrations (filename)`.
-- **`NOT NULL`:** every column on both tables is required (`source`, `event_id`, `received_at`; `filename`, `applied_at`) — there's no optional field on either.
-- **CHECK on the enumerated column:** `002_source_check.sql` adds `CHECK (source IN ('wordpress-lead'))`, derived from its one writer — `lead-intake`'s "Record request" node, the only place that inserts a row — with no other script or stack test writing a different value. `tests/db-migrate.test.ts` pins the value list against that same workflow file.
+- **`NOT NULL`:** every column on both tables is required (`source`, `event_id`, `received_at`; `filename`, `applied_at`); there's no optional field on either.
+- **CHECK on the enumerated column:** `002_source_check.sql` adds `CHECK (source IN ('wordpress-lead'))`, derived from its one writer (`lead-intake`'s "Record request" node, the only place that inserts a row), with no other script or stack test writing a different value. `tests/db-migrate.test.ts` pins the value list against that same workflow file.
 - **Timestamps:** `processed_events.received_at` is `timestamptz`. There's no MySQL `datetime` on the Postgres side.
 
 ### 3. Indexes
 
-The one query a production path runs is served by the primary key itself: `ON CONFLICT DO NOTHING RETURNING event_id` arbitrates on `(source, event_id)`, which is also what the conflict check reads. There's no secondary index, because there's no second query shape to serve — `processed_events` has exactly one writer and no reader in `workflows/`.
+The one query a production path runs is served by the primary key itself: `ON CONFLICT DO NOTHING RETURNING event_id` arbitrates on `(source, event_id)`, which is also what the conflict check reads. There's no secondary index, because there's no second query shape to serve: `processed_events` has exactly one writer and no reader in `workflows/`.
 
 ### 4. Queries
 
@@ -72,7 +72,7 @@ The one query a production path runs is served by the primary key itself: `ON CO
 
 `db-migrate` passes each variable to `docker compose exec` as a bare `-e NAME`. Docker copies the value from `db-migrate`'s own environment, so it never appears in an argument list or in `ps`, and psql reads it with `\getenv`. A password reaches the server only inside `ALTER ROLE … PASSWORD`, which psql quotes itself. `db-migrate` redacts every `.env` secret from psql's output before printing an error.
 
-Postgres also logs a failed statement's full text by default (`log_min_error_statement = error`), and `ALTER ROLE … PASSWORD` carries the password. So the password step first runs `SET LOCAL log_min_error_statement = panic` and `SET LOCAL log_statement = 'none'` inside its own transaction. `db/init/01-app.sh` does the same for its session before it creates the `n8n` and `app` roles, and reads each password with `\getenv` rather than a `-v` argument, so neither reaches `ps` either. It also stops at once if `N8N_DB_PASSWORD` or `APP_DB_PASSWORD` is empty — checked locally by searching `docker compose logs postgres` for the literal text `PASSWORD '` after a deliberately failed password statement: zero matches (see "The log proof" under "Proving it: `check-db`" below).
+Postgres also logs a failed statement's full text by default (`log_min_error_statement = error`), and `ALTER ROLE … PASSWORD` carries the password. So the password step first runs `SET LOCAL log_min_error_statement = panic` and `SET LOCAL log_statement = 'none'` inside its own transaction. `db/init/01-app.sh` does the same for its session before it creates the `n8n` and `app` roles, and reads each password with `\getenv` rather than a `-v` argument, so neither reaches `ps` either. It also stops at once if `N8N_DB_PASSWORD` or `APP_DB_PASSWORD` is empty, checked locally by searching `docker compose logs postgres` for the literal text `PASSWORD '` after a deliberately failed password statement: zero matches (see "The log proof" under "Proving it: `check-db`" below).
 
 `001_runtime_role.sql` is safe to run twice: it creates the role through `\gexec` only `WHERE NOT EXISTS`, and every `GRANT`/`REVOKE` statement is naturally idempotent. `002_source_check.sql` adds its `CHECK` constraint only `WHERE NOT EXISTS` against `pg_constraint`. The ledger already skips applied files, so a second `pnpm run setup` prints `no pending migrations`.
 
@@ -82,10 +82,10 @@ Postgres also logs a failed statement's full text by default (`log_min_error_sta
 
 | Table | Personal/business data | Deleted by | When |
 |---|---|---|---|
-| `processed_events` | none — `event_id` is the lead's own `request_uuid`, an opaque identifier with no PII embedded | nothing | kept indefinitely; see the manual-prune note below |
+| `processed_events` | none: `event_id` is the lead's own `request_uuid`, an opaque identifier with no PII embedded | nothing | kept indefinitely; see the manual-prune note below |
 | `schema_migrations` | none | nothing | it's the ledger |
 
-`processed_events` holds no customer-identifying data itself (no name, phone, or email — just the opaque `request_uuid` and an arrival timestamp), so there's no privacy reason to prune it. It still grows by one row per lead forever, with no automatic job. A manual prune, run by hand against old rows once their corresponding WordPress lead is long past any possible retry or recovery need (see "Recovering a false duplicate" in `architecture.md`, which depends on the row still existing):
+`processed_events` holds no customer-identifying data itself (no name, phone, or email; just the opaque `request_uuid` and an arrival timestamp), so there's no privacy reason to prune it. It still grows by one row per lead forever, with no automatic job. A manual prune, run by hand against old rows once their corresponding WordPress lead is long past any possible retry or recovery need (see "Recovering a false duplicate" in `architecture.md`, which depends on the row still existing):
 
 ```sh
 docker compose exec -T postgres sh -c "psql -U \"\$APP_DB_USER\" -d app -c \"DELETE FROM processed_events WHERE received_at < now() - interval '2 years'\""
@@ -97,16 +97,16 @@ It runs as the owner role, like the recovery command: `app_runtime` has no `DELE
 
 | Table/option | Personal/business data | Deleted by | When |
 |---|---|---|---|
-| `wp_moving_quote_leads` | customer name, phone, email, move details | the WordPress Personal Data eraser (`Admin\PersonalData::erase()`, Tools → Erase Personal Data, keyed by email), or `uninstall.php` (drops the whole table) | on an explicit privacy-tools erase request, or when the plugin is deleted — never automatically otherwise |
+| `wp_moving_quote_leads` | customer name, phone, email, move details | the WordPress Personal Data eraser (`Admin\PersonalData::erase()`, Tools → Erase Personal Data, keyed by email), or `uninstall.php` (drops the whole table) | on an explicit privacy-tools erase request, or when the plugin is deleted; never automatically otherwise |
 | `moving_quote_settings`, `moving_quote_db_version` (options) | none (pricing/delivery config and a schema version number) | `uninstall.php` | when the plugin is deleted |
 | rate-limit transients | none (a hashed IP, never the IP itself) | WordPress's own transient expiry, and `uninstall.php` on delete | within the transient's own window, or on uninstall |
 | Moving leads sheet row / Gmail (team + customer emails) | customer name, phone, email, move details, the same `MQ-…` reference as the deleted row | nothing the eraser can reach: a row in the Sheet, and both sent emails, each exist outside WordPress's own database | removed only by hand, from the Sheet and the two inboxes directly; the eraser's `erase()` response names each erased lead's own `MQ-…` reference and these three places precisely so an admin can find and remove them |
 
-So a lead's PII in WordPress's own database is kept until one of two things happens: the customer (or an admin on their behalf) files a privacy erasure request through WordPress's own Tools → Erase Personal Data screen, or the plugin itself is uninstalled (not merely deactivated — see AGENTS.md's "Install lifecycle"). There's no automatic time-based purge of lead rows; that's a deliberate choice documented here, not an oversight — a moving-quote lead is a sales record a real business would want to keep for its own commercial reasons until asked to delete it, the same way demo 2's invoices are kept as accounting records. **Deleting the WordPress row is not a full erasure**, though: every delivered lead was already synced to n8n right after insert (see "Delivery" in AGENTS.md), so by the time an erase request arrives, a copy can already sit in the Moving leads Google Sheet, in the two notification emails already sent (team and customer), or — for up to 168 hours — in a failed n8n execution's stored data (see "n8n execution data" below). `Admin\PersonalData::erase()` reports `items_retained => true` and a message naming each deleted lead's own `MQ-…` reference for exactly this reason, whenever it actually deleted a row.
+So a lead's PII in WordPress's own database is kept until one of two things happens: the customer (or an admin on their behalf) files a privacy erasure request through WordPress's own Tools → Erase Personal Data screen, or the plugin itself is uninstalled (not merely deactivated; see "Install lifecycle" in [`plugin.md`](plugin.md#install-lifecycle)). There's no automatic time-based purge of lead rows; that's a deliberate choice documented here, not an oversight: a moving-quote lead is a sales record a real business would want to keep for its own commercial reasons until asked to delete it, the same way demo 2's invoices are kept as accounting records. **Deleting the WordPress row is not a full erasure**, though: every delivered lead was already synced to n8n right after insert (see "Delivery" in [`plugin.md`](plugin.md#delivery)), so by the time an erase request arrives, a copy can already sit in the Moving leads Google Sheet, in the two notification emails already sent (team and customer), or, for up to 168 hours, in a failed n8n execution's stored data (see "n8n execution data" below). `Admin\PersonalData::erase()` reports `items_retained => true` and a message naming each deleted lead's own `MQ-…` reference for exactly this reason, whenever it actually deleted a row.
 
 **n8n execution data:** `compose.yaml` keeps `EXECUTIONS_DATA_PRUNE=true` and `EXECUTIONS_DATA_MAX_AGE=168`, so n8n deletes executions after 168 hours. Every workflow in `workflows/` sets `settings.saveManualExecutions: false` (`tests/workflows.test.ts` iterates `workflows/` and asserts it for every file), so a manual run from the editor is never kept either:
 
-- **`lead-intake`** carries the raw signed JWT (`Authorization` header, stored verbatim by n8n with no redaction — see "Token retention, precisely" in `architecture.md`) and the lead's own PII (name, phone, email) once parsed.
+- **`lead-intake`** carries the raw signed JWT (`Authorization` header, stored verbatim by n8n with no redaction; see "Token retention, precisely" in `architecture.md`) and the lead's own PII (name, phone, email) once parsed.
 - **`process-lead`** carries the same PII, since its one caller hands it the parsed lead directly.
 - **`error-handler`** carries whatever the failing execution's own trigger or error payload held, which can include either workflow's data (see "error-handler" in `architecture.md`'s node-by-node section).
 
@@ -116,14 +116,14 @@ A per-workflow carve-out wouldn't hold here any more than it does in the other t
 
 Two databases to back up: Postgres's `app` (n8n's own `n8n` database is covered too, see below) and WordPress's MySQL database. Both commands run from the `postgres`/`db` container's own client, so no port or password crosses the host, and a dump holds business data, so write it outside the repo at `0600`.
 
-**Postgres — `app`:**
+**Postgres (`app`):**
 
 ```bash
 mkdir -p ~/chivabox-backups
 (umask 077; docker compose exec -T postgres sh -c 'pg_dump -Fc -U "$POSTGRES_USER" -d app' > ~/chivabox-backups/app.dump)
 ```
 
-**MySQL — WordPress.** `mysqldump` runs from the `db` container's own client, never `wp db export`: the `wpcli` image's bundled MariaDB client isn't guaranteed to work with MySQL 8.4's wire protocol (the same reason stack tests never use `wp db query`; see AGENTS.md). The password goes in as `MYSQL_PWD`, an environment variable the container's own shell expands, never as a `-p<password>` argument: a password on argv is visible to any other process in the same container through `ps`. `MYSQL_PWD` is deprecated starting MySQL 8.4 but still honored (confirmed against this image's own `mysqldump`/`mysql` below).
+**MySQL (WordPress).** `mysqldump` runs from the `db` container's own client, never `wp db export`: the `wpcli` image's bundled MariaDB client isn't guaranteed to work with MySQL 8.4's wire protocol (the same reason stack tests never use `wp db query`; see AGENTS.md). The password goes in as `MYSQL_PWD`, an environment variable the container's own shell expands, never as a `-p<password>` argument: a password on argv is visible to any other process in the same container through `ps`. `MYSQL_PWD` is deprecated starting MySQL 8.4 but still honored (confirmed against this image's own `mysqldump`/`mysql` below).
 
 ```bash
 (umask 077; docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqldump -u root "$MYSQL_DATABASE"' > ~/chivabox-backups/wordpress.sql)
@@ -142,7 +142,7 @@ done
 docker compose exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" app_restore_check'
 ```
 
-MySQL. The `for db in …` loop runs entirely inside the container's own `sh -c`, so `$MYSQL_DATABASE` and `$db` are both expanded there, by the container's shell, from the container's own environment — never on the host, where `$MYSQL_DATABASE` is unset (it's `wordpress`; confirmed against this image):
+MySQL. The `for db in …` loop runs entirely inside the container's own `sh -c`, so `$MYSQL_DATABASE` and `$db` are both expanded there, by the container's shell, from the container's own environment, never on the host, where `$MYSQL_DATABASE` is unset (it's `wordpress`; confirmed against this image):
 
 ```bash
 docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root -e "CREATE DATABASE wordpress_restore_check"'
@@ -151,11 +151,11 @@ docker compose exec -T db sh -c 'for db in "$MYSQL_DATABASE" wordpress_restore_c
 docker compose exec -T db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root -e "DROP DATABASE wordpress_restore_check"'
 ```
 
-Drop only the two `_restore_check` scratch databases afterward — never the real `app` or WordPress databases.
+Drop only the two `_restore_check` scratch databases afterward, never the real `app` or WordPress databases.
 
 To restore over `app` itself, stop n8n first, so nothing writes during the restore: `docker compose stop n8n`, then `pg_restore -U "$POSTGRES_USER" -d app --clean --if-exists --exit-on-error`, then `docker compose start n8n`. Roles live at the server level, so a dump doesn't carry them; on a fresh volume, `db/init/` and `pnpm run db:migrate` recreate them from `.env`.
 
-**n8n's own database** backs up the same way as `app`, with `-d n8n` instead. Its credentials are encrypted with `N8N_ENCRYPTION_KEY`, so keep that key, from `.env`, alongside the dump — a dump without the key restores workflows, but none of their credentials.
+**n8n's own database** backs up the same way as `app`, with `-d n8n` instead. Its credentials are encrypted with `N8N_ENCRYPTION_KEY`, so keep that key, from `.env`, alongside the dump: a dump without the key restores workflows, but none of their credentials.
 
 ### 8. Connections
 
@@ -172,18 +172,18 @@ To restore over `app` itself, stop n8n first, so nothing writes during the resto
 
 ## MySQL: document, don't change
 
-The MySQL side isn't part of this least-privilege port — WordPress's own database access pattern is left as-is, and documented here instead:
+The MySQL side isn't part of this least-privilege port: WordPress's own database access pattern is left as-is, and documented here instead:
 
-- **The WordPress DB user is non-root, but needs DDL.** `MYSQL_USER`/`MYSQL_PASSWORD` (`compose.yaml`'s `db` service) create a non-root MySQL user scoped to `MYSQL_DATABASE` alone (the official `mysql` image's own bootstrap grants that user full privileges on that one database, nothing server-wide). That's still full `ALL PRIVILEGES` on the `wordpress` database, DDL included — not DML-only the way `app_runtime` is on Postgres — because `dbDelta()` (WordPress core's own schema-migration helper, which `Install\Installer::activate()` and `::maybe_upgrade()` both call) issues `CREATE TABLE`/`ALTER TABLE` directly against the live connection, with no separate owner-vs-runtime role split the way this plugin's Postgres side now has. Narrowing it would break every WordPress core update and every plugin's own install/upgrade path, not just this one.
-- **The plugin's own migration path.** `Install\Installer::maybe_upgrade()` runs on every `plugins_loaded`: when the stored `moving_quote_db_version` option differs from `Installer::DB_VERSION`, it reruns `dbDelta()` against `Install\Schema::sql()` and updates the option, so an existing site picks up a schema change on its very next request — no separate migration runner, no ledger table, the way Postgres's `db/migrations/` has one. `dbDelta()` itself is idempotent (it diffs the live table against the `CREATE TABLE` text and only applies what's missing), which is what makes rerunning it on every mismatched version safe.
+- **The WordPress DB user is non-root, but needs DDL.** `MYSQL_USER`/`MYSQL_PASSWORD` (`compose.yaml`'s `db` service) create a non-root MySQL user scoped to `MYSQL_DATABASE` alone (the official `mysql` image's own bootstrap grants that user full privileges on that one database, nothing server-wide). That's still full `ALL PRIVILEGES` on the `wordpress` database, DDL included (not DML-only the way `app_runtime` is on Postgres), because `dbDelta()` (WordPress core's own schema-migration helper, which `Install\Installer::activate()` and `::maybe_upgrade()` both call) issues `CREATE TABLE`/`ALTER TABLE` directly against the live connection, with no separate owner-vs-runtime role split the way this plugin's Postgres side now has. Narrowing it would break every WordPress core update and every plugin's own install/upgrade path, not just this one.
+- **The plugin's own migration path.** `Install\Installer::maybe_upgrade()` runs on every `plugins_loaded`: when the stored `moving_quote_db_version` option differs from `Installer::DB_VERSION`, it reruns `dbDelta()` against `Install\Schema::sql()` and updates the option, so an existing site picks up a schema change on its very next request: no separate migration runner, no ledger table, the way Postgres's `db/migrations/` has one. `dbDelta()` itself is idempotent (it diffs the live table against the `CREATE TABLE` text and only applies what's missing), which is what makes rerunning it on every mismatched version safe.
 - **The leads table keeps PII until the privacy eraser or uninstall.** See Retention above: `wp_moving_quote_leads` holds customer name, phone, email, and move details, kept indefinitely until `Admin\PersonalData::erase()` (WordPress's own privacy-tools eraser, keyed by email) or `uninstall.php` removes it. There's no time-based auto-purge.
 - **Schema changes ship through `moving_quote_db_version`, not a migration ledger.** `Install\Installer::DB_VERSION` is bumped with each `Install\Schema::sql()` change, and `maybe_upgrade()` reruns `dbDelta` on the next request once the stored version differs. Version 2 added `locale varchar(20) NOT NULL DEFAULT ''` as the table's last column (`dbDelta` appends a new column, so a fresh install and an upgraded one agree on order); an existing row keeps `''`. `tests/stack/wp/install.test.ts` drops the column, sets the version back to `1`, and proves the next request restores it without touching the row.
-- **`datetime` columns hold UTC.** `Install\Schema::sql()`'s `created_at`, `consent_at`, and `sent_at` are plain MySQL `datetime` columns, written by `$wpdb` (WordPress core's own database layer), which stores whatever PHP `DateTimeImmutable`/`current_time('mysql', true)`-style value the plugin passes — this plugin always writes UTC, converting only for display (e.g. the leads admin page's "Received" column, shown in `America/Bogota`; see AGENTS.md's "Leads admin"). A `datetime` column carries no timezone of its own, so this is a convention this plugin follows consistently, not something MySQL enforces.
-- **`processed_events` growth and MySQL's own tables are two separate concerns.** `wp_moving_quote_leads` grows with real leads and is pruned by the privacy tools or uninstall, as above; Postgres's `processed_events` grows by opaque ids only and has its own manual-prune statement (see Retention above) — the two tables track different things (a lead's full record vs. an idempotency marker) and are never pruned by the same mechanism.
+- **`datetime` columns hold UTC.** `Install\Schema::sql()`'s `created_at`, `consent_at`, and `sent_at` are plain MySQL `datetime` columns, written by `$wpdb` (WordPress core's own database layer), which stores whatever PHP `DateTimeImmutable`/`current_time('mysql', true)`-style value the plugin passes; this plugin always writes UTC, converting only for display (e.g. the leads admin page's "Received" column, shown in `America/Bogota`; see "Leads admin" in [`plugin.md`](plugin.md#leads-admin)). A `datetime` column carries no timezone of its own, so this is a convention this plugin follows consistently, not something MySQL enforces.
+- **`processed_events` growth and MySQL's own tables are two separate concerns.** `wp_moving_quote_leads` grows with real leads and is pruned by the privacy tools or uninstall, as above; Postgres's `processed_events` grows by opaque ids only and has its own manual-prune statement (see Retention above); the two tables track different things (a lead's full record vs. an idempotency marker) and are never pruned by the same mechanism.
 
 ## Credentials
 
-`scripts/setup-credentials.ts` skips an existing credential in n8n unless it's named with `--refresh <id>` (any number of times) — re-importing a credential replaces it, which would otherwise drop an interactive Google sign-in for the Sheets/Gmail credentials. The App DB credential's fixed id is `cvbCredAppDb0001` (`scripts/lib/manifest.ts`'s `CREDENTIALS`).
+`scripts/setup-credentials.ts` skips an existing credential in n8n unless it's named with `--refresh <id>` (any number of times): re-importing a credential replaces it, which would otherwise drop an interactive Google sign-in for the Sheets/Gmail credentials. The App DB credential's fixed id is `cvbCredAppDb0001` (`scripts/lib/manifest.ts`'s `CREDENTIALS`).
 
 **The one-time upgrade for an existing local stack.** A volume created before this change has the `App DB` credential already imported, connecting as `app` (the owner role) rather than `app_runtime`. After pulling this change, add the two new `.env` names by appending to the file, so the password never reaches the terminal:
 
@@ -191,7 +191,7 @@ The MySQL side isn't part of this least-privilege port — WordPress's own datab
 { echo; echo 'APP_RUNTIME_DB_USER=app_runtime'; printf 'APP_RUNTIME_DB_PASSWORD='; openssl rand -hex 32; echo; } >> .env
 ```
 
-The leading `echo` keeps a `.env` without a final newline from running its last line into the first new one. **Don't regenerate `.env`** with `node scripts/init-env.ts` on an existing volume — it would replace every other generated secret too, including `N8N_ENCRYPTION_KEY`, which locks n8n out of its own credentials and database. And never `docker compose down -v` to "start clean" instead: that drops WordPress's and n8n's own data along with Postgres's. Then run:
+The leading `echo` keeps a `.env` without a final newline from running its last line into the first new one. **Don't regenerate `.env`** with `node scripts/init-env.ts` on an existing volume: it would replace every other generated secret too, including `N8N_ENCRYPTION_KEY`, which locks n8n out of its own credentials and database. And never `docker compose down -v` to "start clean" instead: that drops WordPress's and n8n's own data along with Postgres's. Then run:
 
 ```bash
 pnpm run setup
@@ -200,7 +200,7 @@ pnpm run setup -- --refresh cvbCredAppDb0001
 
 The first `pnpm run setup` applies `001_runtime_role.sql` and sets `app_runtime`'s password, but skips re-importing `App DB` because it already exists in n8n (still pointed at `app`, the owner role, at this point). The second call's `--refresh cvbCredAppDb0001` is what actually replaces the credential's connection details with `app_runtime`'s. Running `pnpm run setup` again afterward applies nothing and re-imports nothing.
 
-**What `check-db` can't detect.** `check-db` proves `app_runtime`'s grants in Postgres are exactly right, and that the one workflow statement runs under them. It has no way to inspect what connection details an *already-imported* n8n credential actually holds — n8n's credential store is encrypted, and `setup-credentials.ts` only ever reads back an encrypted export's ids, never decrypted `data` (see AGENTS.md's Guardrails). So a stale `App DB` credential still pointed at the owner role, left over from before this change and never refreshed, is invisible to `check-db`: the Postgres-side checks all still pass (the owner role can do everything `app_runtime` can and more), and nothing here can tell the two states apart from the database side alone. The only way to confirm the credential itself was refreshed is the upgrade step above, run once by hand.
+**What `check-db` can't detect.** `check-db` proves `app_runtime`'s grants in Postgres are exactly right, and that the one workflow statement runs under them. It has no way to inspect what connection details an *already-imported* n8n credential actually holds: n8n's credential store is encrypted, and `setup-credentials.ts` only ever reads back an encrypted export's ids, never decrypted `data` (see "Guardrails" in [`architecture.md`](architecture.md#guardrails)). So a stale `App DB` credential still pointed at the owner role, left over from before this change and never refreshed, is invisible to `check-db`: the Postgres-side checks all still pass (the owner role can do everything `app_runtime` can and more), and nothing here can tell the two states apart from the database side alone. The only way to confirm the credential itself was refreshed is the upgrade step above, run once by hand.
 
 ## Proving it: `check-db`
 
@@ -225,7 +225,7 @@ The first `pnpm run setup` applies `001_runtime_role.sql` and sets `app_runtime`
 
 To prove the check can fail, grant a forbidden privilege by hand as the superuser, then run it. Each of these makes `check-db` exit 1:
 
-- `ALTER ROLE app_runtime CREATEDB`, `GRANT TEMP ON DATABASE app TO app_runtime`, or `GRANT CREATE ON DATABASE app TO app_runtime` fails the role-attribute check. The table-privilege check misses all three — a leaked `app_runtime` credential could otherwise `CREATE SCHEMA`/`CREATE TABLE` in `app` with every other check still green.
+- `ALTER ROLE app_runtime CREATEDB`, `GRANT TEMP ON DATABASE app TO app_runtime`, or `GRANT CREATE ON DATABASE app TO app_runtime` fails the role-attribute check. The table-privilege check misses all three: a leaked `app_runtime` credential could otherwise `CREATE SCHEMA`/`CREATE TABLE` in `app` with every other check still green.
 - `GRANT app TO app_runtime` fails the role-attribute check and "SET ROLE to the owner is denied".
 - `GRANT TRUNCATE ON processed_events TO app_runtime` fails "TRUNCATE processed_events is denied" and the table-privilege check, with `extra processed_events:TRUNCATE`.
 
