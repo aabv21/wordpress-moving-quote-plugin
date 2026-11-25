@@ -1,6 +1,7 @@
 import { postJson } from '../lib/api.ts';
 import { firstStepWithError } from '../lib/form-state.ts';
 import { leadReference } from '../lib/reference.ts';
+import { saveSummary, sessionStore } from '../lib/summary-store.ts';
 import type { ErrorView, QuoteFormConfig, Stepper } from './types.ts';
 import { readValues } from './values.ts';
 
@@ -47,7 +48,10 @@ export async function submitLead(deps: SubmitDeps): Promise<void> {
   const result = await postJson(config.leadsUrl, body, { 'X-WP-Nonce': config.nonce });
 
   if (result.ok) {
-    deps.onSuccess(leadReference(result.data));
+    const reference = leadReference(result.data);
+    const storage = sessionStore();
+    if (reference !== null && storage !== null) saveSummary(storage, { reference, ...summaryTexts(form, pricedDisplay(result.data)) });
+    deps.onSuccess(reference);
     return;
   }
 
@@ -72,6 +76,23 @@ export async function submitLead(deps: SubmitDeps): Promise<void> {
   else errors.setForm(0 === result.status ? config.strings.networkError : config.strings.serverError);
 }
 
+/** The estimate the server priced the saved lead at, from a 201's `estimate.display`. */
+function pricedDisplay(data: unknown): string | null {
+  const estimate = typeof data === 'object' && data !== null ? (data as { estimate?: unknown }).estimate : undefined;
+  const display = typeof estimate === 'object' && estimate !== null ? (estimate as { display?: unknown }).display : undefined;
+  return typeof display === 'string' && display !== '' ? display : null;
+}
+
+/**
+ * What the thank-you page shows: the summary panel's route and date, and the server's own price
+ * for the lead (the panel's when the response has none), which a debounce or a failed estimate
+ * could have left stale or blank on screen.
+ */
+function summaryTexts(form: HTMLFormElement, priced: string | null): { route: string; date: string; estimate: string } {
+  const text = (selector: string): string => form.querySelector(selector)?.textContent.trim() ?? '';
+  return { route: text('[data-summary-route]'), date: text('[data-summary-date]'), estimate: priced ?? text('[data-estimate-value]') };
+}
+
 /**
  * For a missing thank-you page. Moves focus onto the message, so a screen reader reads it and
  * focus isn't stranded on the hidden submit button.
@@ -79,9 +100,12 @@ export async function submitLead(deps: SubmitDeps): Promise<void> {
 export function showInlineSuccess(form: HTMLFormElement, reference: string | null): void {
   const successRegion = form.querySelector<HTMLElement>('[data-success]');
   if (!successRegion) return;
-  Array.from(form.children).forEach((child) => {
-    if (child instanceof HTMLElement && child !== successRegion) child.hidden = true;
-  });
+  // Everything but the message and the wrappers around it.
+  for (let node: HTMLElement = successRegion; node !== form && node.parentElement; node = node.parentElement) {
+    Array.from(node.parentElement.children).forEach((sibling) => {
+      if (sibling instanceof HTMLElement && sibling !== node) sibling.hidden = true;
+    });
+  }
   const referenceLine = successRegion.querySelector<HTMLElement>('[data-success-reference]');
   const referenceValue = successRegion.querySelector<HTMLElement>('[data-success-reference-value]');
   if (reference !== null && referenceLine && referenceValue) {

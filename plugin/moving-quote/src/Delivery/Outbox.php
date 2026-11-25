@@ -28,7 +28,9 @@ final class Outbox {
 		try {
 			// blogname is stored entity-encoded (`&amp;`, `&#039;`); the payload needs real characters.
 			$site_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
-			$body      = LeadPayload::body( $lead, $site_name, Options::team_email(), new DateTimeZone( 'America/Bogota' ) );
+			$business  = Options::business();
+			$context   = new PayloadContext( $site_name, Options::team_email(), $business->phone, $business->whatsapp );
+			$body      = LeadPayload::body( $lead, $context, new DateTimeZone( 'America/Bogota' ) );
 			$claims    = LeadPayload::claims( $lead->request_uuid, $body, $now );
 			$jwt       = JwtSigner::hs256( $claims, Options::webhook_secret() );
 

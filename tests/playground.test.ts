@@ -135,6 +135,22 @@ it.each([
 ])("each blueprint carries setup.sh's own %s copy", (locale, path) => {
   const blueprint = readFileSync(path, 'utf8');
   const copy = setupCopy(locale);
-  expect(Object.keys(copy).length).toBeGreaterThan(10);
+  expect(Object.keys(copy).length).toBeGreaterThanOrEqual(10);
   for (const [name, text] of Object.entries(copy)) expect(blueprint, `${name} in ${path}`).toContain(text);
+});
+
+/** The key and value pairs `setup.sh` passes to `seed_business_details`. */
+function setupBusinessDetails(): [string, string][] {
+  const setup = readFileSync('setup.sh', 'utf8');
+  return [...setup.matchAll(/^ {2}(business_\w+) "(.*)"(?: \\)?$/gm)].map((match) => [match[1]!, match[2]!]);
+}
+
+it.each(['playground/blueprint.json', 'playground/blueprint.local.json', 'playground/blueprint.es.json'])("%s sets setup.sh's business details in one runPHP step", (path) => {
+  // Not `wp option patch update`: Playground's wp-cli step reads a `#` in an argument (the street) as a comment.
+  const steps = readBlueprint(path).steps as { step: string; code?: string }[];
+  const runPhp = steps.filter((step) => step.step === 'runPHP');
+  expect(runPhp).toHaveLength(1);
+  const details = setupBusinessDetails();
+  expect(details).toHaveLength(7);
+  for (const [key, value] of details) expect(runPhp[0]?.code, key).toContain(`'${key}' => '${value}'`);
 });

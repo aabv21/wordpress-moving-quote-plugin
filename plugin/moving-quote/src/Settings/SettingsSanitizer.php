@@ -22,6 +22,22 @@ final class SettingsSanitizer {
 	private const CITY_MAX_LEN   = 60;
 	private const SECRET_MIN_LEN = 32;
 
+	/** The longest each free-text business field may be, in characters. */
+	public const BUSINESS_TEXT_MAX_LEN = [
+		'business_street' => 120,
+		'business_city'   => 60,
+		'business_tax_id' => 40,
+	];
+
+	/** As the lead's own phone. */
+	private const PHONE_PATTERN = '/^\d{' . LeadValidator::PHONE_MIN_LEN . ',' . LeadValidator::PHONE_MAX_LEN . '}$/';
+
+	/** `HH:MM`, 00:00 to 23:59. */
+	private const HOURS_PATTERN = '/^([01]\d|2[0-3]):[0-5]\d$/';
+
+	/** The same set `LeadValidator` rejects in a name: C0, DEL, NEL, and the Unicode line breaks. */
+	private const CONTROL_CHARACTER_PATTERN = '/[\x{0000}-\x{001F}\x{007F}\x{0085}\x{2028}\x{2029}]/u';
+
 	/**
 	 * @param array<string, mixed> $input   the posted form, or the sanitizer's own output fed back
 	 * @param SettingsShape        $current the settings to fall back to on a per-field error
@@ -74,16 +90,41 @@ final class SettingsSanitizer {
 			$errors['team_email'] = $email_error;
 		}
 
+		$business = [];
+		foreach ( [ 'business_phone', 'business_whatsapp' ] as $key ) {
+			[ $business[ $key ], $error ] = self::sanitize_phone( $input[ $key ] ?? null, $current[ $key ] );
+			if ( null !== $error ) {
+				$errors[ $key ] = $error;
+			}
+		}
+		foreach ( self::BUSINESS_TEXT_MAX_LEN as $key => $max_length ) {
+			[ $business[ $key ], $error ] = self::sanitize_business_text( $input[ $key ] ?? null, $current[ $key ], $max_length );
+			if ( null !== $error ) {
+				$errors[ $key ] = $error;
+			}
+		}
+		[ $hours_open, $hours_close, $hours_error ] = self::sanitize_hours( $input['business_hours_open'] ?? null, $input['business_hours_close'] ?? null, $current );
+		if ( null !== $hours_error ) {
+			$errors['business_hours'] = $hours_error;
+		}
+
 		$settings = [
-			'base_rates'     => $base_rates,
-			'per_room'       => $per_room,
-			'per_km'         => $per_km,
-			'extras'         => $extras,
-			'range_percent'  => $range_percent,
-			'routes'         => $routes,
-			'webhook_url'    => $webhook_url,
-			'webhook_secret' => $webhook_secret,
-			'team_email'     => $team_email,
+			'base_rates'           => $base_rates,
+			'per_room'             => $per_room,
+			'per_km'               => $per_km,
+			'extras'               => $extras,
+			'range_percent'        => $range_percent,
+			'routes'               => $routes,
+			'webhook_url'          => $webhook_url,
+			'webhook_secret'       => $webhook_secret,
+			'team_email'           => $team_email,
+			'business_phone'       => $business['business_phone'],
+			'business_whatsapp'    => $business['business_whatsapp'],
+			'business_street'      => $business['business_street'],
+			'business_city'        => $business['business_city'],
+			'business_hours_open'  => $hours_open,
+			'business_hours_close' => $hours_close,
+			'business_tax_id'      => $business['business_tax_id'],
 		];
 
 		return new SanitizedSettings( $settings, $errors );
@@ -334,5 +375,66 @@ final class SettingsSanitizer {
 			return [ $current, 'invalid_email' ];
 		}
 		return [ $input, null ];
+	}
+
+	/**
+	 * Keeps only the digits of a number typed with spaces, `+`, `-` or parentheses. A missing key
+	 * (an option saved before these fields existed) keeps the current value; a blank clears it.
+	 *
+	 * @return array{string, string|null}
+	 */
+	private static function sanitize_phone( mixed $input, string $current ): array {
+		if ( is_int( $input ) ) {
+			// WP-CLI and a JSON round trip can store a long digit string as a number.
+			$input = (string) $input;
+		}
+		if ( ! is_string( $input ) ) {
+			return [ $current, null ];
+		}
+		$digits = str_replace( [ ' ', '+', '-', '(', ')' ], '', trim( $input ) );
+		if ( '' === $digits ) {
+			return [ '', null ];
+		}
+		if ( 1 !== preg_match( self::PHONE_PATTERN, $digits ) ) {
+			return [ $current, 'invalid_phone' ];
+		}
+		return [ $digits, null ];
+	}
+
+	/** @return array{string, string|null} */
+	private static function sanitize_business_text( mixed $input, string $current, int $max_length ): array {
+		if ( ! is_string( $input ) ) {
+			return [ $current, null ];
+		}
+		$text = trim( $input );
+		if ( 1 === preg_match( self::CONTROL_CHARACTER_PATTERN, $text ) ) {
+			return [ $current, 'invalid' ];
+		}
+		if ( mb_strlen( $text ) > $max_length ) {
+			return [ $current, 'too_long' ];
+		}
+		return [ $text, null ];
+	}
+
+	/**
+	 * Both ends or neither, and opening before closing. One error for the pair, which keeps both
+	 * current values, so a half-saved pair never shows "07:00 to".
+	 *
+	 * @param SettingsShape $current
+	 * @return array{string, string, string|null}
+	 */
+	private static function sanitize_hours( mixed $open, mixed $close, array $current ): array {
+		if ( ! is_string( $open ) || ! is_string( $close ) ) {
+			return [ $current['business_hours_open'], $current['business_hours_close'], null ];
+		}
+		$open  = trim( $open );
+		$close = trim( $close );
+		if ( '' === $open && '' === $close ) {
+			return [ '', '', null ];
+		}
+		if ( 1 !== preg_match( self::HOURS_PATTERN, $open ) || 1 !== preg_match( self::HOURS_PATTERN, $close ) || strcmp( $open, $close ) >= 0 ) {
+			return [ $current['business_hours_open'], $current['business_hours_close'], 'invalid_hours' ];
+		}
+		return [ $open, $close, null ];
 	}
 }

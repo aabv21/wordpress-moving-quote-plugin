@@ -48,6 +48,10 @@ final class Options {
 		return self::all()['team_email'];
 	}
 
+	public static function business(): Business {
+		return Business::from_settings( self::all() );
+	}
+
 	public static function delivery_enabled(): bool {
 		$settings = self::all();
 		return '' !== $settings['webhook_url'] && '' !== $settings['webhook_secret'] && '' !== $settings['team_email'];

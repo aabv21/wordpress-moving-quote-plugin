@@ -8,7 +8,7 @@ import { expect, test } from 'vitest';
 const REFERENCE = /Ruling P\d|Task \d|\btask-\d{2}\b|\bthe brief\b|global constraints|\bowner session\b|\bintegration pass\b/;
 
 // Lockfiles and generated files carry no authored prose.
-const EXCLUDED_FILES = new Set(['pnpm-lock.yaml', 'tests/hygiene.test.ts', 'plugin/moving-quote/assets/quote-form.js']);
+const EXCLUDED_FILES = new Set(['pnpm-lock.yaml', 'tests/hygiene.test.ts', 'plugin/moving-quote/assets/quote-form.js', 'plugin/moving-quote/assets/thank-you.js']);
 const EXCLUDED_PREFIXES = ['plugin/moving-quote/vendor/'];
 
 test('no tracked file points at a plan task, a brief, or a ruling instead of stating its reason', async () => {

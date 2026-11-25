@@ -14,6 +14,11 @@ export interface Lead {
   site_name: string;
   team_email: string;
   locale: Locale;
+  /** The business's own numbers, digits only, for the customer email; `''` when unset. */
+  contact: {
+    phone: string;
+    whatsapp: string;
+  };
   customer: {
     name: string;
     phone: string;
@@ -204,7 +209,21 @@ function parseEstimate(value: unknown): Lead['estimate'] | null {
   return { currency, amount, low, high };
 }
 
-const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'customer', 'move', 'estimate'] as const;
+const LEAD_KEYS = ['request_uuid', 'reference', 'submitted_at', 'site_name', 'team_email', 'locale', 'contact', 'customer', 'move', 'estimate'] as const;
+
+const CONTACT_NUMBER_RE = /^\d{10,15}$/;
+
+/**
+ * Optional: a lead queued by a plugin version without business details still parses, as blank
+ * numbers. Each number is `''` or 10 to 15 digits, the rule the plugin's Settings enforce.
+ */
+function parseContact(value: unknown): Lead['contact'] | null {
+  if (value === undefined) return { phone: '', whatsapp: '' };
+  if (!isRecord(value) || !hasOnlyKeys(value, ['phone', 'whatsapp'])) return null;
+  const { phone, whatsapp } = value;
+  const valid = (n: unknown): n is string => typeof n === 'string' && (n === '' || CONTACT_NUMBER_RE.test(n));
+  return valid(phone) && valid(whatsapp) ? { phone, whatsapp } : null;
+}
 
 /**
  * Optional: a lead from an older plugin version can still be in the retry queue. Missing, empty,
@@ -218,7 +237,7 @@ function parseLocale(value: unknown): Locale | null {
 
 export function parseLead(value: unknown): Lead | null {
   if (!isRecord(value) || !hasOnlyKeys(value, LEAD_KEYS)) return null;
-  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, customer, move, estimate } = value;
+  const { request_uuid: requestUuid, reference, submitted_at: submittedAt, site_name: siteName, team_email: teamEmail, locale, contact, customer, move, estimate } = value;
 
   if (typeof requestUuid !== 'string' || !UUID_V4_RE.test(requestUuid)) return null;
 
@@ -232,6 +251,9 @@ export function parseLead(value: unknown): Lead | null {
 
   const parsedLocale = parseLocale(locale);
   if (!parsedLocale) return null;
+
+  const parsedContact = parseContact(contact);
+  if (!parsedContact) return null;
 
   const parsedCustomer = parseCustomer(customer);
   if (!parsedCustomer) return null;
@@ -251,6 +273,7 @@ export function parseLead(value: unknown): Lead | null {
     site_name: siteName,
     team_email: teamEmail,
     locale: parsedLocale,
+    contact: parsedContact,
     customer: parsedCustomer,
     move: parsedMove,
     estimate: parsedEstimate,

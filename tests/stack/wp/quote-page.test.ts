@@ -116,6 +116,34 @@ describe('the quote page', () => {
     expect(hooksIn(form)).toEqual(fixture);
   });
 
+  it('renders the summary panel, the required note, each extra\'s price and the phone example', async () => {
+    const html = decodeHtmlEntities(await (await fetch(site(QUOTE_PAGE_PATH))).text());
+    const summary = /<aside class="moving-quote__summary"[\s\S]*?<\/aside>/.exec(html)?.[0] ?? '';
+    for (const text of ['Summary', 'Choose both cities', 'No date yet', 'No extra services', 'Estimated price']) expect(summary).toContain(text);
+    expect(summary).toContain('Prefer to talk? Call <a href="tel:+570000000099">+57 000 000 0099</a>');
+    expect(html).toContain('Every field is required, except the extra services.');
+    for (const price of ['+ COP 200,000', '+ COP 150,000', '+ COP 300,000', '+ COP 250,000']) expect(html).toContain(price);
+    expect(html).toContain('<span class="moving-quote__hint" id="mq-hint-phone">Example: +57 300 000 0000</span>');
+    expect(html).toContain('aria-describedby="mq-hint-phone mq-error-phone"');
+  });
+
+  it('the thank-you page shows the card, the reference and a WhatsApp link carrying it', async () => {
+    const html = await (await fetch(site('/thank-you/?reference=MQ-1A2B3C4D'))).text();
+    // One heading says it: the page title, not a second one inside the card.
+    expect(html).toMatch(/<h1[^>]*>Request received<\/h1>/);
+    expect(html).not.toContain('moving-quote-thanks__title');
+    expect(html).toContain('MQ-1A2B3C4D');
+    expect(html).toContain('href="https://wa.me/570000000099?text=Hello%2C%20my%20reference%20is%20MQ-1A2B3C4D."');
+    expect(html).toMatch(/<script[^>]*\bsrc="[^"]*\/plugins\/moving-quote\/assets\/thank-you\.js[^"]*"/);
+  });
+
+  it('the thank-you card links WhatsApp without text for a malformed reference', async () => {
+    const html = await (await fetch(site('/thank-you/?reference=MQ-<b>1</b>'))).text();
+    expect(html).toContain('href="https://wa.me/570000000099"');
+    expect(html).not.toContain('?text=');
+    expect(html).not.toContain('<b>1</b>');
+  });
+
   it("sets the move-date input's min to today in America/Bogota, not the site's own configured timezone", async () => {
     const res = await fetch(site(QUOTE_PAGE_PATH));
     const html = await res.text();

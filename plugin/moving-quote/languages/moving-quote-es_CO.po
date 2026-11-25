@@ -2,7 +2,7 @@
 # Copyright (C) Andrés Buelvas. This file is distributed under the MIT license.
 msgid ""
 msgstr ""
-"Project-Id-Version: Moving Quote 1.2.1\n"
+"Project-Id-Version: Moving Quote 1.3.0\n"
 "Report-Msgid-Bugs-To: https://github.com/aabv21/wordpress-moving-quote-plugin/issues\n"
 "POT-Creation-Date: 2026-11-03 00:00-0500\n"
 "PO-Revision-Date: 2026-11-03 00:00-0500\n"
@@ -265,11 +265,25 @@ msgstr "El secreto del webhook debe tener al menos 32 caracteres."
 msgid "Enter a valid email address, or leave it blank."
 msgstr "Ingrese un correo electrónico válido, o deje el campo vacío."
 
+msgid "Use one line of plain text, with no line breaks."
+msgstr "Use una sola línea de texto, sin saltos de línea."
+
+msgid "Enter both hours, opening before closing, or leave both blank."
+msgstr "Ingrese las dos horas, la de apertura antes que la de cierre, o deje ambas vacías."
+
+#. translators: %d: maximum number of characters
+#, php-format
+msgid "Please use %d characters or fewer."
+msgstr "Use como máximo %d caracteres."
+
 msgid "Rates"
 msgstr "Tarifas"
 
 msgid "Cities and distances"
 msgstr "Ciudades y distancias"
+
+msgid "Business details"
+msgstr "Datos del negocio"
 
 msgid "Per room"
 msgstr "Por habitación"
@@ -312,6 +326,27 @@ msgstr "El envío está activo"
 msgid "Delivery is off until the webhook URL, secret, and team email are set."
 msgstr "El envío está desactivado hasta que se configuren la URL del webhook, el secreto y el correo del equipo."
 
+msgid "WhatsApp"
+msgstr "WhatsApp"
+
+msgid "Street address"
+msgstr "Dirección"
+
+msgid "City"
+msgstr "Ciudad"
+
+msgid "Opens at"
+msgstr "Abre a las"
+
+msgid "Closes at"
+msgstr "Cierra a las"
+
+msgid "Tax ID"
+msgstr "NIT"
+
+msgid "Shown in the site footer, the quote page and the customer email. Leave a field blank to hide it."
+msgstr "Se muestran en el pie del sitio, la página de cotización y el correo al cliente. Deje un campo vacío para ocultarlo."
+
 #. translators: 1: number of stuck leads, 2: link to the Leads page
 #, php-format
 msgid "%1$d lead has not reached n8n yet. %2$s"
@@ -329,16 +364,36 @@ msgid_plural "%d quote submissions were rate-limited in the current 24-hour wind
 msgstr[0] "Se rechazó %d envío de cotización por exceso de solicitudes en el periodo actual de 24 horas."
 msgstr[1] "Se rechazaron %d envíos de cotización por exceso de solicitudes en el periodo actual de 24 horas."
 
+#. translators: 1: opening time, 2: closing time, both HH:MM
+#, php-format
+msgid "Monday to Saturday, %1$s to %2$s"
+msgstr "Lunes a sábado, de %1$s a %2$s"
+
+msgid "Data processing policy"
+msgstr "Política de tratamiento de datos"
+
 #. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
 #, php-format
 msgid "Your reference number is %s. Keep it handy if you contact us about your move."
 msgstr "Su número de referencia es %s. Téngalo a mano si se comunica con nosotros sobre su mudanza."
+
+msgctxt "route: origin to destination"
+msgid "to"
+msgstr "a"
 
 msgid "Sending…"
 msgstr "Enviando…"
 
 msgid "Something went wrong. Please check your connection and try again."
 msgstr "Algo salió mal. Revise su conexión e intente de nuevo."
+
+#. translators: %s: the business phone number, e.g. +57 000 000 0099
+#, php-format
+msgid "Something went wrong on our side. Please try again in a few minutes, or call us at %s."
+msgstr "Algo falló de nuestro lado. Intente de nuevo en unos minutos o llámenos al %s."
+
+msgid "Something went wrong on our side. Please try again in a few minutes."
+msgstr "Algo falló de nuestro lado. Intente de nuevo en unos minutos."
 
 msgid "Too many requests. Please try again later."
 msgstr "Demasiadas solicitudes. Intente de nuevo más tarde."
@@ -348,6 +403,35 @@ msgstr "Su sesión expiró. Recargue la página e intente de nuevo."
 
 msgid "Please fix the highlighted fields."
 msgstr "Corrija los campos resaltados."
+
+msgid "Start your quote"
+msgstr "Empiece su cotización"
+
+msgid "What are you moving?"
+msgstr "¿Qué va a mudar?"
+
+msgid "Moving from"
+msgstr "Ciudad de origen"
+
+msgid "Moving to"
+msgstr "Ciudad de destino"
+
+msgid "Choose a city"
+msgstr "Elija una ciudad"
+
+msgid "See my price"
+msgstr "Ver mi precio"
+
+#. translators: %s: the lead's reference, e.g. MQ-1A2B3C4D
+#, php-format
+msgid "Hello, my reference is %s."
+msgstr "Hola, mi referencia es %s."
+
+msgid "Request received"
+msgstr "Solicitud recibida"
+
+msgid "Write to us on WhatsApp"
+msgstr "Escríbanos por WhatsApp"
 
 msgid "Chivabox moving quotes doesn't support Multisite."
 msgstr "El cotizador de mudanzas de Chivabox no es compatible con Multisite."
@@ -381,11 +465,31 @@ msgstr "Elija una ciudad de la lista."
 msgid "We don’t have a price for this route yet. Please call us."
 msgstr "Aún no tenemos precio para esta ruta. Por favor, llámenos."
 
+#. translators: %d: minimum number of characters
+#, php-format
+msgid "Please enter at least %d characters."
+msgstr "Escriba al menos %d caracteres."
+
 msgid "Choose today or a later date."
 msgstr "Elija la fecha de hoy o una posterior."
 
+#. translators: %d: number of days ahead a move date may be
+#, php-format
+msgid "Choose a date within the next %d days."
+msgstr "Elija una fecha dentro de los próximos %d días."
+
 msgid "Please accept the data processing policy to continue."
 msgstr "Acepte la política de tratamiento de datos para continuar."
+
+#. translators: %s: an amount in Colombian pesos, e.g. 882,000
+#, php-format
+msgid "from COP %s"
+msgstr "desde COP %s"
+
+#. translators: %s: an amount in Colombian pesos, e.g. 200,000
+#, php-format
+msgid "+ COP %s"
+msgstr "+ COP %s"
 
 #. translators: 1: low estimate, 2: high estimate
 #, php-format
@@ -404,26 +508,17 @@ msgstr "Sus datos"
 msgid "This form needs JavaScript to show a live estimate and submit your request. Please enable JavaScript, or call us for a quote."
 msgstr "Este formulario necesita JavaScript para mostrar el precio estimado y enviar su solicitud. Active JavaScript o llámenos para cotizar."
 
+msgid "Every field is required, except the extra services."
+msgstr "Todos los campos son obligatorios, excepto los servicios adicionales."
+
 msgid "Leave this field empty"
 msgstr "Deje este campo vacío"
-
-msgid "What are you moving?"
-msgstr "¿Qué va a mudar?"
 
 msgid "How many rooms?"
 msgstr "¿Cuántas habitaciones?"
 
 msgid "5+"
 msgstr "5+"
-
-msgid "Moving from"
-msgstr "Ciudad de origen"
-
-msgid "Choose a city"
-msgstr "Elija una ciudad"
-
-msgid "Moving to"
-msgstr "Ciudad de destino"
 
 msgid "Next"
 msgstr "Siguiente"
@@ -437,6 +532,9 @@ msgstr "Atrás"
 msgid "Full name"
 msgstr "Nombre completo"
 
+msgid "Example: +57 300 000 0000"
+msgstr "Ejemplo: +57 300 000 0000"
+
 #. translators: %s: data processing policy URL
 #, php-format
 msgid "I agree to the processing of my data under the <a href=\"%s\">data processing policy</a>."
@@ -448,8 +546,8 @@ msgstr "Autorizo el tratamiento de mis datos personales según la política de t
 msgid "Send my request"
 msgstr "Enviar mi solicitud"
 
-msgid "Request received"
-msgstr "Solicitud recibida"
+msgid "We call you during business hours. No commitment."
+msgstr "Le llamamos en horario hábil. Sin compromiso."
 
 msgid "Thank you! A member of our team will call you to confirm the details and the final price."
 msgstr "¡Gracias! Una persona de nuestro equipo se comunicará con usted por teléfono para confirmar los detalles y el precio final."
@@ -458,6 +556,18 @@ msgstr "¡Gracias! Una persona de nuestro equipo se comunicará con usted por te
 #, php-format
 msgid "Your reference number is %s."
 msgstr "Su número de referencia es %s."
+
+msgid "Summary"
+msgstr "Resumen"
+
+msgid "Choose both cities"
+msgstr "Elija las dos ciudades"
+
+msgid "No date yet"
+msgstr "Sin fecha aún"
+
+msgid "No extra services"
+msgstr "Sin servicios adicionales"
 
 msgid "Estimated price"
 msgstr "Precio estimado"
@@ -471,23 +581,7 @@ msgstr "Elija qué va a mudar, cuántas habitaciones y ambas ciudades para ver e
 msgid "This is an estimate. We confirm the final price after a visit or video call."
 msgstr "Este valor es un estimado. Confirmamos el precio final después de una visita o una videollamada."
 
-msgid "We call you during business hours. No commitment."
-msgstr "Le llamamos en horario hábil. Sin compromiso."
-
-msgid "Something went wrong on our side. Please try again in a few minutes."
-msgstr "Algo falló de nuestro lado. Intente de nuevo en unos minutos."
-
-#. translators: %d: minimum number of characters
+#. translators: %s: the business phone number, as a link
 #, php-format
-msgid "Please enter at least %d characters."
-msgstr "Escriba al menos %d caracteres."
-
-#. translators: %d: maximum number of characters
-#, php-format
-msgid "Please use %d characters or fewer."
-msgstr "Use como máximo %d caracteres."
-
-#. translators: %d: number of days ahead a move date may be
-#, php-format
-msgid "Choose a date within the next %d days."
-msgstr "Elija una fecha dentro de los próximos %d días."
+msgid "Prefer to talk? Call %s"
+msgstr "¿Prefiere hablar? Llame al %s"

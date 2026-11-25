@@ -28,6 +28,25 @@ describe('parseLead', () => {
     expect(parseLead({ ...valid, locale: 'es-CO' })?.locale).toBe('es');
   });
 
+  it('accepts a lead without contact, from an older plugin, as blank contact numbers', () => {
+    const withoutContact: Record<string, unknown> = { ...valid };
+    delete withoutContact.contact;
+    expect(parseLead(withoutContact)?.contact).toEqual({ phone: '', whatsapp: '' });
+  });
+
+  it('rejects a contact phone that is not 10 to 15 digits', () => {
+    for (const phone of ['123456789', '1234567890123456', '+570000000099', '57 000 000 0099', 570000000099]) {
+      expect(parseLead({ ...valid, contact: { phone, whatsapp: '' } }), String(phone)).toBeNull();
+      expect(parseLead({ ...valid, contact: { phone: '', whatsapp: phone } }), String(phone)).toBeNull();
+    }
+    expect(parseLead({ ...valid, contact: { phone: '', whatsapp: '' } })?.contact).toEqual({ phone: '', whatsapp: '' });
+  });
+
+  it('rejects an extra key in contact', () => {
+    expect(parseLead({ ...valid, contact: { phone: '570000000099', whatsapp: '570000000099', email: 'x@example.com' } })).toBeNull();
+    expect(parseLead({ ...valid, contact: 'x' })).toBeNull();
+  });
+
   it('falls back to en for an in-flight lead sent by a plugin version without the locale field', () => {
     const withoutLocale: Record<string, unknown> = { ...valid };
     delete withoutLocale.locale;

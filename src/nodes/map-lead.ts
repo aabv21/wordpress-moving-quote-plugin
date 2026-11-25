@@ -55,11 +55,13 @@ interface Messages {
   route: (origin: string, destination: string, km: string) => string;
   customerSubject: (siteName: string) => string;
   greeting: (name: string) => string;
-  estimateLine: (estimate: string) => string;
-  routeLine: (origin: string, destination: string, date: string) => string;
+  customerLabels: { estimate: string; route: string; moveDate: string; moveType: string; extras: string; reference: string };
+  routeValue: (origin: string, destination: string) => string;
   disclaimer: string;
   nextStep: string;
-  referenceLine: (reference: string) => string;
+  /** `whatsAppLink` is an `<a>` already built from validated digits, or '' to leave that half out. */
+  questions: (phone: string, whatsAppLink: string) => string;
+  demoNotice: (siteName: string) => string;
 }
 
 export const MESSAGES: Record<Locale, Messages> = {
@@ -76,11 +78,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     route: (origin, destination, km) => `${origin} to ${destination} (${km} km)`,
     customerSubject: (siteName) => `Your moving estimate from ${siteName}`,
     greeting: (name) => `Hi ${name},`,
-    estimateLine: (estimate) => `Your moving estimate: <strong>${estimate}</strong>`,
-    routeLine: (origin, destination, date) => `${origin} to ${destination} on ${date}`,
+    customerLabels: { estimate: 'Your estimate', route: 'Route', moveDate: 'Move date', moveType: 'Move type', extras: 'Extras', reference: 'Reference' },
+    routeValue: (origin, destination) => `${origin} to ${destination}`,
     disclaimer: 'This is an estimate. We confirm the final price after a visit or video call.',
     nextStep: 'A member of our team will call you to schedule a short visit or video call and confirm the final price.',
-    referenceLine: (reference) => `Reference: ${reference}`,
+    questions: (phone, whatsAppLink) => (whatsAppLink === '' ? `Questions? Call us at ${phone}.` : `Questions? Call us at ${phone} or write on WhatsApp: ${whatsAppLink}`),
+    demoNotice: (siteName) => `${siteName} is a fictional company for a portfolio demo.`,
   },
   es: {
     numberLocale: 'es-CO',
@@ -110,11 +113,12 @@ export const MESSAGES: Record<Locale, Messages> = {
     route: (origin, destination, km) => `${origin} a ${destination} (${km} km)`,
     customerSubject: (siteName) => `Su cotización de mudanza de ${siteName}`,
     greeting: (name) => `Hola, ${name}:`,
-    estimateLine: (estimate) => `Valor estimado de su mudanza: <strong>${estimate}</strong>`,
-    routeLine: (origin, destination, date) => `De ${origin} a ${destination}, el ${date}`,
+    customerLabels: { estimate: 'Su estimado', route: 'Ruta', moveDate: 'Fecha de la mudanza', moveType: 'Tipo', extras: 'Servicios adicionales', reference: 'Referencia' },
+    routeValue: (origin, destination) => `${origin} a ${destination}`,
     disclaimer: 'Este valor es un estimado. Confirmamos el precio final después de una visita o una videollamada.',
     nextStep: 'Una persona de nuestro equipo se comunicará con usted para programar una visita corta o una videollamada y confirmar el precio final.',
-    referenceLine: (reference) => `Referencia: ${reference}`,
+    questions: (phone, whatsAppLink) => (whatsAppLink === '' ? `¿Preguntas? Llámenos al ${phone}.` : `¿Preguntas? Llámenos al ${phone} o escríbanos por WhatsApp: ${whatsAppLink}`),
+    demoNotice: (siteName) => `${siteName} es una empresa ficticia para una demostración de portafolio.`,
   },
 };
 
@@ -148,6 +152,66 @@ function estimateDisplay(low: number, high: number, m: Messages): string {
   return `${formatCop(low, m)} – ${formatNumber(high, m)}`;
 }
 
+
+/**
+ * `570000000099` → `+57 000 000 0099`; any other number is `+` and its digits. Mirrors the
+ * plugin's `Settings\Business::display()`, so the email shows the number as the site does.
+ */
+export function formatPhoneDisplay(digits: string): string {
+  if (digits === '') return '';
+  if (digits.length === 12 && digits.startsWith('57')) return `+57 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+  return `+${digits}`;
+}
+
+/** The brand's colors, inline: most email clients drop `<style>` blocks. */
+const EMAIL_TEXT = '#111418';
+const EMAIL_MUTED = '#4b5563';
+const EMAIL_ACCENT = '#1d4ed8';
+const EMAIL_BORDER = '#d4d4d8';
+
+function emailRow(html: string, style: string): string {
+  return `<tr><td style="${style}">${html}</td></tr>`;
+}
+
+/**
+ * One readable column, as a table with inline styles, the layout email clients render alike. Every
+ * value from the lead is escaped here; the numbers were validated as digits by `parseLead()`.
+ */
+function customerEmail(lead: Lead, m: Messages): string {
+  const { customer, move, estimate, contact } = lead;
+  const labels = m.customerLabels;
+  // eslint-disable-next-line security/detect-object-injection -- e is Extra, one of the label table's own fixed keys, validated by parseLead
+  const extras = move.extras.map((e) => m.extras[e]).join(', ');
+  const cell = `padding:8px 12px 8px 0;border-top:1px solid ${EMAIL_BORDER}`;
+  const details = (
+    [
+      [labels.route, m.routeValue(escapeHtml(move.origin), escapeHtml(move.destination))],
+      [labels.moveDate, longDate(move.date, m)],
+      [labels.moveType, `${m.moveTypes[move.type]}, ${m.rooms(move.rooms)}`],
+      [labels.extras, extras === '' ? m.noExtras : extras],
+      [labels.reference, escapeHtml(lead.reference)],
+    ] as const
+  )
+    .map(([label, value]) => `<tr><td style="${cell};width:40%;color:${EMAIL_MUTED}">${label}</td>\n<td style="${cell}">${value}</td></tr>`)
+    .join('\n');
+  const whatsAppLink = contact.whatsapp === '' ? '' : `<a href="https://wa.me/${contact.whatsapp}">wa.me/${contact.whatsapp}</a>`;
+  const body = 'padding:16px 0 0;font-size:16px;line-height:1.5';
+  const siteName = escapeHtml(lead.site_name);
+
+  return [
+    `<table role="presentation" width="100%" style="max-width:560px;font-family:Arial,Helvetica,sans-serif;color:${EMAIL_TEXT}">`,
+    ...(siteName === '' ? [] : [emailRow(siteName, `padding:0 0 12px;font-size:20px;font-weight:700;border-bottom:3px solid ${EMAIL_ACCENT}`)]),
+    emailRow(m.greeting(escapeHtml(customer.name)), body),
+    emailRow(labels.estimate, `padding:16px 0 0;font-size:14px;color:${EMAIL_MUTED}`),
+    emailRow(estimateDisplay(estimate.low, estimate.high, m), 'padding:4px 0 0;font-size:24px;font-weight:700'),
+    emailRow(`<table role="presentation" width="100%" style="border-collapse:collapse;font-size:15px;line-height:1.4">\n${details}\n</table>`, 'padding:16px 0 0'),
+    emailRow(m.disclaimer, body),
+    emailRow(m.nextStep, body),
+    ...(contact.phone === '' ? [] : [emailRow(m.questions(formatPhoneDisplay(contact.phone), whatsAppLink), body)]),
+    ...(siteName === '' ? [] : [emailRow(m.demoNotice(siteName), `padding:24px 0 0;font-size:12px;color:${EMAIL_MUTED}`)]),
+    '</table>',
+  ].join('\n');
+}
 
 /** Parsed in `America/Bogota`, so the bare date reads as the same day everywhere. */
 function longDate(isoDate: string, m: Messages): string {
@@ -223,14 +287,7 @@ export function run(input: { lead: Lead; config: Config }): MapLeadOutput {
   ].join('\n');
 
   const customerSubject = oneLine(forCustomer.customerSubject(lead.site_name));
-  const customerHtml = [
-    `<p>${forCustomer.greeting(escapeHtml(customer.name))}</p>`,
-    `<p>${forCustomer.estimateLine(estimateDisplay(estimate.low, estimate.high, forCustomer))}</p>`,
-    `<p>${forCustomer.routeLine(escapeHtml(move.origin), escapeHtml(move.destination), longDate(move.date, forCustomer))}</p>`,
-    `<p>${forCustomer.disclaimer}</p>`,
-    `<p>${forCustomer.nextStep}</p>`,
-    `<p>${forCustomer.referenceLine(escapeHtml(lead.reference))}</p>`,
-  ].join('\n');
+  const customerHtml = customerEmail(lead, forCustomer);
 
   return {
     row,

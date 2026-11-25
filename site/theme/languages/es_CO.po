@@ -73,9 +73,6 @@ msgctxt "Pattern title"
 msgid "Thank you"
 msgstr "Gracias"
 
-msgid "We received your moving request."
-msgstr "Recibimos su solicitud de mudanza."
-
 msgid "What happens next"
 msgstr "Qué sigue"
 

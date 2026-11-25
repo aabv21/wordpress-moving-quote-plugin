@@ -11,7 +11,7 @@ final class LeadPayload {
 	public const TTL_SECONDS = 300;
 
 	/** Encoded once and reused for both the request and its signature. */
-	public static function body( LeadRecord $lead, string $site_name, string $team_email, DateTimeZone $tz ): string {
+	public static function body( LeadRecord $lead, PayloadContext $context, DateTimeZone $tz ): string {
 		$created_at   = new DateTimeImmutable( $lead->created_at, new DateTimeZone( 'UTC' ) );
 		$submitted_at = $created_at->setTimezone( $tz )->format( DATE_ATOM );
 
@@ -19,9 +19,13 @@ final class LeadPayload {
 			'request_uuid' => $lead->request_uuid,
 			'reference'    => $lead->reference(),
 			'submitted_at' => $submitted_at,
-			'site_name'    => $site_name,
-			'team_email'   => $team_email,
+			'site_name'    => $context->site_name,
+			'team_email'   => $context->team_email,
 			'locale'       => $lead->locale,
+			'contact'      => [
+				'phone'    => $context->contact_phone,
+				'whatsapp' => $context->contact_whatsapp,
+			],
 			'customer'     => [
 				'name'  => $lead->customer_name,
 				'phone' => $lead->phone,

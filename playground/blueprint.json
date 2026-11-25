@@ -80,7 +80,7 @@
         "create",
         "--post_type=page",
         "--post_status=publish",
-        "--post_title=Thank you",
+        "--post_title=Request received",
         "--post_name=thank-you",
         "--post_excerpt=Your moving request was received. Here is what happens next.",
         "--post_content=<!-- wp:pattern {\"slug\":\"chivabox/thank-you\"} /-->"
@@ -110,8 +110,12 @@
         "--post_status=publish",
         "--post_title=Primary navigation",
         "--post_name=primary-navigation",
-        "--post_content=<!-- wp:navigation-link {\"label\":\"Home\",\"url\":\"/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /--><!-- wp:navigation-link {\"label\":\"Get a quote\",\"url\":\"/get-a-quote/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->"
+        "--post_content=<!-- wp:navigation-link {\"label\":\"Get a quote\",\"url\":\"/get-a-quote/\",\"kind\":\"custom\",\"isTopLevelLink\":true} /-->"
       ]
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; $settings = get_option( 'moving_quote_settings' ); $settings = array_merge( is_array( $settings ) ? $settings : [], [ 'business_phone' => '570000000099', 'business_whatsapp' => '570000000099', 'business_street' => 'Calle 00 # 00-00', 'business_city' => 'Barranquilla', 'business_hours_open' => '07:00', 'business_hours_close' => '18:00', 'business_tax_id' => 'NIT 000.000.000-0' ] ); update_option( 'moving_quote_settings', $settings );"
     },
     {
       "step": "wp-cli",

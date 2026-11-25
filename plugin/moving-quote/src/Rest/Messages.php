@@ -62,6 +62,18 @@ final class Messages {
 		return $messages[ $code ] ?? $code;
 	}
 
+	/** `from COP 882,000`: a route chip's lowest price. */
+	public static function from_price( int $cop ): string {
+		/* translators: %s: an amount in Colombian pesos, e.g. 882,000 */
+		return sprintf( __( 'from COP %s', 'moving-quote' ), number_format_i18n( $cop ) );
+	}
+
+	/** `+ COP 200,000`: what an extra service adds to the estimate. */
+	public static function added_price( int $cop ): string {
+		/* translators: %s: an amount in Colombian pesos, e.g. 200,000 */
+		return sprintf( __( '+ COP %s', 'moving-quote' ), number_format_i18n( $cop ) );
+	}
+
 	/** `COP 1,017,000 – 1,243,000`. */
 	public static function display( Estimate $estimate ): string {
 		return sprintf(

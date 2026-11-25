@@ -454,6 +454,36 @@ wp option patch update moving_quote_settings webhook_url "http://n8n:5678/webhoo
 wp option patch update moving_quote_settings webhook_secret <<< "$LEAD_WEBHOOK_SECRET"
 wp option patch update moving_quote_settings team_email <<< "$TEAM_EMAIL"
 
+# The fictional business's details, shown in the footer, the quote page and the customer email.
+# Written only while every business field is blank (a fresh install, whose activation seeds them
+# empty, or an older stack without them), so an owner's own values survive a rerun.
+# Arguments: pairs of setting key and value.
+seed_business_details() {
+  wp eval-file - "$@" <<'PHP'
+<?php
+$settings = get_option( 'moving_quote_settings' );
+$settings = is_array( $settings ) ? $settings : [];
+$pairs    = array_chunk( $args, 2 );
+foreach ( $pairs as [ $key ] ) {
+	if ( '' !== (string) ( $settings[ $key ] ?? '' ) ) {
+		exit( 0 );
+	}
+}
+foreach ( $pairs as [ $key, $value ] ) {
+	$settings[ $key ] = $value;
+}
+update_option( 'moving_quote_settings', $settings );
+PHP
+}
+seed_business_details \
+  business_phone "570000000099" \
+  business_whatsapp "570000000099" \
+  business_street "Calle 00 # 00-00" \
+  business_city "Barranquilla" \
+  business_hours_open "07:00" \
+  business_hours_close "18:00" \
+  business_tax_id "NIT 000.000.000-0 (fictional)"
+
 # Last, so the rules include Polylang's language prefixes and the front page.
 wp rewrite flush --hard
 

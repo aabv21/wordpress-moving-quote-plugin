@@ -12,12 +12,8 @@ declare(strict_types=1);
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<!-- wp:paragraph -->
-<p><?php esc_html_e( 'We received your moving request.', 'chivabox' ); ?></p>
-<!-- /wp:paragraph -->
-
 <!-- wp:shortcode -->
-[moving_quote_reference]
+[moving_quote_thanks]
 <!-- /wp:shortcode -->
 
 <!-- wp:heading -->

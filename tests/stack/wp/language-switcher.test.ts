@@ -124,7 +124,7 @@ describe('the language switcher (Polylang)', () => {
     for (const text of ['Su mudanza', 'Servicios adicionales', 'Sus datos', 'Siguiente', 'Enviar mi solicitud']) expect(quote).toContain(text);
 
     const thanks = await page('/es/gracias/?reference=MQ-1A2B3C4D');
-    expect(thanks).toContain('Recibimos su solicitud de mudanza.');
+    expect(thanks).toContain('Solicitud recibida');
     expect(thanks).toContain('Su número de referencia es');
   });
 

@@ -1,0 +1,25 @@
+/*
+ * The Leads table, on top of core's list-table styles. A customer's email and phone stay on one
+ * line each (core breaks long words anywhere), and Delete sits apart from Update, in core's red.
+ */
+
+.moving-quote-leads__email {
+  overflow-wrap: normal;
+  word-break: keep-all;
+  white-space: nowrap;
+}
+
+.moving-quote-leads__phone {
+  white-space: nowrap;
+}
+
+/* Core's list table is table-layout: fixed, so the column takes a width, not a min-width. */
+.wp-list-table .column-customer {
+  width: 16rem;
+}
+
+.wp-list-table .moving-quote-leads__delete {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: #b32d2e;
+}

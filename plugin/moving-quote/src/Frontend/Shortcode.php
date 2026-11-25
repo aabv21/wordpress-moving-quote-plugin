@@ -11,8 +11,8 @@ use Chivabox\MovingQuote\Settings\Options;
  * Registers assets on `init` but enqueues them from `render()`, so they load only where used.
  */
 final class Shortcode {
-	public const TAG     = 'moving_quote';
-	private const HANDLE = 'moving-quote-form';
+	public const TAG    = 'moving_quote';
+	public const HANDLE = 'moving-quote-form';
 
 	public static function register(): void {
 		add_action( 'init', [ self::class, 'register_assets' ] );
@@ -53,10 +53,14 @@ final class Shortcode {
 
 		$parsed = shortcode_atts( [ 'thank_you' => 'thank-you' ], is_array( $atts ) ? $atts : [] );
 
-		// Local variables for templates/quote-form.php, included below: $cities, $config and $privacy_url.
-		$cities      = self::cities();
-		$config      = self::config( (string) $parsed['thank_you'] );
-		$privacy_url = self::privacy_url();
+		// Local variables for templates/quote-form.php, included below: $cities, $config, $privacy_url,
+		// $prefill, $extra_prices and $business.
+		$cities       = self::cities();
+		$config       = self::config( (string) $parsed['thank_you'] );
+		$privacy_url  = self::privacy_url();
+		$extra_prices = Options::rates()->extras;
+		$business     = Options::business();
+		$prefill      = Prefill::from_query( wp_unslash( $_GET ), $cities ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only prefill, each value kept only when it's exactly a known type or city.
 
 		ob_start();
 		include self::template_path();
@@ -70,12 +74,26 @@ final class Shortcode {
 		return DistanceTable::from_settings( Options::all() )->cities();
 	}
 
+	/** @return array<string, string> each `Pricing\MoveType` value and its label */
+	public static function move_type_labels(): array {
+		return [
+			'apartment' => __( 'Apartment', 'moving-quote' ),
+			'house'     => __( 'House', 'moving-quote' ),
+			'office'    => __( 'Office', 'moving-quote' ),
+		];
+	}
+
+	/** The thank-you page the form redirects to; see `page_url()`. */
+	public static function thank_you_url( string $slug ): ?string {
+		return self::page_url( $slug );
+	}
+
 	/**
 	 * Null when the page doesn't exist. With Polylang active, the slug names any page of a
 	 * translation group, and the URL is the one in the visitor's language. Polylang is optional:
 	 * without it, the slug's own page.
 	 */
-	public static function thank_you_url( string $slug ): ?string {
+	public static function page_url( string $slug ): ?string {
 		$page = get_page_by_path( $slug );
 		if ( null === $page ) {
 			return null;
@@ -140,6 +158,7 @@ final class Shortcode {
 	 * }
 	 */
 	public static function config( string $thank_you_slug ): array {
+		$business = Options::business();
 		return [
 			'estimateUrl' => self::rest_url_for_page( 'moving-quote/v1/estimate' ),
 			'leadsUrl'    => self::rest_url_for_page( 'moving-quote/v1/leads' ),
@@ -148,7 +167,13 @@ final class Shortcode {
 			'strings'     => [
 				'sending'        => __( 'Sending…', 'moving-quote' ),
 				'networkError'   => __( 'Something went wrong. Please check your connection and try again.', 'moving-quote' ),
-				'serverError'    => __( 'Something went wrong on our side. Please try again in a few minutes.', 'moving-quote' ),
+				'serverError'    => $business->has_phone()
+					? sprintf(
+						/* translators: %s: the business phone number, e.g. +57 000 000 0099 */
+						__( 'Something went wrong on our side. Please try again in a few minutes, or call us at %s.', 'moving-quote' ),
+						$business->phone_display()
+					)
+					: __( 'Something went wrong on our side. Please try again in a few minutes.', 'moving-quote' ),
 				'rateLimited'    => __( 'Too many requests. Please try again later.', 'moving-quote' ),
 				'sessionExpired' => __( 'Your session expired. Reload the page and try again.', 'moving-quote' ),
 				'genericError'   => __( 'Please fix the highlighted fields.', 'moving-quote' ),

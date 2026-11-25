@@ -132,7 +132,7 @@ final class LeadsListTable extends WP_List_Table {
 
 	private function column_customer( LeadRecord $lead ): string {
 		return sprintf(
-			'%s<br />%s<br />%s',
+			'%s<br /><span class="moving-quote-leads__phone">%s</span><br /><span class="moving-quote-leads__email">%s</span>',
 			esc_html( $lead->customer_name ),
 			esc_html( $lead->phone ),
 			esc_html( $lead->email )
@@ -205,7 +205,7 @@ final class LeadsListTable extends WP_List_Table {
 				<select id="moving-quote-status-%2$d" name="status">%4$s</select>
 				<button type="submit" class="button">%5$s</button>
 			</form>
-			<a href="%6$s" class="submitdelete" onclick="return confirm(%7$s)">%8$s</a>',
+			<a href="%6$s" class="submitdelete moving-quote-leads__delete" onclick="return confirm(%7$s)">%8$s</a>',
 			esc_url( admin_url( 'admin-post.php' ) ),
 			$lead->id,
 			wp_nonce_field( 'moving_quote_update_status_' . $lead->id, '_wpnonce', true, false ),

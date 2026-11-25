@@ -1,10 +1,13 @@
 <!-- The [moving_quote] markup contract (templates/quote-form.php), rendered in English. tests/stack/wp/quote-page.test.ts checks that every data-* hook here is in the real page. -->
 <form class="moving-quote" data-moving-quote data-config="{&quot;estimateUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/estimate?locale=en_US&quot;,&quot;leadsUrl&quot;:&quot;https://example.com/wp-json/moving-quote/v1/leads?locale=en_US&quot;,&quot;nonce&quot;:&quot;test-nonce&quot;,&quot;thankYouUrl&quot;:&quot;https://example.com/thank-you/&quot;,&quot;strings&quot;:{&quot;sending&quot;:&quot;Sending…&quot;,&quot;networkError&quot;:&quot;Something went wrong. Please check your connection and try again.&quot;,&quot;rateLimited&quot;:&quot;Too many requests. Please try again later.&quot;,&quot;sessionExpired&quot;:&quot;Your session expired. Reload the page and try again.&quot;,&quot;genericError&quot;:&quot;Please fix the highlighted fields.&quot;,&quot;serverError&quot;:&quot;Something went wrong on our side. Please try again in a few minutes.&quot;}}" novalidate>
+<div class="moving-quote__layout">
+<div class="moving-quote__main">
   <ol class="moving-quote__progress" role="list">
     <li class="moving-quote__progress-step" data-progress-step="0" aria-current="step"><span class="moving-quote__progress-marker" aria-hidden="true">1</span><span class="moving-quote__progress-label">Your move</span></li>
     <li class="moving-quote__progress-step" data-progress-step="1"><span class="moving-quote__progress-marker" aria-hidden="true">2</span><span class="moving-quote__progress-label">Extra services</span></li>
     <li class="moving-quote__progress-step" data-progress-step="2"><span class="moving-quote__progress-marker" aria-hidden="true">3</span><span class="moving-quote__progress-label">Your details</span></li>
   </ol>
+  <p class="moving-quote__required-note">Every field is required, except the extra services.</p>
 
   <p class="moving-quote__honeypot moving-quote__offscreen" aria-hidden="true">
     <label for="mq-website">Leave this field empty</label>
@@ -72,25 +75,29 @@
       <p class="moving-quote__option">
         <label class="moving-quote__check" for="mq-extra-packing">
           <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-packing" name="extras" value="packing" />
-          <span>Packing</span>
+          <span class="moving-quote__option-label">Packing</span>
+          <span class="moving-quote__price">+ COP 200,000</span>
         </label>
       </p>
       <p class="moving-quote__option">
         <label class="moving-quote__check" for="mq-extra-furniture_assembly">
           <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-furniture_assembly" name="extras" value="furniture_assembly" />
-          <span>Furniture disassembly and assembly</span>
+          <span class="moving-quote__option-label">Furniture disassembly and assembly</span>
+          <span class="moving-quote__price">+ COP 150,000</span>
         </label>
       </p>
       <p class="moving-quote__option">
         <label class="moving-quote__check" for="mq-extra-storage">
           <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-storage" name="extras" value="storage" />
-          <span>Temporary storage</span>
+          <span class="moving-quote__option-label">Temporary storage</span>
+          <span class="moving-quote__price">+ COP 300,000</span>
         </label>
       </p>
       <p class="moving-quote__option">
         <label class="moving-quote__check" for="mq-extra-piano_fragile">
           <input class="moving-quote__checkbox" type="checkbox" id="mq-extra-piano_fragile" name="extras" value="piano_fragile" />
-          <span>Piano or fragile items</span>
+          <span class="moving-quote__option-label">Piano or fragile items</span>
+          <span class="moving-quote__price">+ COP 250,000</span>
         </label>
       </p>
     </div>
@@ -110,7 +117,8 @@
       </p>
       <p class="moving-quote__field">
         <label class="moving-quote__label" for="mq-phone">Phone</label>
-        <input class="moving-quote__control" type="tel" id="mq-phone" name="phone" required autocomplete="tel" aria-describedby="mq-error-phone" />
+        <input class="moving-quote__control" type="tel" id="mq-phone" name="phone" required autocomplete="tel" aria-describedby="mq-hint-phone mq-error-phone" />
+        <span class="moving-quote__hint" id="mq-hint-phone">Example: +57 300 000 0000</span>
         <span class="moving-quote__error" id="mq-error-phone" data-error-for="phone"></span>
       </p>
       <p class="moving-quote__field">
@@ -128,7 +136,7 @@
     </div>
     <div class="moving-quote__actions">
       <button type="button" class="moving-quote__button moving-quote__button--secondary" data-back>Back</button>
-      <button type="submit" class="moving-quote__button moving-quote__button--cta" data-submit>Send my request</button>
+      <button type="submit" class="moving-quote__button moving-quote__button--primary moving-quote__button--submit" data-submit>Send my request</button>
     </div>
   </fieldset>
 
@@ -140,13 +148,25 @@
     <p data-success-reference hidden>Your reference number is <strong data-success-reference-value translate="no"></strong>.</p>
   </div>
 
-  <div class="moving-quote__estimate" data-estimate-state="idle">
-    <div class="moving-quote__estimate-result" data-estimate-result aria-live="polite" aria-atomic="true">
-      <p class="moving-quote__estimate-label">Estimated price</p>
-      <p class="moving-quote__estimate-value" data-estimate-value>&mdash;</p>
-      <p class="moving-quote__estimate-error" data-estimate-error hidden>We couldn’t calculate a price for this move right now. You can still send your request, and we’ll quote it for you.</p>
+</div>
+
+  <aside class="moving-quote__summary" data-summary aria-labelledby="mq-summary-title">
+    <h2 class="moving-quote__summary-title" id="mq-summary-title">Summary</h2>
+    <dl class="moving-quote__summary-list">
+      <div><dt>Route</dt><dd data-summary-route data-empty>Choose both cities</dd></div>
+      <div><dt>Move date</dt><dd data-summary-date data-empty>No date yet</dd></div>
+      <div><dt>Extra services</dt><dd data-summary-extras data-empty>No extra services</dd></div>
+    </dl>
+    <div class="moving-quote__estimate" data-estimate-state="idle">
+      <div class="moving-quote__estimate-result" data-estimate-result aria-live="polite" aria-atomic="true">
+        <p class="moving-quote__estimate-label">Estimated price</p>
+        <p class="moving-quote__estimate-value" data-estimate-value></p>
+        <p class="moving-quote__estimate-error" data-estimate-error hidden>We couldn’t calculate a price for this move right now. You can still send your request, and we’ll quote it for you.</p>
+      </div>
+      <p class="moving-quote__estimate-hint" data-estimate-hint>Choose what you are moving, the rooms, and both cities to see a price.</p>
+      <p class="moving-quote__disclaimer">This is an estimate. We confirm the final price after a visit or video call.</p>
     </div>
-    <p class="moving-quote__estimate-hint" data-estimate-hint>Choose what you are moving, the rooms, and both cities to see a price.</p>
-    <p class="moving-quote__disclaimer">This is an estimate. We confirm the final price after a visit or video call.</p>
-  </div>
+    <p class="moving-quote__summary-call">Prefer to talk? Call <a href="tel:+570000000099">+57 000 000 0099</a></p>
+  </aside>
+</div>
 </form>
